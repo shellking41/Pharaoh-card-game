@@ -211,7 +211,7 @@ public class GameSessionService implements IGameSessionService {
 			throw new IllegalArgumentException("Card's suit or rank are not matching");
 		};
 
-		gameEngine.playCards(playCardsRequest.getPlayCards(),gameSession);
+		gameEngine.playCards(playCardsRequest.getPlayCards(),gameSession,currentPlayer);
 
 		List<PlayedCardResponse> playedCardResponses= responseMapper.toPlayedCardResponseListFromCardRequests(playCardsRequest.getPlayCards());
 
