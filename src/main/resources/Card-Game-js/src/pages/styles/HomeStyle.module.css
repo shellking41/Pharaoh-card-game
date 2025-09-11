@@ -1,0 +1,56 @@
+/* HomeStyle.module.css */
+
+.container {
+    display: flex;
+    flex-wrap: wrap;
+
+    width: 100%;
+    max-width: 1800px;
+
+    gap: 1rem;
+    padding: 1rem;
+}
+
+.posts {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    flex-direction: column;
+    gap: 1rem;
+
+}
+
+.profile, .followers, .following {
+    box-shadow: var(--base-shadow);
+    border-radius: var(--base-radius);
+}
+
+.followWrapper {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.followers, .following {
+    height: 40%;
+
+}
+
+/* Asztali nézet */
+@media (min-width: 768px) {
+    .profile {
+        width: 25%;
+    }
+
+    .posts {
+        width: calc(50% - 3rem);
+        overflow-y: auto;
+        height: 100%;
+    }
+
+    .followWrapper {
+        width: 25%;
+    }
+}

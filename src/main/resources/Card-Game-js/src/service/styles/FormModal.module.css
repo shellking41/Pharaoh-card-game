@@ -1,0 +1,177 @@
+.modal {
+    min-width: 550px;
+    position: fixed;
+    display: flex;
+    flex-direction: column;
+    height: 70dvh;
+    min-height: 500px;
+    top: 50%;
+    right: 50%;
+    transform: translate(50%, -50%);
+    background-color: black;
+    border-radius: 12px;
+}
+
+.exitButton {
+    width: 30px;
+    border: none;
+    background-color: black;
+    aspect-ratio: 1/1;
+    border-radius: 100%;
+    position: relative;
+}
+
+.exitButton:hover,
+.exitButton:focus {
+    background-color: rgba(183, 183, 183, 0.34);
+}
+
+.exitButton:before {
+    content: "";
+    position: absolute;
+    width: 50%;
+    height: 2px;
+    background-color: white;
+    transform: rotateZ(45deg);
+    top: 50%;
+    right: 50%;
+    translate: 50% -50%;
+}
+
+.exitButton:after {
+    content: "";
+    position: absolute;
+    width: 50%;
+    height: 2px;
+    background-color: white;
+    transform: rotateZ(-45deg);
+    top: 50%;
+    right: 50%;
+    translate: 50% -50%;
+}
+
+.formWrapper {
+    width: 80%;
+    margin: auto;
+    height: calc(100% - 30px);
+    padding: 3%;
+}
+
+.formWrapper form {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-direction: column;
+}
+
+.inputSection {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.headerWrapper {
+    width: 100%;
+    display: flex;
+    justify-content: flex-start;
+}
+
+.header {
+    color: white;
+}
+
+.inputWrapper {
+    background-color: black;
+    width: 100%;
+    height: 60px;
+    border: 1px solid green;
+    border-radius: calc(12px - 10px);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    padding: 2%;
+}
+
+.inputLabel {
+    width: 100%;
+    height: 50%;
+    color: gray;
+    font-size: 20px;
+    position: relative;
+    top: 25%;
+    transition: top 200ms ease-in-out, font-size 200ms ease-in-out;
+}
+
+.input {
+    height: 50%;
+    width: 100%;
+    background-color: black;
+    border: none;
+    color: white;
+    outline: none;
+}
+
+.inputError {
+    border: 1px solid red;
+}
+
+.input:-webkit-autofill {
+    -webkit-box-shadow: 0 0 0px 1000px #000000 inset !important;
+    -webkit-text-fill-color: #ffffff !important;
+    transition: background-color 5000s ease-in-out 0s;
+}
+
+.inputWrapper.inputError .inputLabel {
+    color: red;
+}
+
+.inputWrapper:has(.input:focus) .inputLabel {
+    color: #1DA1F2;
+    top: 0;
+    font-size: 15px;
+    transition: top 200ms ease-in-out, font-size 200ms ease-in-out;
+}
+
+.inputWrapper:has(.input:not(:placeholder-shown)) .inputLabel {
+    top: 0;
+    font-size: 15px;
+    transition: top 200ms ease-in-out, font-size 200ms ease-in-out;
+}
+
+.inputWrapper:has(.input:-webkit-autofill) .inputLabel {
+    top: 0;
+    font-size: 15px;
+    transition: top 200ms ease-in-out, font-size 200ms ease-in-out;
+}
+
+.inputWrapper:has(.input:focus) {
+    border: 1px solid blue;
+}
+
+.submitButtonWrapper {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    padding: 10%;
+}
+
+.submitButton {
+    width: 60%;
+    aspect-ratio: 6/1;
+    background-color: white;
+    border: none;
+    outline-color: blue;
+    border-radius: 12px;
+}
+
+@media (max-width: 768px) {
+    .modal {
+        width: 100%;
+        height: 100dvh;
+        border-radius: 0;
+        min-width: 0;
+    }
+}
