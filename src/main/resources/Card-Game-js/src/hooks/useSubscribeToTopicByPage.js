@@ -90,6 +90,7 @@ const getPageSubscriptions = (contexts) => {
             destination: `/user/queue/game/start`,
             callback:(message)=>{
 
+                console.log(message);
 
                 const self= message.players.find((m)=>m.userId===userCurrentStatus.userInfo.userId)
 
@@ -100,13 +101,39 @@ const getPageSubscriptions = (contexts) => {
 
             }
         }],
-        "game":[{
-                destination: "/user/queue/game/draw",
-                callback:(message)=>{
-                    console.log(message);
+        "game": [{
+            destination: "/user/queue/game/draw",
+            callback: (message) => {
+                console.log(message);
 
+                if (message.playerId === playerSelf.playerId) {
+                    // Saját húzás → új kártyát hozzáadjuk az ownCards-hoz
+                    if (message.newCard) { // csak ha van új kártya
+                        setGameSession(prev => ({
+                            ...prev,
+                            playerHand: {
+                                ...prev.playerHand,
+                                ownCards: [...prev.playerHand.ownCards.filter(Boolean), message.newCard], // szűrjük a null-t
+                                otherPlayersCardCount: { ...prev.playerHand.otherPlayersCardCount }
+                            }
+                        }));
+                    }
+                } else {
+                    // Más húzott → csak az otherPlayersCardCount frissítése
+                    setGameSession(prev => ({
+                        ...prev,
+                        playerHand: {
+                            ...prev.playerHand,
+                            otherPlayersCardCount: {
+                                ...prev.playerHand.otherPlayersCardCount,
+                                [message.playerId]: message.otherPlayersCardCount[message.playerId] ?? 0
+                            },
+                            ownCards: prev.playerHand.ownCards.filter(Boolean) // null-ok eltávolítása
+                        }
+                    }));
                 }
-            }],
+            }
+        }],
 
         "about": [{
             destination: "/user/queue/test",

@@ -20,6 +20,7 @@ function Home() {
 
 
     useSubscribeToTopicByPage({page: "home"});
+
     useEffect(() => {
         console.log(rooms)
 
@@ -31,6 +32,7 @@ function Home() {
     }, [userCurrentStatus])
 
 
+
     if (!userCurrentStatus.authenticated) {
         return null;
     }
@@ -40,10 +42,12 @@ function Home() {
         return <ProgressBar/>;
     }
 
+
+
     // Ekkor biztos, hogy be van jelentkezve, és van legalább 1 room
     return (
         <>
-            <h1>HIBAK: A DRAWCARDNAM NEM KAPJUK MEG A FIRSSITETT GAMESTATET, ÉS A BEJELENTKEZESKOR KAPOK 500ZAS STATUS KODODT</h1>
+            <h1>HIBAK: HA A JATEK ELINDULT AKKOR IS JELôZI A ROOMOT HOGY AVAILABLE</h1>
             <button onClick={()=> getAllRoom()  } disabled={loading}>Refresh</button>
             {/*todo ezt a részt valószínűleg egy komponensbe kell tenni mert akkor jobban el lesz különítve a logika ha ide ebbe a boxba több mindent akarok tenni */}
             <Box>
