@@ -18,7 +18,7 @@ public interface IGameEngine {
 
 	Boolean checkCardsPlayability(List<CardRequest> playCards, GameSession gameSession);
 
-	GameState playCards(List<CardRequest> playCards, GameSession gameSession);
+	GameState playCards(List<CardRequest> playCards, GameSession gameSession,Player currentPlayer);
 
 	boolean areCardsValid(Player currentPlayer,List<CardRequest> playCards, GameSession gameSession);
 }

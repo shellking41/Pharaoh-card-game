@@ -213,14 +213,16 @@ public class GameEngine implements IGameEngine {
 	}
 
 	@Override
-	public GameState playCards(List<CardRequest> playCards, GameSession gameSession) {
+	public GameState playCards(List<CardRequest> playCards, GameSession gameSession,Player currentPlayer) {
 		return gameSessionUtils.updateGameState(gameSession.getGameSessionId(),(current)->{
 
 			if (playCards == null || playCards.isEmpty()) return current;
 
 			List<Card> incoming = entityMapper.toCardFromCardRequestList(playCards);
 
+			current.getPlayerHands().get(currentPlayer.getPlayerId()).removeAll(incoming);
 			current.getPlayedCards().addAll(incoming);
+
 			return current;
 		});
 	}
