@@ -19,7 +19,7 @@ function useAllRoom() {
             }
             const response = await get("http://localhost:8080/room/all", token)
             if (response) {
-                console.log(response)
+
 
                 setRooms(response.content);
             } else {

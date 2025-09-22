@@ -29,7 +29,8 @@ function useWebsocket() {
                     console.log(`[STOMP] Üzenet elküldve: ${destination}`, message);
                     return true;
                 } catch (error) {
-                    console.error('[STOMP] Üzenet küldési hiba:', error);
+
+
                     // Ha hiba van, queue-ba tesszük
                     messageQueueRef.current.push(messageData);
                     return false;

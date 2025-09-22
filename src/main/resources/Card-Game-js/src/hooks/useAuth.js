@@ -51,6 +51,7 @@ export const useAuth = () => {
             await logout();
             return null;
         } finally {
+
             setIsRefreshing(false);
         }
     }, [post, token, isRefreshing]);

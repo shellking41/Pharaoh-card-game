@@ -104,7 +104,7 @@ const getPageSubscriptions = (contexts) => {
         "game": [{
             destination: "/user/queue/game/draw",
             callback: (message) => {
-                console.log(message);
+
 
                 if (message.playerId === playerSelf.playerId) {
                     // Saját húzás → új kártyát hozzáadjuk az ownCards-hoz

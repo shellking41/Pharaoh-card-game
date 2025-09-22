@@ -14,7 +14,7 @@ function Game() {
     useSubscribeToTopicByPage({page: "game"})
     const [selectedCards, setSelectedCards] = useState([]);
     useEffect(() => {
-        console.log(gameSession);
+
 
     }, [gameSession]);
     useEffect(() => {

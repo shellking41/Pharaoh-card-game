@@ -7,7 +7,7 @@ function HungarianCard({cardData,onClick,isSelected }) {
         width: "40px",
         height: "60px",
         backgroundColor: "gray",
-        border: "1px solid black",
+        border: "1px solid grey",
         borderRadius: "4px",
       }}>
         Hátlap
