@@ -15,4 +15,5 @@ public class CardRequest {
 	private String cardId;
 	private CardSuit suit;
 	private CardRank rank;
+
 }

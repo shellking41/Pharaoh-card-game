@@ -185,14 +185,6 @@ public class ResponseMapper {
 				.build();
 	}
 
-	public GameStartResponse toGameStartResponse(GameSession gameSession, List<Player> players, PlayerHandResponse playerHand) {
-		return GameStartResponse.builder()
-				.gameSessionId(gameSession.getGameSessionId())
-				.players(players.stream().map(this::toPlayerStatusResponse).collect(Collectors.toList()))
-				.playerHand(playerHand)
-				.gameStatus(gameSession.getGameStatus())
-				.build();
-	}
 
 
 	public GameSessionResponse toGameSessionResponse(GameSession gameSession,List<Player> players,PlayerHandResponse playerHand,List<PlayedCardResponse> playedCards) {

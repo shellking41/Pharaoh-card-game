@@ -5,6 +5,8 @@ import useWebsocket from "../hooks/useWebsocket.js";
 import useSubscribeToTopicByPage from "../hooks/useSubscribeToTopicByPage.js";
 import HungarianCard from '../components/Game/HungarianCard.jsx';
 
+
+
 function Game() {
     const {gameSession,playerSelf}=useContext(GameSessionContext);
     const {gameSessionId} = useParams();
@@ -14,6 +16,7 @@ function Game() {
     useSubscribeToTopicByPage({page: "game"})
     const [selectedCards, setSelectedCards] = useState([]);
     useEffect(() => {
+        console.log(gameSession)
 
 
     }, [gameSession]);
@@ -43,6 +46,19 @@ function Game() {
             }
         });
     }
+    const playCards=()=> {
+        console.log(selectedCards)
+        const playCards = selectedCards.map(({ cardId, suit, rank,ownerId,position }) => ({
+            cardId,
+            suit,
+            rank,
+            ownerId,
+            position
+        }));
+
+        console.log(playCards);
+        sendMessage("/app/game/play-cards",{playCards,playerId:playerSelf.playerId})
+    }
 
     return (
         <>
@@ -56,19 +72,23 @@ function Game() {
                 if (p.playerId === playerSelf.playerId) return null;
 
                 // lekérdezzük a darabszámot — ha nincs, 0 a default
-                const count = gameSession.playerHand?.otherPlayersCardCount?.[p.playerId] ?? 0;
+                const count = gameSession.playerHand?.otherPlayersCardCount[String(p.playerId)] ?? 0;
 
                 return (
                   <div key={p.playerId}>
                       <div>{p.playerName}</div>
+                      {count}
                       {Array.from({ length: count }).map((_, i)=> (
+
                         <HungarianCard />
                       ))}
                   </div>
                 );
             })}
+
                 <HungarianCard cardData={gameSession.playedCards[gameSession.playedCards.length-1]}></HungarianCard>
             <button onClick={drawCard}>draw</button>
+            {selectedCards.length!==0 && <button onClick={playCards}>play cards</button>}
         </>
     )
 }

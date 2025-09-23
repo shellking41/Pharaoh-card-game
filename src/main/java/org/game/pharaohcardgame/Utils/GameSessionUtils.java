@@ -14,14 +14,16 @@ import org.game.pharaohcardgame.Model.DTO.ResponseMapper;
 import org.game.pharaohcardgame.Model.RedisModel.Card;
 import org.game.pharaohcardgame.Model.RedisModel.GameState;
 import org.game.pharaohcardgame.Service.Implementation.CacheService;
-import org.redisson.api.RLock;
-import org.redisson.api.RedissonClient;
+
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -29,13 +31,15 @@ import java.util.stream.Collectors;
 @Slf4j
 @Component
 public class GameSessionUtils {
+	private final ConcurrentMap<String, ReentrantLock> locks = new ConcurrentHashMap<>();
+
 	private static final String GAME_STATE_KEY = "gameState_";
 	private static final int GAME_STATE_TTL = 24; // 24 óra TTL
 
 	private final ObjectMapper objectMapper;
 	private final CacheService cacheService;
 	private final CacheManager cacheManager;
-	private final RedissonClient redissonClient;
+
 	private final ResponseMapper responseMapper;
 
 	public GameState getGameState(Long gameSessionId) {
@@ -113,34 +117,36 @@ public class GameSessionUtils {
 		return deck;
 	}
 
+
+	//todo: kell ide a version check system
 	public GameState updateGameState(Long gameSessionId, Function<GameState,GameState> updater){
-		String cacheKey = GAME_STATE_KEY + gameSessionId;;
+		String cacheKey = GAME_STATE_KEY + gameSessionId;
 		Cache cache = cacheManager.getCache("gameState");
-		RLock lock = redissonClient.getLock(cacheKey);
+		ReentrantLock lock = locks.computeIfAbsent(cacheKey, k -> new ReentrantLock());
+		boolean locked = false;
 		try {
-			boolean locked = lock.tryLock(10, 30, TimeUnit.SECONDS);
-			if (locked) {
-
-				GameState currentGameState=getGameState(gameSessionId);
-
-				GameState updatedGameState=updater.apply(currentGameState);
-				if(updatedGameState==null){
-					throw new EntityNotFoundException("Game state not found for session: " + gameSessionId);
-				}
-				cacheService.saveInCache(cache, cacheKey, updatedGameState, "gameState");
-				return updatedGameState;
-			}else {
-
+			locked = lock.tryLock(10, TimeUnit.SECONDS);
+			if (!locked) {
 				throw new LockAcquisitionException("Failed to acquire lock");
 			}
+			GameState currentGameState = getGameState(gameSessionId);
+			GameState updatedGameState = updater.apply(currentGameState);
+			if (updatedGameState == null) {
+				throw new EntityNotFoundException("Game state not found for session: " + gameSessionId);
+			}
+			cacheService.saveInCache(cache, cacheKey, updatedGameState, "gameState");
+			return updatedGameState;
 		} catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
 			throw new LockInterruptedException("Thread interrupted while acquiring lock", e);
-		}finally {
-			if (lock.isHeldByCurrentThread()) {
+		} finally {
+			if (locked) {
 				lock.unlock();
 			}
+			// cleanup: ha senki sem vár és nincs locked, távolítsuk el a lock objektumot (race oké, remove csak akkor töröl ha ugyanaz az instance)
+			if (!lock.isLocked()) {
+				locks.remove(cacheKey, lock);
+			}
 		}
-
 	}
 }

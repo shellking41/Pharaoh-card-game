@@ -14,6 +14,7 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 @Slf4j
@@ -153,18 +154,27 @@ public class GameEngine implements IGameEngine {
 		int otherPlayersCardsNumber=otherPlayersCards.size();
 
 		List<Card> currentPlayerCards=playerHands.get(currentPlayer.getPlayerId());
-		int currentPlayerCardNumber=currentPlayerCards.size()-playCardsR.size();
-
-		if(otherPlayersCardsNumber+currentPlayerCardNumber>32){
+		int currentPlayerCardNumber=currentPlayerCards.size();
+		int playedCardsNumber=gameState.getPlayedCards().size();
+		int deckNumber=gameState.getDeck().size();
+		if(otherPlayersCardsNumber+currentPlayerCardNumber+playedCardsNumber+deckNumber>32){
 			return false;
 		}
 		//ez azért van hogy a playernek tényleg vannak-e ilyen kártyái
 		Set<Card> currentPlayerCardsSet = new HashSet<>(currentPlayerCards);
 		List<Card> playCards=entityMapper.toCardFromCardRequestList(playCardsR);
 
-		if(!currentPlayerCardsSet.containsAll(playCards)){
+		Set<String> currentIds = currentPlayerCardsSet.stream()
+				.map(Card::getCardId)
+				.collect(Collectors.toSet());
+
+		Set<String> playedIds = playCards.stream()
+				.map(Card::getCardId)
+				.collect(Collectors.toSet());
+
+		if (!currentIds.containsAll(playedIds)) {
 			return false;
-		};
+		}
 
 
 		//ez azért van hogy a playedcard, deck, és más playernek a kezébe nincsbenne azok a kartyak amiket leakar rakni a user

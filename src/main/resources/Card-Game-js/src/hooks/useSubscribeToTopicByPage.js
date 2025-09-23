@@ -105,8 +105,10 @@ const getPageSubscriptions = (contexts) => {
             destination: "/user/queue/game/draw",
             callback: (message) => {
 
-
-                if (message.playerId === playerSelf.playerId) {
+                console.log(message)
+                console.log( message.otherPlayersCardCount[message.playerId])
+                console.log(message.playerId === playerSelf.playerId && message.newCard!=null)
+                if (message.playerId === playerSelf.playerId && message.newCard!=null) {
                     // Saját húzás → új kártyát hozzáadjuk az ownCards-hoz
                     if (message.newCard) { // csak ha van új kártya
                         setGameSession(prev => ({
@@ -120,18 +122,23 @@ const getPageSubscriptions = (contexts) => {
                     }
                 } else {
                     // Más húzott → csak az otherPlayersCardCount frissítése
+                    console.log( message.otherPlayersCardCount[message.playerId])
+
                     setGameSession(prev => ({
                         ...prev,
                         playerHand: {
                             ...prev.playerHand,
-                            otherPlayersCardCount: {
-                                ...prev.playerHand.otherPlayersCardCount,
-                                [message.playerId]: message.otherPlayersCardCount[message.playerId] ?? 0
-                            },
-                            ownCards: prev.playerHand.ownCards.filter(Boolean) // null-ok eltávolítása
+                            otherPlayersCardCount: message.otherPlayersCardCount,
+                            ownCards: prev.playerHand.ownCards.filter(Boolean)
                         }
                     }));
                 }
+            }
+        },{
+            destination: "/topic/game/"+gameSession.gameSessionId+"/played-cards",
+            callback:(message)=>{
+                console.log(message)
+
             }
         }],
 

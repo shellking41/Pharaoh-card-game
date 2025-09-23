@@ -109,8 +109,9 @@ public class GameSessionService implements IGameSessionService {
 					PlayerHandResponse playerHand = gameSessionUtils.getPlayerHand(
 							gameSession.getGameSessionId(), player.getPlayerId());
 
-					GameStartResponse personalizedResponse = responseMapper.toGameStartResponse(
-							gameSession, players, playerHand);
+					List<Card> playedCards =gameSessionUtils.getGameState(gameSession.getGameSessionId()).getPlayedCards();
+					List<PlayedCardResponse> playedCardResponses = responseMapper.toPlayedCardResponseListFromCards(playedCards);
+					GameSessionResponse personalizedResponse = responseMapper.toGameSessionResponse(gameSession,gameSession.getPlayers(),playerHand,playedCardResponses);
 
 					simpMessagingTemplate.convertAndSendToUser(
 							player.getUser().getId().toString(),
@@ -187,6 +188,7 @@ public class GameSessionService implements IGameSessionService {
 	}
 
 	@Override
+	//todo: még talan elfelejtettem a kartyat elvenni a playertol ha mar letette a kartyat.
 	public void playCards(PlayCardsRequest playCardsRequest) {
 		if (playCardsRequest.getPlayCards() == null || playCardsRequest.getPlayCards().isEmpty()){
 			throw new IllegalArgumentException("Play cards are empty");
@@ -198,7 +200,7 @@ public class GameSessionService implements IGameSessionService {
 		GameSession gameSession = gameSessionRepository.findByIdWithPlayers(currentPlayer.getGameSession().getGameSessionId())
 				.orElseThrow(() -> new GameSessionNotFoundException("GameSession not found"));
 
-		GameState gameState=gameSessionUtils.getGameState(getGameSession().getGameSessionId());
+		GameState gameState=gameSessionUtils.getGameState(currentPlayer.getGameSession().getGameSessionId());
 
 		if(!gameEngine.isPlayersTurn(currentPlayer,gameState)){
 			throw new IllegalStateException("This is not your turn");
