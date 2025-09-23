@@ -28,6 +28,7 @@ public class GameEngine implements IGameEngine {
 	public Player nextTurn(Player currentPlayer, GameSession gameSession) {
 
 
+
 		List<Player> players=gameSession.getPlayers();
 		List<Integer> seatIndexes=players.stream().map(Player::getSeat).toList();
 

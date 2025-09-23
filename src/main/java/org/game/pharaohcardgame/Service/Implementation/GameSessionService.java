@@ -50,6 +50,7 @@ public class GameSessionService implements IGameSessionService {
 	public SuccessMessageResponse startGame(GameStartRequest gameStartRequest) {
 		User gamemaster=authenticationService.getAuthenticatedUser();
 
+
 		try {
 			Room room = roomRepository.findByIdWithParticipants(gameStartRequest.getRoomId())
 					.orElseThrow(() -> new RoomNotFoundException("Room not Found"));

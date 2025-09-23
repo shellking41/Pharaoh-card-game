@@ -36,6 +36,7 @@ public class BotService implements IBotService {
 
 	@Override
 	@Transactional
+
 	public SuccessMessageResponse addBot(AddBotToRoomRequest addBotToRoomRequest) {
 		User gamemaster=authenticationService.getAuthenticatedUser();
 

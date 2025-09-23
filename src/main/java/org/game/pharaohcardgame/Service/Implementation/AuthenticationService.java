@@ -52,6 +52,7 @@ public class AuthenticationService implements IAuthenticationService {
 
     @Override
     @Transactional
+
     public ResponseEntity<RefreshResponse> refreshToken(HttpServletRequest request, HttpServletResponse response) {
         try {
             String refreshToken = jwtService.extractTokenFromCookies(request, "refresh-token");

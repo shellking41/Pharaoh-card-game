@@ -47,6 +47,7 @@ public class GameSessionUtils {
 			return null;
 		}
 
+
 		try {
 			return gameState;
 		} catch (Exception e) {

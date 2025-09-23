@@ -65,6 +65,7 @@ public class RoomService implements IRoomService {
         Page<MinimalRoomResponse> resultPage =
                 roomRepository.findActiveRoomsMinimal(PageRequest.of(pageNum, pageSize));
 
+
         return CompletableFuture.completedFuture(resultPage);
     }
 

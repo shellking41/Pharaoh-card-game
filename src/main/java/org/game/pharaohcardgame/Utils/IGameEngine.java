@@ -22,3 +22,4 @@ public interface IGameEngine {
 
 	boolean areCardsValid(Player currentPlayer,List<CardRequest> playCards, GameSession gameSession);
 }
+
