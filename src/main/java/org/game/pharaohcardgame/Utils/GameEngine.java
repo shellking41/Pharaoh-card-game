@@ -2,14 +2,24 @@ package org.game.pharaohcardgame.Utils;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.game.pharaohcardgame.Enum.BotDifficulty;
 import org.game.pharaohcardgame.Enum.GameStatus;
+import org.game.pharaohcardgame.Model.Bot;
 import org.game.pharaohcardgame.Model.DTO.EntityMapper;
 import org.game.pharaohcardgame.Model.DTO.Request.CardRequest;
 import org.game.pharaohcardgame.Model.DTO.Response.NextTurnResponse;
+import org.game.pharaohcardgame.Model.DTO.ResponseMapper;
 import org.game.pharaohcardgame.Model.GameSession;
 import org.game.pharaohcardgame.Model.Player;
 import org.game.pharaohcardgame.Model.RedisModel.Card;
 import org.game.pharaohcardgame.Model.RedisModel.GameState;
+import org.game.pharaohcardgame.Model.User;
+import org.game.pharaohcardgame.Repository.BotRepository;
+import org.game.pharaohcardgame.Repository.GameSessionRepository;
+import org.game.pharaohcardgame.Repository.PlayerRepository;
+import org.game.pharaohcardgame.Repository.UserRepository;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
 
@@ -24,6 +34,13 @@ public class GameEngine implements IGameEngine {
 	private final GameSessionUtils gameSessionUtils;
 	private final SimpMessagingTemplate simpMessagingTemplate;
 	private final EntityMapper entityMapper;
+	private final BotLogic botLogic;
+	private final GameSessionRepository gameSessionRepository;
+	private final ResponseMapper responseMapper;
+	private final PlayerRepository playerRepository;
+	private final CacheManager cacheManager;
+	private final UserRepository userRepository;
+	private final BotRepository botRepository;
 
 	@Override
 	public Player nextTurn(Player currentPlayer, GameSession gameSession) {
@@ -55,16 +72,19 @@ public class GameEngine implements IGameEngine {
 
 
 		if(nextPlayer.getIsBot()){
-			return null;
+
+			botLogic.botDrawTest(gameSession,nextPlayer,this);
+		}else {
+			for (Player player : players) {
+				boolean isCurrentPlayer = player.equals(nextPlayer);
+				simpMessagingTemplate.convertAndSendToUser(
+						player.getUser().getId().toString(),
+						"/queue/game/turn",
+						NextTurnResponse.builder().isYourTurn(isCurrentPlayer).currentSeat(nextSeat).build()
+				);
+			}
 		}
-		for (Player player : players) {
-			boolean isCurrentPlayer = player.equals(nextPlayer);
-			simpMessagingTemplate.convertAndSendToUser(
-					player.getUser().getId().toString(),
-					"/queue/game/turn",
-					NextTurnResponse.builder().isYourTurn(isCurrentPlayer).playerId(player.getPlayerId()).currentSeat(nextSeat).build()
-			);
-		}
+
 		return nextPlayer;
 	}
 
@@ -117,8 +137,8 @@ public class GameEngine implements IGameEngine {
 	}
 
 	@Override
-	public GameState drawCard(GameSession gameSession, Player currentPlayer) {
-		return gameSessionUtils.updateGameState(gameSession.getGameSessionId(),(current)->{
+	public Card drawCard(GameSession gameSession, Player currentPlayer) {
+		GameState newGameState= gameSessionUtils.updateGameState(gameSession.getGameSessionId(),(current)->{
 			if(!isPlayersTurn(currentPlayer,current)){
 				throw new IllegalStateException("This is not your turn");
 			};
@@ -141,6 +161,8 @@ public class GameEngine implements IGameEngine {
 
 			return current;
 		});
+		List<Card> newHand = newGameState.getPlayerHands().get(currentPlayer.getPlayerId());
+		return newHand.getLast();
 	}
 	@Override
 	public boolean areCardsValid(Player currentPlayer,List<CardRequest> playCardsR, GameSession gameSession) {
@@ -198,36 +220,43 @@ public class GameEngine implements IGameEngine {
 		return true;
 	}
 	@Override
+	//ez azt ellenorzni hogy lelehete tenni a kártyákat a az adott szimbol és a szamra
 	public Boolean checkCardsPlayability(List<CardRequest> playCards, GameSession gameSession) {
-		GameState gameState=gameSessionUtils.getGameState(gameSession.getGameSessionId());
-		List<Card> playedCards=gameState.getPlayedCards();
-		Card lastPlayed = playedCards.getLast();
+		if (playCards == null || playCards.isEmpty()) return false;
 
-		CardRequest currentCard=CardRequest.builder()
+		GameState gameState = gameSessionUtils.getGameState(gameSession.getGameSessionId());
+		List<Card> playedCards = gameState.getPlayedCards();
+		if (playedCards == null || playedCards.isEmpty()) return false;
+
+		Card lastPlayed = playedCards.getLast();
+		CardRequest currentCard = CardRequest.builder()
 				.cardId(lastPlayed.getCardId())
 				.rank(lastPlayed.getRank())
 				.suit(lastPlayed.getSuit())
 				.build();
 
-		CardRequest firstPlayCard= playCards.getFirst();
-		playCards.remove(firstPlayCard);
+		// Első elem csak olvasva — NEM töröljük az eredeti listából
+		CardRequest firstPlayCard = playCards.get(0);
+		if (!compareSuitsAndRanks(currentCard, firstPlayCard)) return false;
+		currentCard = firstPlayCard;
 
-		if(!compareSuitsAndRanks(currentCard,firstPlayCard)) return false;
-		currentCard=firstPlayCard;
-
-		for (CardRequest playCard : playCards){
-			if(!compareRanks(currentCard,playCard)) return false;
-			currentCard=playCard;
+		for (int i = 1; i < playCards.size(); i++) {
+			CardRequest playCard = playCards.get(i);
+			if (!compareRanks(currentCard, playCard)) return false;
+			currentCard = playCard;
 		}
-
 		return true;
 	}
 
+
 	@Override
+	//todo: még a played Cardsba belekerul a ownerId ami rossz mert az mar nem tartozik senkihez
 	public GameState playCards(List<CardRequest> playCards, GameSession gameSession,Player currentPlayer) {
 		return gameSessionUtils.updateGameState(gameSession.getGameSessionId(),(current)->{
 
-			if (playCards == null || playCards.isEmpty()) return current;
+			if (playCards == null || playCards.isEmpty()) {
+				throw new IllegalStateException("Play Card is null");
+			};
 
 			List<Card> incoming = entityMapper.toCardFromCardRequestList(playCards);
 
@@ -237,7 +266,45 @@ public class GameEngine implements IGameEngine {
 			return current;
 		});
 	}
+	@Override
+	public void handlePlayerLeaving(GameSession gameSession, Player leavingPlayer, User user) {
+		//a userplayer lecserelese erre a botra
+		Bot newBot=Bot.builder()
+				.name(user.getName()+"-bot")
+				.room(user.getCurrentRoom())
+				.botPlayer(leavingPlayer)
+				.difficulty(BotDifficulty.MEDIUM)
+				.build();
 
+		leavingPlayer.setBot(newBot);
+		leavingPlayer.setBotDifficulty(newBot.getDifficulty());
+		leavingPlayer.setUser(null);
+		leavingPlayer.setIsBot(true);
+		playerRepository.save(leavingPlayer);
+
+		user.setCurrentRoom(null);
+
+		userRepository.save(user);
+
+		Cache cache=cacheManager.getCache("userStatus");
+		if (cache != null) {
+			cache.evict("userStatus_" + user.getId());
+		}
+
+	}
+	@Override
+	public void handleGamemasterLeaving(GameSession gameSession, Player leavingPlayer) {
+		// End the game session
+		gameSession.setGameStatus(GameStatus.FINISHED);
+		gameSessionRepository.save(gameSession);
+
+		// End game state in cache
+		gameSessionUtils.deleteGameState(gameSession.getGameSessionId());
+
+
+
+
+	}
 
 
 	private boolean compareRanks(CardRequest firstCard, CardRequest secondCard) {
@@ -294,4 +361,9 @@ public class GameEngine implements IGameEngine {
 		// és mentsd vissza az állapotot, ha szükséges:
 		return state;
 	}
+
+
+
+
+
 }

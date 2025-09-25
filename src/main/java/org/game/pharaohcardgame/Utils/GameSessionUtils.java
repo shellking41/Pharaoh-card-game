@@ -68,6 +68,7 @@ public class GameSessionUtils {
 		log.info("Deleted game state for session: {}", gameSessionId);
 	}
 
+	//it ez kulon vissza adja a sajat kartyait  ausernek es adatok nelkul a masik userek kartya számát.
 	public PlayerHandResponse getPlayerHand(Long gameSessionId, Long playerId) {
 		GameState gameState = getGameState(gameSessionId);
 		if(gameState==null){

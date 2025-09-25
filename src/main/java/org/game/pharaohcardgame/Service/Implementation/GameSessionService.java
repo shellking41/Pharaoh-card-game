@@ -1,6 +1,7 @@
 package org.game.pharaohcardgame.Service.Implementation;
 
 import jakarta.persistence.EntityNotFoundException;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.game.pharaohcardgame.Enum.GameStatus;
@@ -8,10 +9,7 @@ import org.game.pharaohcardgame.Exception.GameSessionNotFoundException;
 import org.game.pharaohcardgame.Exception.PlayerNotFoundException;
 import org.game.pharaohcardgame.Exception.RoomNotFoundException;
 import org.game.pharaohcardgame.Model.*;
-import org.game.pharaohcardgame.Model.DTO.Request.CardRequest;
-import org.game.pharaohcardgame.Model.DTO.Request.DrawCardRequest;
-import org.game.pharaohcardgame.Model.DTO.Request.GameStartRequest;
-import org.game.pharaohcardgame.Model.DTO.Request.PlayCardsRequest;
+import org.game.pharaohcardgame.Model.DTO.Request.*;
 import org.game.pharaohcardgame.Model.DTO.Response.*;
 import org.game.pharaohcardgame.Model.DTO.ResponseMapper;
 import org.game.pharaohcardgame.Model.RedisModel.Card;
@@ -23,6 +21,8 @@ import org.game.pharaohcardgame.Repository.RoomRepository;
 import org.game.pharaohcardgame.Service.IGameSessionService;
 import org.game.pharaohcardgame.Utils.GameEngine;
 import org.game.pharaohcardgame.Utils.GameSessionUtils;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -44,6 +44,7 @@ public class GameSessionService implements IGameSessionService {
 	private final GameSessionUtils gameSessionUtils;
 	private final GameEngine gameEngine;
 	private final PlayerRepository playerRepository;
+	private final CacheManager cacheManager;
 
 
 	@Override
@@ -126,25 +127,49 @@ public class GameSessionService implements IGameSessionService {
 			return responseMapper.createSuccessResponse(false, e.getMessage());
 		}
 	}
+	@Override
+	public CurrentTurnResponse getCurrentTurnInfo(){
+		User user=authenticationService.getAuthenticatedUser();
+		GameSession gameSession=gameSessionRepository.findByRoomIdAndGameStatusWithPlayers(user.getCurrentRoom().getRoomId(),GameStatus.IN_PROGRESS)
+				.orElseThrow(()->new GameSessionNotFoundException("Active Game not Found"));
+
+		Long playerId=getPlayerIdFromUserAndGameSession(user,gameSession);
+
+		Player player=playerRepository.findById(playerId)
+				.orElseThrow(()-> new PlayerNotFoundException("player not found"));
+
+		GameState gameState=gameSessionUtils.getGameState(gameSession.getGameSessionId());
+
+		Player currantPlayer=playerRepository.findById(gameState.getCurrentPlayerId())
+				.orElseThrow(()-> new PlayerNotFoundException("player not found"));
+
+		return CurrentTurnResponse.builder()
+				.isYourTurn(gameEngine.isPlayersTurn( player,  gameState))
+				.currentSeat(currantPlayer.getSeat())
+				.build();
+
+	}
+
 
 	@Override
+	//todo:!!!FONTOS!!!! ha majd akarok a gamekozbeni kilépést, akkor a szobából, a gamesessionbol és a gameStatebol is kikell leptetnem a usert, és a a gamestateben eltudntetem a usert akkor megkell oldani a sorrendet
 	public GameSessionResponse getGameSession() {
 		User user=authenticationService.getAuthenticatedUser();
 		GameSession gameSession=gameSessionRepository.findByRoomIdAndGameStatusWithPlayers(user.getCurrentRoom().getRoomId(),GameStatus.IN_PROGRESS)
 				.orElseThrow(()->new GameSessionNotFoundException("Active Game not Found"));
 
-		Long playerId = gameSession.getPlayers().stream()
-				.filter(p -> p.getUser() != null && p.getUser().getId().equals(user.getId()))
-				.map(Player::getPlayerId)
-				.findFirst()
-				.orElseThrow(() -> new EntityNotFoundException("Player not found for this user"));
+		Long playerId=getPlayerIdFromUserAndGameSession(user,gameSession);
 
 		PlayerHandResponse playerHand = gameSessionUtils.getPlayerHand(
 				gameSession.getGameSessionId(), playerId);
 
+
+
 		List<Card> playedCards =gameSessionUtils.getGameState(gameSession.getGameSessionId()).getPlayedCards();
 		List<PlayedCardResponse> playedCardResponses = responseMapper.toPlayedCardResponseListFromCards(playedCards);
 		return responseMapper.toGameSessionResponse(gameSession,gameSession.getPlayers(),playerHand,playedCardResponses);
+
+
 	}
 
 	@Override
@@ -161,19 +186,18 @@ public class GameSessionService implements IGameSessionService {
 		List<Player> players = gameSession.getPlayers();
 
 
-		GameState newGameState= gameEngine.drawCard(gameSession,currentPlayer);
+		Card drawnCard= gameEngine.drawCard(gameSession,currentPlayer);
 
-
+		GameState newGameState=gameSessionUtils.getGameState(gameSession.getGameSessionId());
+		//itt ha huzunk egy kartyat akkor a kartyahuzo user lassa a kartyat mások nem kapjak meg a tartalmát
 		for (Player player : players) {
 			if (!player.getIsBot()) {
-				Card drawnCard=null;
+				DrawCardResponse personalizedResponse;
 				if(player.getPlayerId().equals(currentPlayer.getPlayerId())){
-					List<Card> newHand = newGameState.getPlayerHands().get(player.getPlayerId());
-					drawnCard= newHand.getLast();
-
+					 personalizedResponse = responseMapper.toDrawCardResponse(newGameState,drawnCard,player.getPlayerId());
+				}else {
+					 personalizedResponse = responseMapper.toDrawCardResponse(newGameState,null,player.getPlayerId());
 				}
-
-				DrawCardResponse personalizedResponse = responseMapper.toDrawCardResponse(newGameState,drawnCard,player.getPlayerId());
 
 
 				simpMessagingTemplate.convertAndSendToUser(
@@ -188,7 +212,8 @@ public class GameSessionService implements IGameSessionService {
 	}
 
 	@Override
-	//todo: még talan elfelejtettem a kartyat elvenni a playertol ha mar letette a kartyat.
+	//todo: kell az hogy ha rossz kartya van megadva akkor a user megpaja az exceptiont
+
 	public void playCards(PlayCardsRequest playCardsRequest) {
 		if (playCardsRequest.getPlayCards() == null || playCardsRequest.getPlayCards().isEmpty()){
 			throw new IllegalArgumentException("Play cards are empty");
@@ -217,26 +242,101 @@ public class GameSessionService implements IGameSessionService {
 		gameEngine.playCards(playCardsRequest.getPlayCards(),gameSession,currentPlayer);
 
 		List<PlayedCardResponse> playedCardResponses= responseMapper.toPlayedCardResponseListFromCardRequests(playCardsRequest.getPlayCards());
-
+		//ez azt kuldi el hogy milyen kartyak vannak már letéve
 		simpMessagingTemplate.convertAndSend(
 				"/topic/game/"+gameSession.getGameSessionId()+"/played-cards",
 				playedCardResponses
 				);
 
 
+		//ez elkuldi a frissitett player handet hogy a játszo usernek a kezebol eltunnjon a kartya es mas playerek is lassak ezt
+		for (Player player : gameSession.getPlayers()) {
+			if (!player.getIsBot()) {
+				PlayerHandResponse playerHand = gameSessionUtils.getPlayerHand(
+						gameSession.getGameSessionId(), player.getPlayerId());
+
+
+				simpMessagingTemplate.convertAndSendToUser(
+						player.getUser().getId().toString(),
+						"/queue/game/play-cards",
+						playerHand
+				);
+			}
+		}
+
 		gameEngine.nextTurn(currentPlayer,gameSession);
 
 	}
+	@Transactional
+	@Override
+	//todo: elkell donteni hogy hogyan oldjam mega  agamesession kiletetést
+	public void leaveGameSession(LeaveGameSessionRequest request) {
+		User user = authenticationService.getAuthenticatedUser();
+
+		// Get the game session
+		GameSession gameSession = gameSessionRepository.findByIdWithPlayers(request.getGameSessionId())
+				.orElseThrow(() -> new GameSessionNotFoundException("GameSession not found"));
+
+		// Check if user is in this game session
+		Player leavingPlayer = gameSession.getPlayers().stream()
+				.filter(p -> !p.getIsBot() && p.getUser().getId().equals(user.getId()))
+				.findFirst()
+				.orElseThrow(() -> new PlayerNotFoundException("Player not found in this game session"));
+
+		Room room = gameSession.getRoom();
+		boolean isGamemaster = room.getGamemaster() != null &&
+				room.getGamemaster().getId().equals(user.getId());
+
+		// Cache evict for user status
+		Cache cache = cacheManager.getCache("userStatus");
+		if (cache != null) {
+			cache.evict("userStatus_" + user.getId());
+		}
+
+		if(isGamemaster){
+			gameEngine.handleGamemasterLeaving(gameSession, leavingPlayer);
+			// Notify all players that game has ended
+			for (Player player : gameSession.getPlayers()) {
+				if (!player.getIsBot()) {
+					// Update user's current room status - they stay in room but game ends
+
+					simpMessagingTemplate.convertAndSendToUser(
+							player.getUser().getId().toString(),
+							"/queue/game/end",
+							GameEndResponse.builder()
+									.reason("Gamemaster left the game")
+									.build()
+					);
+				}
+			}
+		}else {
+			//todo: még értesiteni kell a playereket hogy valaki kilepett es egy bot vette át a helyet
+			gameEngine.handlePlayerLeaving(gameSession,leavingPlayer,user);
+		}
+
+
+	}
+
+
 
 
 	private boolean hasActiveGame(Room room) {
 		return gameSessionRepository.existsByRoomAndGameStatus(room, GameStatus.IN_PROGRESS);
 	}
 
+	private Long getPlayerIdFromUserAndGameSession(User user, GameSession gameSession) {
+		return gameSession.getPlayers().stream()
+				.filter(p -> p.getUser() != null && p.getUser().getId().equals(user.getId()))
+				.map(Player::getPlayerId)
+				.findFirst()
+				.orElseThrow(() -> new EntityNotFoundException("Player not found for this user"));
+	}
 
 
 
+	private void sendPersonalizedGameStateResponse(){
 
+	}
 
 
 }

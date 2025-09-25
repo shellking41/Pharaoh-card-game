@@ -47,7 +47,8 @@ function Home() {
     // Ekkor biztos, hogy be van jelentkezve, és van legalább 1 room
     return (
         <>
-            <h1>HIBAK: HA A JATEK ELINDULT AKKOR IS JELôZI A ROOMOT HOGY AVAILABLE</h1>
+            <h1>HIBAK: HA A JATEK ELINDULT AKKOR IS JELôZI A ROOMOT HOGY AVAILABLE,</h1>
+            <h1>KELL FRONTENDRE IS VALAMI VERZIONINGET TENNIA GAMESTATE RE MERT HA VALAKI MÁS MÉG MODOSITJA MIELOTT VISSZA KAPNANK A MI EREDMENYUNKET AKKOR FELUL MIRHASSA A REGGEBBI VERZIORA</h1>
             <button onClick={()=> getAllRoom()  } disabled={loading}>Refresh</button>
             {/*todo ezt a részt valószínűleg egy komponensbe kell tenni mert akkor jobban el lesz különítve a logika ha ide ebbe a boxba több mindent akarok tenni */}
             <Box>

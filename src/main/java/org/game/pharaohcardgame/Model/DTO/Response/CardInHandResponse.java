@@ -16,5 +16,5 @@ public class CardInHandResponse {
 	private CardSuit suit;
 	private CardRank rank;
 	private int position;
-	private boolean isOwn; // true ha ez a játékos kártyája
+	private Long ownerId;
 }

@@ -203,7 +203,7 @@ public class ResponseMapper {
 				.suit(card.getSuit())
 				.rank(card.getRank())
 				.position(card.getPosition())
-				.isOwn(true)
+				.ownerId(card.getOwnerId())
 				.build();
 	}
 

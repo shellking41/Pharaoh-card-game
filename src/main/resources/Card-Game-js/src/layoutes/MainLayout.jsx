@@ -1,5 +1,5 @@
-import React, {useContext, useEffect, useRef, useState} from 'react';
-import {Outlet, useNavigate} from 'react-router-dom';
+import React, {useContext, useEffect, useLayoutEffect, useRef, useState} from 'react';
+import {Outlet, useNavigate, useParams} from 'react-router-dom';
 import style from './styles/MainLayoutStyle.module.css';
 import {Box, CircularProgress, Container, Tab, Tabs} from "@mui/material";
 import userContext, {UserContext} from "../Contexts/UserContext.jsx";
@@ -14,6 +14,7 @@ function MainLayout() {
     const {userCurrentStatus} = useContext(UserContext);
     const {connected, clientRef} = useContext(StompContext)
     const {gameSession}=useContext(GameSessionContext);
+    const {gameSessionId} = useParams();
     const {notifications, removeNotification} = useContext(NotificationContext);
 
     const navRef = useRef(0);
@@ -49,17 +50,37 @@ function MainLayout() {
                 break;
         }
     };
-    useEffect(() => {
-        if (userCurrentStatus.currentRoom?.roomId) {
-            navigate(`/room/${userCurrentStatus.currentRoom.roomId}`);
+
+    useLayoutEffect(() => {
+
+
+        //ha nincs gamesession akkor iranyitja at
+        if (!gameSession.gameSessionId) {
+            //ha van room akkor oda
+            const roomId=userCurrentStatus.currentRoom?.roomId?userCurrentStatus.currentRoom.roomId:userCurrentStatus.currentRoomId;
+            if(roomId){
+                navigate("/room/"+roomId);
+                console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+
+                return
+            }
+            navigate("/");
         }
-    }, [userCurrentStatus]);
+
+
+    }, [gameSession,userCurrentStatus]);
+
 
     useEffect(() => {
         if(gameSession.gameSessionId){
             navigate(`/game/${gameSession.gameSessionId}`)
         }
     }, [gameSession.gameSessionId]);
+
+    useEffect(() => {
+        console.log(userCurrentStatus)
+
+    }, [userCurrentStatus]);
     return (
         <>
             <header>

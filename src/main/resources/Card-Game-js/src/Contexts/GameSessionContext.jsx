@@ -7,6 +7,8 @@ export const GameSessionContextProvider = ({ children }) => {
     const [gameSession,setGameSession]=useState({
         gameSessionId:null,
         players:[],
+        playerHand:[],
+        playedCards:[],
         gameStatus:"",
     });
     const [playerSelf,setPlayerSelf]=useState({
@@ -14,11 +16,18 @@ export const GameSessionContextProvider = ({ children }) => {
         seat:null,
         userId:null,
     });
+
+    const [turn,setTurn]=useState({
+        currentSeat: null,
+        yourTurn: false
+    })
     const contextValue={
         gameSession,
         setGameSession,
         playerSelf,
-        setPlayerSelf
+        setPlayerSelf,
+        turn,
+        setTurn
     }
 
     return <GameSessionContext.Provider value={contextValue}>{children}</GameSessionContext.Provider>;

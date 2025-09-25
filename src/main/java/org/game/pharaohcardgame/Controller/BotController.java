@@ -9,6 +9,8 @@ import org.game.pharaohcardgame.Model.DTO.Response.RoomResponse;
 import org.game.pharaohcardgame.Model.DTO.Response.SuccessMessageResponse;
 import org.game.pharaohcardgame.Service.IBotService;
 import org.springframework.data.domain.Page;
+import org.springframework.messaging.handler.annotation.MessageExceptionHandler;
+import org.springframework.messaging.simp.annotation.SendToUser;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
@@ -34,5 +36,10 @@ public class BotController {
 	@PostMapping("/edit")
 	public SuccessMessageResponse editBot(@RequestBody BotEditRequest botEditRequest){
 		return botService.editBot(botEditRequest);
+	}
+	@MessageExceptionHandler
+	@SendToUser("/queue/errors")
+	public String handleException(Exception ex) {
+		return ex.getMessage();
 	}
 }

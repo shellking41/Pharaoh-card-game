@@ -16,7 +16,8 @@ public class EntityMapper {
 				.suit(cardRequest.getSuit())
 				.rank(cardRequest.getRank())
 				.cardId(cardRequest.getCardId())
-
+				.position(cardRequest.getPosition())
+				.ownerId(cardRequest.getOwnerId())
 				.build();
 	}
 

@@ -1,5 +1,6 @@
 package org.game.pharaohcardgame.Model.DTO.Request;
 
+import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -10,6 +11,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Builder
 public class RegisterRequest {
+	@NotBlank
 	private String username;
+	@NotBlank
 	private String password;
 }

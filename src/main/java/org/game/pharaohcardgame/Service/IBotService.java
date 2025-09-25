@@ -9,4 +9,5 @@ public interface IBotService {
 	SuccessMessageResponse addBot(AddBotToRoomRequest addBotToRoomRequest);
 	SuccessMessageResponse removeBot(BotRemoveFromRoomRequest botRemoveFromRoomRequest);
 	SuccessMessageResponse editBot(BotEditRequest botEditRequest);
+
 }

@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class NextTurnResponse {
+public class CurrentTurnResponse {
 	boolean isYourTurn;
 	Integer currentSeat;
 }

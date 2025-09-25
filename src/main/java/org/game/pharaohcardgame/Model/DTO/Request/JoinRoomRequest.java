@@ -1,5 +1,7 @@
 package org.game.pharaohcardgame.Model.DTO.Request;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -10,10 +12,13 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Builder
 public class JoinRoomRequest {
+    @NotNull
     private Long roomId;
     private String roomPassword;
+    @NotBlank
     private String username;
     private String message;
+    @NotNull
     private Long userId;
 
 }

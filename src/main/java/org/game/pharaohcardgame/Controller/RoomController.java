@@ -8,8 +8,10 @@ import org.game.pharaohcardgame.Model.DTO.Response.UserCurrentStatus;
 import org.game.pharaohcardgame.Service.IRoomService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.messaging.handler.annotation.MessageExceptionHandler;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.messaging.simp.annotation.SendToUser;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
@@ -60,5 +62,10 @@ public class RoomController {
     @PostMapping("/current-and-managed-room")
     public CompletableFuture<CurrentAndManagedRoomResponse> currentRoomAndManagedRoomStatus(@RequestBody CurrentAndManagedRoomRequest currentAndManagedRoomRequest){
         return  roomService.currentRoomAndManagedRoomStatus(currentAndManagedRoomRequest);
+    }
+    @MessageExceptionHandler
+    @SendToUser("/queue/errors")
+    public String handleException(Exception ex) {
+        return ex.getMessage();
     }
 }

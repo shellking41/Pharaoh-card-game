@@ -1,10 +1,12 @@
-import React, {useContext, useEffect} from 'react'
+import React, {useContext, useEffect, useState} from 'react'
 import UseWebsocket from "./useWebsocket.js";
 import {UserContext} from "../Contexts/UserContext.jsx";
 import {NotificationContext} from "../Contexts/NotificationContext.jsx";
 import useWebsocket from "./useWebsocket.js";
 import {RoomsDataContext} from "../Contexts/RoomsDataContext.jsx";
 import {GameSessionContext} from "../Contexts/GameSessionContext.jsx";
+import {useApiCallHook} from "./useApiCallHook.js";
+import {TokenContext} from "../Contexts/TokenContext.jsx";
 
 
 const getPageSubscriptions = (contexts) => {
@@ -13,9 +15,12 @@ const getPageSubscriptions = (contexts) => {
         userCurrentStatus, setUserCurrentStatus,
         gameSession,setGameSession,
         playerSelf,setPlayerSelf,
+        setTurn,
         setJoinRequests,
         showNotification,
-        currentRoomId
+        currentRoomId,
+        post,
+        token
     } = contexts;
 
     return {
@@ -49,6 +54,12 @@ const getPageSubscriptions = (contexts) => {
                 }
 
                 showNotification(message.message, message.success ? "success" : "error");
+
+            }
+        },{
+            destination: "/user/queue/errors",
+            callback:(message)=>{
+                console.log(message)
 
             }
         }],
@@ -100,6 +111,12 @@ const getPageSubscriptions = (contexts) => {
                 setGameSession(message);
 
             }
+        },{
+            destination: "/user/queue/errors",
+            callback:(message)=>{
+                console.log(message)
+
+            }
         }],
         "game": [{
             destination: "/user/queue/game/draw",
@@ -138,6 +155,64 @@ const getPageSubscriptions = (contexts) => {
             destination: "/topic/game/"+gameSession.gameSessionId+"/played-cards",
             callback:(message)=>{
                 console.log(message)
+                setGameSession((prev)=>({...prev,playedCards:message}))
+
+            }
+        },{
+            destination: "/user/queue/game/play-cards",
+            callback: (message) => {
+                console.log(message)
+                setGameSession((prev)=>({...prev,playerHand:message}))
+            }
+        },{
+            destination: "/user/queue/game/turn",
+            callback: (message) => {
+                console.log(message,"!!!!!!!!!!!!!!!!!!!")
+                setTurn({
+                    currentSeat:message.currentSeat,
+                    yourTurn:message.yourTurn,
+                })
+            }
+        },{
+            destination: "/user/queue/game/end",
+            callback:async (message)=>{
+                console.log(message);
+
+
+                setGameSession({
+                    gameSessionId:null,
+                    players:[],
+                    playerHand:[],
+                    playedCards:[],
+                    gameStatus:"",
+                });
+               setPlayerSelf({
+                    playerId:null,
+                    seat:null,
+                    userId:null,
+                });
+
+               setTurn({
+                    currentSeat: null,
+                    yourTurn: false
+                })
+                //ha kilep a gamemaster vagy vege a jateknak akkor ha ido kozbe frissult a room akkor kapjuk(kilepett egy jateson es hozaadotott egy bot)  meg az infot
+                const currentAndManagedRoom=await post('http://localhost:8080/room/current-and-managed-room',{currentRoomId:userCurrentStatus.currentRoom?.roomId,managedRoomId:userCurrentStatus.managedRoom?.roomId}, token)
+                console.log(currentAndManagedRoom);
+
+                const userStatusWRooms={
+                    userInfo:userCurrentStatus?.userInfo,
+                    authenticated:userCurrentStatus?.authenticated,
+                    currentRoom:currentAndManagedRoom?.currentRoom,
+                    managedRoom:currentAndManagedRoom?.managedRoom
+                }
+
+                setUserCurrentStatus(userStatusWRooms);
+            }
+        },{
+            destination: "/user/queue/errors",
+            callback:(message)=>{
+                console.log(message)
 
             }
         }],
@@ -160,9 +235,11 @@ function UseSubscribeToTopicByPage({page, currentRoomId}) {
 
     const {subscribe} = useWebsocket();
     const {userCurrentStatus, setUserCurrentStatus} = useContext(UserContext);
-    const {gameSession,setGameSession,playerSelf,setPlayerSelf}=useContext(GameSessionContext);
+    const {gameSession,setGameSession,playerSelf,setPlayerSelf,setTurn}=useContext(GameSessionContext);
     const {setRooms, joinRequests, setJoinRequests} = useContext(RoomsDataContext);
     const {showNotification} = useContext(NotificationContext);
+    const {token}=useContext(TokenContext);
+    const {post}=useApiCallHook();
 
 
     useEffect(() => {
@@ -177,7 +254,10 @@ function UseSubscribeToTopicByPage({page, currentRoomId}) {
             gameSession,
             setGameSession,
             playerSelf,
-            setPlayerSelf
+            setPlayerSelf,
+            setTurn,
+            post,
+            token
         }
         const pageSubscriptions = getPageSubscriptions(context);
         const subscriptionsForPage = pageSubscriptions[page];

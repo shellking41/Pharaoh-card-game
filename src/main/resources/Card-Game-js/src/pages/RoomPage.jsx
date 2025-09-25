@@ -28,15 +28,6 @@ function RoomPage() {
 
 
 
-    useEffect(() => {
-        console.log(userCurrentStatus.currentRoom?.roomId, roomId)
-
-        if (!userCurrentStatus.currentRoom?.roomId && userCurrentStatus.currentRoom?.roomId != roomId) {
-            navigate("/");
-        }
-
-
-    }, [userCurrentStatus.currentRoom]);
 
 
     useEffect(() => {
