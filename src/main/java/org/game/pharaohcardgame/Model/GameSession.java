@@ -26,6 +26,7 @@ public class GameSession {
 
 	@OneToMany(mappedBy = "gameSession", cascade = CascadeType.ALL, orphanRemoval = true)
 	@Builder.Default
+	@OrderBy("seat ASC")
 	private List<Player> players=new ArrayList<>();
 
 	@ManyToOne

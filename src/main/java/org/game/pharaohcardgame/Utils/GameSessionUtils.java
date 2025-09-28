@@ -8,6 +8,7 @@ import org.game.pharaohcardgame.Enum.CardRank;
 import org.game.pharaohcardgame.Enum.CardSuit;
 import org.game.pharaohcardgame.Exception.LockAcquisitionException;
 import org.game.pharaohcardgame.Exception.LockInterruptedException;
+import org.game.pharaohcardgame.Exception.VersionMismatchException;
 import org.game.pharaohcardgame.Model.DTO.Response.CardInHandResponse;
 import org.game.pharaohcardgame.Model.DTO.Response.PlayerHandResponse;
 import org.game.pharaohcardgame.Model.DTO.ResponseMapper;
@@ -131,11 +132,16 @@ public class GameSessionUtils {
 				throw new LockAcquisitionException("Failed to acquire lock");
 			}
 			GameState currentGameState = getGameState(gameSessionId);
+
+
 			GameState updatedGameState = updater.apply(currentGameState);
 			if (updatedGameState == null) {
 				throw new EntityNotFoundException("Game state not found for session: " + gameSessionId);
 			}
+
 			cacheService.saveInCache(cache, cacheKey, updatedGameState, "gameState");
+
+
 			return updatedGameState;
 		} catch (InterruptedException e) {
 			Thread.currentThread().interrupt();

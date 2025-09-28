@@ -72,6 +72,7 @@ public class BotService implements IBotService {
 	}
 
 	@Override
+	//todo: vlamiérrt ha player kilép majd atalakul botá majd a jatékvégetér akkor a szobából nem tudom kitenni azt a abotot
 	public SuccessMessageResponse removeBot(BotRemoveFromRoomRequest botRemoveFromRoomRequest) {
 		User gamemaster=authenticationService.getAuthenticatedUser();
 

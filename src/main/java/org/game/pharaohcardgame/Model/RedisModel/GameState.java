@@ -23,4 +23,5 @@ public class GameState {
 	private Long currentPlayerId; // aktuális játékos
 	private GameStatus status;
 	private Map<String, Object> gameData; // további game-specifikus adatok
+	private Long version;
 }

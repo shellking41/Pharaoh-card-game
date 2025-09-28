@@ -8,8 +8,11 @@ import org.game.pharaohcardgame.Model.GameSession;
 import org.game.pharaohcardgame.Model.Player;
 import org.game.pharaohcardgame.Model.RedisModel.Card;
 import org.game.pharaohcardgame.Model.RedisModel.GameState;
+import org.game.pharaohcardgame.Model.Results.NextTurnResult;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
+
+import java.util.concurrent.atomic.AtomicReference;
 
 @RequiredArgsConstructor
 @Slf4j
@@ -19,13 +22,21 @@ public class BotLogic implements IBotLogic{
 	private final ResponseMapper responseMapper;
 	private final GameSessionUtils gameSessionUtils;
 	private final SimpMessagingTemplate simpMessagingTemplate;
+	private final GameEngine gameEngine;
 
 	@Override
-	public void botDrawTest(GameSession gameSession, Player botPlayer,GameEngine gameEngine) {
+	public NextTurnResult botDrawTest( GameSession gameSession, Player botPlayer) {
 
-		Card drawnCard=gameEngine.drawCard(gameSession,botPlayer);
+		AtomicReference<NextTurnResult> nextTurnRef = new AtomicReference<>();
+		GameState gameState=gameSessionUtils.updateGameState(gameSession.getGameSessionId(),current->{
+			Card drawnCard=gameEngine.drawCard(current,botPlayer);
 
-		GameState gameState=gameSessionUtils.getGameState(gameSession.getGameSessionId());
+			NextTurnResult nextTurnResult=gameEngine.nextTurn(botPlayer,gameSession,current);
+			nextTurnRef.set(nextTurnResult);
+			return current;
+		});
+
+
 		for (Player player : gameSession.getPlayers()) {
 			if (!player.getIsBot()) {
 
@@ -38,6 +49,6 @@ public class BotLogic implements IBotLogic{
 				);
 			}
 		}
-		gameEngine.nextTurn(botPlayer,gameSession);
+		return nextTurnRef.get();
 	}
 }

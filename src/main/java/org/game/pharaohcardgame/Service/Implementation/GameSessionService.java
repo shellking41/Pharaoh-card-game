@@ -14,11 +14,13 @@ import org.game.pharaohcardgame.Model.DTO.Response.*;
 import org.game.pharaohcardgame.Model.DTO.ResponseMapper;
 import org.game.pharaohcardgame.Model.RedisModel.Card;
 import org.game.pharaohcardgame.Model.RedisModel.GameState;
+import org.game.pharaohcardgame.Model.Results.NextTurnResult;
 import org.game.pharaohcardgame.Repository.BotRepository;
 import org.game.pharaohcardgame.Repository.GameSessionRepository;
 import org.game.pharaohcardgame.Repository.PlayerRepository;
 import org.game.pharaohcardgame.Repository.RoomRepository;
 import org.game.pharaohcardgame.Service.IGameSessionService;
+import org.game.pharaohcardgame.Utils.BotLogic;
 import org.game.pharaohcardgame.Utils.GameEngine;
 import org.game.pharaohcardgame.Utils.GameSessionUtils;
 import org.springframework.cache.Cache;
@@ -28,6 +30,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 
 @Service
 @RequiredArgsConstructor
@@ -45,6 +48,7 @@ public class GameSessionService implements IGameSessionService {
 	private final GameEngine gameEngine;
 	private final PlayerRepository playerRepository;
 	private final CacheManager cacheManager;
+	private final BotLogic botLogic;
 
 
 	@Override
@@ -175,6 +179,9 @@ public class GameSessionService implements IGameSessionService {
 	@Override
 	//TODO:KELL IDE EGY TRYCATCH
 	//todo: lehet ide kell majd a transacitonal, de aza problema hogy a nextturn nem kerul bele a transactionba ezért nem a legfrissebb gamestatet hasznalja.Kivettem innen a transactionalt, igy megy
+
+
+	//todo: Ha már a player nem tud huzni kartyát és letenni sem tud akkor azt Frontenden megkell oldalni ugy hogy a frontend majd nezni fogja hogy milyen kartyakat tehet le a user. és ha nem tud letenni egyet sem és nem tud huzni sem akkor calloljon egy endpointot hogy ő most kimarad.
 	public GameSessionResponse drawCard(DrawCardRequest drawCardRequest) {
 
 		Player currentPlayer=playerRepository.findById(drawCardRequest.getPlayerId())
@@ -185,21 +192,34 @@ public class GameSessionService implements IGameSessionService {
 
 		List<Player> players = gameSession.getPlayers();
 
+		//ez azert kell mert lambdan belul nem lehet modositani olyan valtozokat amiket a lamban kivol decralaltunk
+		AtomicReference<NextTurnResult> nextTurnRef = new AtomicReference<>();
+		AtomicReference<Card> drawnCardRef = new AtomicReference<>();
 
-		Card drawnCard= gameEngine.drawCard(gameSession,currentPlayer);
+		GameState newGameState=gameSessionUtils.updateGameState(gameSession.getGameSessionId(),current->{
+			if(!gameEngine.isPlayersTurn(currentPlayer,current)){
+				throw new IllegalStateException("This is not your turn");
+			};
 
-		GameState newGameState=gameSessionUtils.getGameState(gameSession.getGameSessionId());
+			Card drawnCard= gameEngine.drawCard(current,currentPlayer);
+			drawnCardRef.set(drawnCard);
+
+
+			NextTurnResult nextTurnResult=gameEngine.nextTurn(currentPlayer,gameSession,current);
+			nextTurnRef.set(nextTurnResult);
+
+			return current;
+		});
+
 		//itt ha huzunk egy kartyat akkor a kartyahuzo user lassa a kartyat mások nem kapjak meg a tartalmát
 		for (Player player : players) {
 			if (!player.getIsBot()) {
 				DrawCardResponse personalizedResponse;
 				if(player.getPlayerId().equals(currentPlayer.getPlayerId())){
-					 personalizedResponse = responseMapper.toDrawCardResponse(newGameState,drawnCard,player.getPlayerId());
+					 personalizedResponse = responseMapper.toDrawCardResponse(newGameState,drawnCardRef.get(),player.getPlayerId());
 				}else {
 					 personalizedResponse = responseMapper.toDrawCardResponse(newGameState,null,player.getPlayerId());
 				}
-
-
 				simpMessagingTemplate.convertAndSendToUser(
 						player.getUser().getId().toString(),
 						"/queue/game/draw",
@@ -207,14 +227,18 @@ public class GameSessionService implements IGameSessionService {
 				);
 			}
 		}
-		gameEngine.nextTurn(currentPlayer,gameSession);
+
+		NextTurnResult next = nextTurnRef.get();
+		sendNextTurnNotification(next.nextPlayer(),players, next.nextSeatIndex());
+
+		handleIfNextPlayerIsBot(next,gameSession);
 		return null;
 	}
 
 	@Override
-	//todo: kell az hogy ha rossz kartya van megadva akkor a user megpaja az exceptiont
-
+	//todo: kell egy olyan logika hogy ha leteszunk kartyakat és mondjuka  közepebol majd aa elejerol is kiveszunk a akezunkbol kartyakat akkor az osszes tobbi kartyank positionja legyen aktuális
 	public void playCards(PlayCardsRequest playCardsRequest) {
+
 		if (playCardsRequest.getPlayCards() == null || playCardsRequest.getPlayCards().isEmpty()){
 			throw new IllegalArgumentException("Play cards are empty");
 		}
@@ -225,21 +249,35 @@ public class GameSessionService implements IGameSessionService {
 		GameSession gameSession = gameSessionRepository.findByIdWithPlayers(currentPlayer.getGameSession().getGameSessionId())
 				.orElseThrow(() -> new GameSessionNotFoundException("GameSession not found"));
 
-		GameState gameState=gameSessionUtils.getGameState(currentPlayer.getGameSession().getGameSessionId());
+		//ez azert kell mert lambdan belul nem lehet modositani olyan valtozokat amiket a lamban kivol decralaltunk
+		AtomicReference<NextTurnResult> nextTurnRef = new AtomicReference<>();
 
-		if(!gameEngine.isPlayersTurn(currentPlayer,gameState)){
-			throw new IllegalStateException("This is not your turn");
-		};
+		//a getgameSTATE helyett egy lock alatt adjuk át a gamestatet a methodoknak mert igy megakadályozhassuk a raceconditiont
+		GameState gameState=gameSessionUtils.updateGameState(gameSession.getGameSessionId(),current ->{
+			if(!gameEngine.isPlayersTurn(currentPlayer,current)){
+				throw new IllegalStateException("This is not your turn");
+			};
 
-		if(!gameEngine.areCardsValid(currentPlayer,playCardsRequest.getPlayCards(),gameSession)){
-			throw new IllegalArgumentException("Invalid Cards");
-		}
+			if(!gameEngine.areCardsValid(currentPlayer,playCardsRequest.getPlayCards(),current)){
+				throw new IllegalArgumentException("Invalid Cards");
+			}
 
-		if(!gameEngine.checkCardsPlayability(playCardsRequest.getPlayCards(),gameSession)){
-			throw new IllegalArgumentException("Card's suit or rank are not matching");
-		};
+			if(!gameEngine.checkCardsPlayability(playCardsRequest.getPlayCards(),current)){
+				throw new IllegalArgumentException("Card's suit or rank are not matching");
+			};
 
-		gameEngine.playCards(playCardsRequest.getPlayCards(),gameSession,currentPlayer);
+			gameEngine.playCards(playCardsRequest.getPlayCards(),currentPlayer,current);
+
+			NextTurnResult nextTurnResult = gameEngine.nextTurn(currentPlayer, gameSession, current);
+
+			// Mentjük a referenciába, hogy a lambda végén kívül is elérjük
+			nextTurnRef.set(nextTurnResult);
+
+			return current;
+		});
+
+		NextTurnResult next = nextTurnRef.get();
+
 
 		List<PlayedCardResponse> playedCardResponses= responseMapper.toPlayedCardResponseListFromCardRequests(playCardsRequest.getPlayCards());
 		//ez azt kuldi el hogy milyen kartyak vannak már letéve
@@ -248,13 +286,11 @@ public class GameSessionService implements IGameSessionService {
 				playedCardResponses
 				);
 
-
 		//ez elkuldi a frissitett player handet hogy a játszo usernek a kezebol eltunnjon a kartya es mas playerek is lassak ezt
 		for (Player player : gameSession.getPlayers()) {
 			if (!player.getIsBot()) {
 				PlayerHandResponse playerHand = gameSessionUtils.getPlayerHand(
 						gameSession.getGameSessionId(), player.getPlayerId());
-
 
 				simpMessagingTemplate.convertAndSendToUser(
 						player.getUser().getId().toString(),
@@ -264,12 +300,13 @@ public class GameSessionService implements IGameSessionService {
 			}
 		}
 
-		gameEngine.nextTurn(currentPlayer,gameSession);
+		sendNextTurnNotification(next.nextPlayer(),gameSession.getPlayers(),next.nextSeatIndex());
+
+		handleIfNextPlayerIsBot(next,gameSession);
 
 	}
 	@Transactional
 	@Override
-	//todo: elkell donteni hogy hogyan oldjam mega  agamesession kiletetést
 	public void leaveGameSession(LeaveGameSessionRequest request) {
 		User user = authenticationService.getAuthenticatedUser();
 
@@ -323,7 +360,19 @@ public class GameSessionService implements IGameSessionService {
 	private boolean hasActiveGame(Room room) {
 		return gameSessionRepository.existsByRoomAndGameStatus(room, GameStatus.IN_PROGRESS);
 	}
+	private void handleIfNextPlayerIsBot(NextTurnResult next,GameSession gameSession){
+		//ha a nextplayer bot akkor elinditjuk a abot logikat majd a next turnrol értesitjuk a usereket,
+		if(next.nextPlayer().getIsBot()){
+			Player nextPlayer=next.nextPlayer();
+			//addig indítgassuk el a bot logikat amig a kovetkezo user nem bot
+			while (nextPlayer.getIsBot()){
+				NextTurnResult nextTurnResult=botLogic.botDrawTest(gameSession,nextPlayer);
+				sendNextTurnNotification(nextTurnResult.nextPlayer(),gameSession.getPlayers(), nextTurnResult.nextSeatIndex());
+				nextPlayer=nextTurnResult.nextPlayer();
+			}
 
+		}
+	}
 	private Long getPlayerIdFromUserAndGameSession(User user, GameSession gameSession) {
 		return gameSession.getPlayers().stream()
 				.filter(p -> p.getUser() != null && p.getUser().getId().equals(user.getId()))
@@ -332,7 +381,18 @@ public class GameSessionService implements IGameSessionService {
 				.orElseThrow(() -> new EntityNotFoundException("Player not found for this user"));
 	}
 
-
+	public void sendNextTurnNotification(Player nextPlayer, List<Player> players,int nextSeatIndex){
+        if (!nextPlayer.getIsBot()) {
+            for (Player player : players) {
+                boolean isCurrentPlayer = player.equals(nextPlayer);
+                simpMessagingTemplate.convertAndSendToUser(
+                        player.getUser().getId().toString(),
+                        "/queue/game/turn",
+                        NextTurnResponse.builder().isYourTurn(isCurrentPlayer).currentSeat(nextSeatIndex).build()
+                );
+            }
+        }
+    }
 
 	private void sendPersonalizedGameStateResponse(){
 
