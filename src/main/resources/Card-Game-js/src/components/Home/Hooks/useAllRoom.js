@@ -1,8 +1,9 @@
 import React, {useCallback, useContext, useEffect, useState} from 'react'
-import {UserContext} from "../Contexts/UserContext.jsx";
-import {useApiCallHook} from "./useApiCallHook.js";
-import {TokenContext} from "../Contexts/TokenContext.jsx";
-import {RoomsDataContext} from "../Contexts/RoomsDataContext.jsx";
+import {TokenContext} from "../../../Contexts/TokenContext.jsx";
+import {UserContext} from "../../../Contexts/UserContext.jsx";
+import {RoomsDataContext} from "../../../Contexts/RoomsDataContext.jsx";
+import {useApiCallHook} from "../../../hooks/useApiCallHook.js";
+
 
 function useAllRoom() {
     const {userCurrentStatus} = useContext(UserContext);

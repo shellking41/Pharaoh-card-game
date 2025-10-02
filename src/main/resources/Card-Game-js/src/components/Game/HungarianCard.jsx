@@ -1,6 +1,6 @@
 import React, { memo } from 'react';
 
-function HungarianCard({cardData,onClick,isSelected }) {
+function HungarianCard({cardData,onClick,isSelected,isPlayable }) {
   if (!cardData) {
     return (
       <span  style={{
@@ -28,6 +28,7 @@ function HungarianCard({cardData,onClick,isSelected }) {
   return (
     <button
       onClick={onClick}
+      disabled={isPlayable===false}
       style={{
         backgroundColor: color,
         border: isSelected ? "3px solid yellow" : "1px solid black",

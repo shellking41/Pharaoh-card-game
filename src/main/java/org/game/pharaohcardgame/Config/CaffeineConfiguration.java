@@ -29,7 +29,7 @@ public class CaffeineConfiguration {
 				.maximumSize(5_000);
 
 		Caffeine<Object, Object> gameStateBuilder = Caffeine.newBuilder()
-				.expireAfterWrite(30, TimeUnit.MINUTES)
+				.expireAfterWrite(3, TimeUnit.HOURS)
 				.maximumSize(50_000);
 
 		Caffeine<Object, Object> defaultBuilder = Caffeine.newBuilder()

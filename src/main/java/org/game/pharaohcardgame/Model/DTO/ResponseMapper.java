@@ -187,12 +187,13 @@ public class ResponseMapper {
 
 
 
-	public GameSessionResponse toGameSessionResponse(GameSession gameSession,List<Player> players,PlayerHandResponse playerHand,List<PlayedCardResponse> playedCards) {
+	public GameSessionResponse toGameSessionResponse(GameSession gameSession,List<Player> players,PlayerHandResponse playerHand,List<PlayedCardResponse> playedCards,Integer deckSize) {
 		return GameSessionResponse.builder()
 				.gameSessionId(gameSession.getGameSessionId())
 				.players(toPlayerStatusResponseList(gameSession.getPlayers()))
 				.playerHand(playerHand)
 				.playedCards(playedCards)
+				.deckSize(deckSize)
 				.gameStatus(gameSession.getGameStatus())
 				.build();
 	}
@@ -245,7 +246,7 @@ public class ResponseMapper {
 
 	}
 
-	public DrawCardResponse toDrawCardResponse(GameState gameState, Card drawnCard,Long playerId) {
+	public DrawCardResponse toDrawCardResponse(GameState gameState, Card drawnCard,Long playerId,Integer deckSize) {
 
 		Map<Long, Integer> otherPlayersCardCount = gameState.getPlayerHands().entrySet()
 				.stream()
@@ -261,6 +262,7 @@ public class ResponseMapper {
 				.playerId(playerId)
 				.gameSessionId(gameState.getGameSessionId())
 				.otherPlayersCardCount(otherPlayersCardCount)
+				.deckSize(deckSize)
 				.build();
 	}
 }

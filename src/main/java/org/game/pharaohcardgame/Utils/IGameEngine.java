@@ -15,7 +15,7 @@ public interface IGameEngine {
 
 	boolean isPlayersTurn(Player player, GameState gameState);
 
-	void initGame(Long gameSessionId, List<Player> players);
+	GameState initGame(Long gameSessionId, List<Player> players);
 
 	Card drawCard(GameState gameState, Player currentPlayer);
 	void reShuffleCards(GameState gameState);

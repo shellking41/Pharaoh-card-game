@@ -1,4 +1,4 @@
-import React, {useContext, useEffect, useLayoutEffect, useState} from 'react';
+import React, {use, useContext, useEffect, useLayoutEffect, useState} from 'react';
 import {GameSessionContext} from "../Contexts/GameSessionContext.jsx";
 import {useNavigate, useParams} from "react-router-dom";
 import useWebsocket from "../hooks/useWebsocket.js";
@@ -7,6 +7,7 @@ import HungarianCard from '../components/Game/HungarianCard.jsx';
 import {useApiCallHook} from "../hooks/useApiCallHook.js";
 import {TokenContext} from "../Contexts/TokenContext.jsx";
 import {UserContext} from "../Contexts/UserContext.jsx";
+import useDetermineCardsPlayability from "../components/Game/Hooks/useDetermineCardsPlayability.js";
 
 
 
@@ -20,8 +21,19 @@ function Game() {
     const navigate = useNavigate();
 
     useSubscribeToTopicByPage({page: "game"})
+
     const [selectedCards, setSelectedCards] = useState([]);
 
+    const isCardsPlayable = useDetermineCardsPlayability(
+        gameSession?.playedCards,
+        gameSession?.playerHand?.ownCards,
+        selectedCards
+    );
+
+    useEffect(() => {
+        console.log(gameSession)
+
+    }, [gameSession]);
     useEffect(() => {
 
         const getCurrentTurn=async ()=>{
@@ -35,7 +47,21 @@ function Game() {
     }, []);
 
 
+    const canPlayAnyCard = () => {
+        if (!isCardsPlayable || isCardsPlayable.length === 0) return false;
+        return isCardsPlayable.some(playable => playable === true);
+    };
 
+    const canDrawCard = () => {
+        return gameSession?.deckSize > 0;
+    };
+
+    const mustSkipTurn = () => {
+        return turn?.yourTurn &&
+            !canPlayAnyCard() &&
+            !canDrawCard() &&
+            gameSession?.playedCards?.length <= 1;
+    };
 
     const drawCard=()=>{
         console.log(playerSelf)
@@ -68,46 +94,78 @@ function Game() {
         sendMessage("/app/game/play-cards",{playCards,playerId:playerSelf.playerId})
         setSelectedCards([]);
     }
-    const leaveGame=()=>{
+    const leaveGame=async ()=>{
         console.log("asd")
 
-        post("http://localhost:8080/game/leave",{gameSessionId:gameSession.gameSessionId},token)
+       const response=await post("http://localhost:8080/game/leave",{gameSessionId:gameSession.gameSessionId},token);
+        console.log(response);
+
     }
 
+    const skipTurn = () => {
+        sendMessage("/app/game/skip", { playerId: playerSelf.playerId });
+    };
     return (
         <>
-            {gameSession.players.map((p)=>(
-                <div>{p?.playerName}</div>
+            {gameSession.players.map((p) => (
+                <div key={p.playerId}>{p?.playerName}</div>
             ))}
-            {gameSession.playerHand?.ownCards?.map((c,index)=>(
-              <HungarianCard key={index}  cardData={c} onClick={() => handleCardClick(c)}  isSelected={selectedCards.includes(c)}/>
+
+            {gameSession.playerHand?.ownCards?.map((c, index) => (
+                <HungarianCard
+                    key={index}
+                    cardData={c}
+                    onClick={() => handleCardClick(c)}
+                    isSelected={selectedCards.includes(c)}
+                    isPlayable={isCardsPlayable[index]}
+                />
             ))}
+
             {gameSession.players.map((p) => {
                 if (p.playerId === playerSelf.playerId) return null;
 
-                // lekérdezzük a darabszámot — ha nincs, 0 a default
                 const count = gameSession.playerHand?.otherPlayersCardCount[String(p.playerId)] ?? 0;
 
                 return (
-                  <div key={p.playerId}>
-                      <div>{p.playerName}</div>
-                      {count}
-                      {Array.from({ length: count }).map((_, i)=> (
-
-                        <HungarianCard />
-                      ))}
-                  </div>
+                    <div key={p.playerId}>
+                        <div>{p.playerName}</div>
+                        {count}
+                        {Array.from({ length: count }).map((_, i) => (
+                            <HungarianCard key={i} />
+                        ))}
+                    </div>
                 );
             })}
-                <br/>
-                <HungarianCard cardData={gameSession.playedCards[gameSession.playedCards.length-1]}></HungarianCard>
-            <button onClick={drawCard}>draw</button>
-            {selectedCards.length!==0 && <button onClick={playCards}>play cards</button>}
+
+            <br />
+            <HungarianCard cardData={gameSession.playedCards?.[gameSession.playedCards.length - 1]} />
+
+            {/* Deck size display */}
+            <div>Deck size: {gameSession?.deckSize ?? 0}</div>
+
+            {/* Action buttons */}
+            {turn?.yourTurn && (
+                <>
+                    {<button onClick={drawCard}>Draw Card</button>}
+
+                    {selectedCards.length !== 0 && canPlayAnyCard() && (
+                        <button onClick={playCards}>Play Cards</button>
+                    )}
+
+                    {mustSkipTurn() && (
+                        <button onClick={skipTurn} style={{ backgroundColor: 'orange' }}>
+                            Skip Turn (Cannot Play or Draw)
+                        </button>
+                    )}
+                </>
+            )}
+
             {turn?.yourTurn && <div>Te vagy</div>}
-            {turn?.currentSeat && <div>current seat :{ turn.currentSeat}</div>}
-            <button onClick={()=>leaveGame()}>leave</button>
+            {turn?.currentSeat && <div>Current seat: {turn.currentSeat}</div>}
+
+            <button onClick={() => leaveGame()}>Leave</button>
         </>
-    )
+    );
 }
 
-export default Game
+export default Game;

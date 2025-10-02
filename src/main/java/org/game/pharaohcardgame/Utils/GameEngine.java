@@ -42,7 +42,8 @@ public class GameEngine implements IGameEngine {
 	private final CacheManager cacheManager;
 	private final UserRepository userRepository;
 
-	private int MAXCARDNUMBER = 1;
+
+	private final int MAXCARDNUMBER = 1;
 
 
 	@Override
@@ -123,11 +124,11 @@ public class GameEngine implements IGameEngine {
 
 
 	@Override
-	public void initGame(Long gameSessionId, List<Player> players) {
+	public GameState initGame(Long gameSessionId, List<Player> players) {
 		List<Card> deck = gameSessionUtils.createShuffledDeck();
 		Map<Long, List<Card>> playerHands = new LinkedHashMap<>();
 
-		gameSessionUtils.updateGameState(gameSessionId,(current)->{
+		return gameSessionUtils.updateGameState(gameSessionId,(current)->{
 
 			if (current != null) {
 				throw new IllegalStateException("Game already initialized for session " + gameSessionId);
@@ -166,12 +167,13 @@ public class GameEngine implements IGameEngine {
 	public Card drawCard(GameState gameState, Player currentPlayer) {
 
 		List<Card> deck = gameState.getDeck();
-		//todo: ha már tud letenni a bot kartyat akkor kell nekunk olyan  hogy ide teszunk egy custom exceptiont és majd a bot azt elcatcheli és akkor majd ha akarna huzni, de nem tud akkor helyette muszaj letennie valamelyik kartyajat. De ha nem tud letenni egy kartyat sem akkor ne csinajon semmit ebben a körben. Ez azert kell mert ha mar nincs tobb kartya a deckben akkor ne áljon meg a jaték a bot nál
+		//todo: ha már tud letenni a bot kartyat akkor kell nekunk olyan  hogy ide teszunk egy custom exceptiont és majd a bot azt elcatcheli  akkor majd ha akarna huzni, de nem tud akkor helyette muszaj letennie valamelyik kartyajat. De ha nem tud letenni egy kartyat sem akkor ne csinajon semmit ebben a körben. Ez azert kell mert ha mar nincs tobb kartya a deckben akkor ne áljon meg a jaték a bot nál
 		if (deck.isEmpty()) {
 			if (gameState.getPlayedCards().size() == 1) {
 				throw new IllegalStateException("No more cards in deck");
 				//ez azÉrt kelll mert ha az egyik user felhuzta az utolso kartyat es a played cardban is csak 1 kartya volt, ilyenkor nem kerul a deckbe kartya a következo player mar nem tudott felhuzni kartyat mert ures volt a deck. Ezért muszály neki letenni kartyat.Majd a következo player akarna kartyat huzni de az nem volt megshufflezva és nem kerult bele a frissen letett kartya a deckbe ezért empty maradt a deck. de most ez beleteszi azt a egy frissen letett kartyat a deckbe
 			} else {
+				//todo: ha reshuflezzuk a kartyakat akkor arrol a afrontendnek kuldeni kell infot és elkell kuldeni a decksizet is
 				reShuffleCards(gameState);
 				deck = gameState.getDeck();
 			}
@@ -556,7 +558,6 @@ public class GameEngine implements IGameEngine {
 		if (cache != null) {
 			cache.evict("userStatus_" + user.getId());
 		}
-
 	}
 	@Override
 	public void handleGamemasterLeaving(GameSession gameSession, Player leavingPlayer) {
@@ -566,6 +567,7 @@ public class GameEngine implements IGameEngine {
 
 		// End game state in cache
 		gameSessionUtils.deleteGameState(gameSession.getGameSessionId());
+
 
 
 

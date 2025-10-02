@@ -1,10 +1,6 @@
 package org.game.pharaohcardgame.Service;
 
-import jakarta.transaction.Transactional;
-import org.game.pharaohcardgame.Model.DTO.Request.DrawCardRequest;
-import org.game.pharaohcardgame.Model.DTO.Request.GameStartRequest;
-import org.game.pharaohcardgame.Model.DTO.Request.LeaveGameSessionRequest;
-import org.game.pharaohcardgame.Model.DTO.Request.PlayCardsRequest;
+import org.game.pharaohcardgame.Model.DTO.Request.*;
 import org.game.pharaohcardgame.Model.DTO.Response.CurrentTurnResponse;
 import org.game.pharaohcardgame.Model.DTO.Response.GameSessionResponse;
 import org.game.pharaohcardgame.Model.DTO.Response.LeaveGameSessionResponse;
@@ -16,7 +12,7 @@ public interface IGameSessionService {
 	GameSessionResponse drawCard(DrawCardRequest drawCardRequest);
 	void playCards(PlayCardsRequest playCardsRequest);
 	 CurrentTurnResponse getCurrentTurnInfo();
+	void skipTurn(SkipTurnRequest skipTurnRequest);
 
-
-	void leaveGameSession(LeaveGameSessionRequest request);
+	LeaveGameSessionResponse leaveGameSession(LeaveGameSessionRequest request);
 }

@@ -28,9 +28,10 @@ public class BotLogic implements IBotLogic{
 	public NextTurnResult botDrawTest( GameSession gameSession, Player botPlayer) {
 
 		AtomicReference<NextTurnResult> nextTurnRef = new AtomicReference<>();
+		AtomicReference<Integer> deckSizeRef = new AtomicReference<>();
 		GameState gameState=gameSessionUtils.updateGameState(gameSession.getGameSessionId(),current->{
 			Card drawnCard=gameEngine.drawCard(current,botPlayer);
-
+			deckSizeRef.set(current.getDeck().size());
 			NextTurnResult nextTurnResult=gameEngine.nextTurn(botPlayer,gameSession,current);
 			nextTurnRef.set(nextTurnResult);
 			return current;
@@ -40,7 +41,7 @@ public class BotLogic implements IBotLogic{
 		for (Player player : gameSession.getPlayers()) {
 			if (!player.getIsBot()) {
 
-				DrawCardResponse personalizedResponse = responseMapper.toDrawCardResponse(gameState,null,player.getPlayerId());
+				DrawCardResponse personalizedResponse = responseMapper.toDrawCardResponse(gameState,null,player.getPlayerId(),deckSizeRef.get());
 
 				simpMessagingTemplate.convertAndSendToUser(
 						player.getUser().getId().toString(),

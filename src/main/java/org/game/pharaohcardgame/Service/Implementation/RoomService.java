@@ -181,7 +181,6 @@ public class RoomService implements IRoomService {
             }
     )
     @Transactional
-    //todo: Azt megkéne csinalni hogy a gamemaster rogton megkapja a csatlakozott usert, mert ha jol lattam csak akkor jelenik meg neki a user ha refreshelte az oldalt
     public Map<String, Object> confirmOrDeclineJoin(ConfirmOrDeclineJoin confirmOrDeclineJoin,StompHeaderAccessor accessor) {
 
 

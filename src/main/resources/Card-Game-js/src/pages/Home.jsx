@@ -2,12 +2,13 @@ import React, {useContext, useEffect, useState} from 'react';
 import {Box, Button, CircularProgress, IconButton, TableCell, TableRow, Typography} from "@mui/material";
 import {RoomsDataContext} from "../Contexts/RoomsDataContext.jsx";
 import {UserContext} from "../Contexts/UserContext.jsx";
-import useAllRoom from "../hooks/useAllRoom.js";
+
 import {RoomCard} from "../components/RoomCard.jsx";
 import CreateRoomModal from "../components/CreateRoomModal.jsx";
 import useSubscribeToTopicByPage from "../hooks/useSubscribeToTopicByPage.js";
 import {StompContext} from "../Contexts/StompContext.jsx";
 import ProgressBar from "../service/ProgressBar.jsx";
+import useAllRoom from "../components/Home/Hooks/useAllRoom.js";
 
 
 function Home() {

@@ -9,8 +9,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class LeaveGameSessionResponse {
-	private UserCurrentStatus userStatus;
-	RoomResponse currentRoom;
-	RoomResponse managedRoom;
+public class SkipTurnResponse {
+	private Long skippedPlayerId;
+	private Integer skippedPlayerSeat;
+	private Integer deckSize;
 }

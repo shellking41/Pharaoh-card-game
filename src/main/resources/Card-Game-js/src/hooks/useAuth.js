@@ -248,7 +248,7 @@ export const useAuth = () => {
             if (isTokenExpiringSoon(token)) {
                 await refreshToken();
             }
-        }, 20000); // 4 percenként ellenőrzi
+        }, 10000); // 4 percenként ellenőrzi
 
         return () => clearInterval(interval);
     }, [userCurrentStatus.authenticated, token, isTokenExpiringSoon, refreshToken]);

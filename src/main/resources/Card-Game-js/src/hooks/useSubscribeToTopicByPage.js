@@ -130,6 +130,7 @@ const getPageSubscriptions = (contexts) => {
                     if (message.newCard) { // csak ha van új kártya
                         setGameSession(prev => ({
                             ...prev,
+                            deckSize: message.deckSize,
                             playerHand: {
                                 ...prev.playerHand,
                                 ownCards: [...prev.playerHand.ownCards.filter(Boolean), message.newCard], // szűrjük a null-t
@@ -143,6 +144,7 @@ const getPageSubscriptions = (contexts) => {
 
                     setGameSession(prev => ({
                         ...prev,
+                        deckSize: message.deckSize,
                         playerHand: {
                             ...prev.playerHand,
                             otherPlayersCardCount: message.otherPlayersCardCount,
@@ -210,10 +212,20 @@ const getPageSubscriptions = (contexts) => {
                 setUserCurrentStatus(userStatusWRooms);
             }
         },{
+            destination: "/user/queue/game/skip",
+            callback:(message)=>{
+                console.log(message);
+            }
+        },{
             destination: "/user/queue/errors",
             callback:(message)=>{
                 console.log(message)
 
+            }
+        },{
+            destination:"/user/queue/game/player-left",
+            callback:(message)=>{
+                console.log(message);
             }
         }],
 

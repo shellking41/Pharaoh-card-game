@@ -28,7 +28,7 @@ public class Player {
 	private User user;
 
 
-	@OneToOne(mappedBy = "botPlayer", cascade = CascadeType.ALL, orphanRemoval = true)
+	@OneToOne(mappedBy = "botPlayer", cascade = CascadeType.ALL)
 	private Bot bot;
 
 	@ManyToOne

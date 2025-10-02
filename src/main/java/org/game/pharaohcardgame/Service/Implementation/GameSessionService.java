@@ -106,7 +106,7 @@ public class GameSessionService implements IGameSessionService {
 			gameSession.setPlayers(players);
 
 			gameSessionRepository.save(gameSession);
-			gameEngine.initGame(gameSession.getGameSessionId(), players);
+			GameState gameState=gameEngine.initGame(gameSession.getGameSessionId(), players);
 
 
 			for (Player player : players) {
@@ -114,9 +114,9 @@ public class GameSessionService implements IGameSessionService {
 					PlayerHandResponse playerHand = gameSessionUtils.getPlayerHand(
 							gameSession.getGameSessionId(), player.getPlayerId());
 
-					List<Card> playedCards =gameSessionUtils.getGameState(gameSession.getGameSessionId()).getPlayedCards();
+					List<Card> playedCards =gameState.getPlayedCards();
 					List<PlayedCardResponse> playedCardResponses = responseMapper.toPlayedCardResponseListFromCards(playedCards);
-					GameSessionResponse personalizedResponse = responseMapper.toGameSessionResponse(gameSession,gameSession.getPlayers(),playerHand,playedCardResponses);
+					GameSessionResponse personalizedResponse = responseMapper.toGameSessionResponse(gameSession,gameSession.getPlayers(),playerHand,playedCardResponses,gameState.getDeck().size());
 
 					simpMessagingTemplate.convertAndSendToUser(
 							player.getUser().getId().toString(),
@@ -155,33 +155,34 @@ public class GameSessionService implements IGameSessionService {
 	}
 
 
-	@Override
-	//todo:!!!FONTOS!!!! ha majd akarok a gamekozbeni kilépést, akkor a szobából, a gamesessionbol és a gameStatebol is kikell leptetnem a usert, és a a gamestateben eltudntetem a usert akkor megkell oldani a sorrendet
-	public GameSessionResponse getGameSession() {
-		User user=authenticationService.getAuthenticatedUser();
-		GameSession gameSession=gameSessionRepository.findByRoomIdAndGameStatusWithPlayers(user.getCurrentRoom().getRoomId(),GameStatus.IN_PROGRESS)
-				.orElseThrow(()->new GameSessionNotFoundException("Active Game not Found"));
 
-		Long playerId=getPlayerIdFromUserAndGameSession(user,gameSession);
+	@Override
+	public GameSessionResponse getGameSession() {
+		User user = authenticationService.getAuthenticatedUser();
+		GameSession gameSession = gameSessionRepository.findByRoomIdAndGameStatusWithPlayers(
+						user.getCurrentRoom().getRoomId(), GameStatus.IN_PROGRESS)
+				.orElseThrow(() -> new GameSessionNotFoundException("Active Game not Found"));
+
+		Long playerId = getPlayerIdFromUserAndGameSession(user, gameSession);
 
 		PlayerHandResponse playerHand = gameSessionUtils.getPlayerHand(
 				gameSession.getGameSessionId(), playerId);
 
-
-
-		List<Card> playedCards =gameSessionUtils.getGameState(gameSession.getGameSessionId()).getPlayedCards();
+		GameState gameState = gameSessionUtils.getGameState(gameSession.getGameSessionId());
+		List<Card> playedCards = gameState.getPlayedCards();
 		List<PlayedCardResponse> playedCardResponses = responseMapper.toPlayedCardResponseListFromCards(playedCards);
-		return responseMapper.toGameSessionResponse(gameSession,gameSession.getPlayers(),playerHand,playedCardResponses);
+
+		GameSessionResponse response = responseMapper.toGameSessionResponse(
+				gameSession, gameSession.getPlayers(), playerHand, playedCardResponses,gameState.getDeck().size());
 
 
+
+		return response;
 	}
 
 	@Override
 	//TODO:KELL IDE EGY TRYCATCH
 	//todo: lehet ide kell majd a transacitonal, de aza problema hogy a nextturn nem kerul bele a transactionba ezért nem a legfrissebb gamestatet hasznalja.Kivettem innen a transactionalt, igy megy
-
-
-	//todo: Ha már a player nem tud huzni kartyát és letenni sem tud akkor azt Frontenden megkell oldalni ugy hogy a frontend majd nezni fogja hogy milyen kartyakat tehet le a user. és ha nem tud letenni egyet sem és nem tud huzni sem akkor calloljon egy endpointot hogy ő most kimarad.
 	public GameSessionResponse drawCard(DrawCardRequest drawCardRequest) {
 
 		Player currentPlayer=playerRepository.findById(drawCardRequest.getPlayerId())
@@ -195,6 +196,7 @@ public class GameSessionService implements IGameSessionService {
 		//ez azert kell mert lambdan belul nem lehet modositani olyan valtozokat amiket a lamban kivol decralaltunk
 		AtomicReference<NextTurnResult> nextTurnRef = new AtomicReference<>();
 		AtomicReference<Card> drawnCardRef = new AtomicReference<>();
+		AtomicReference<Integer> deckSizeRef = new AtomicReference<>();
 
 		GameState newGameState=gameSessionUtils.updateGameState(gameSession.getGameSessionId(),current->{
 			if(!gameEngine.isPlayersTurn(currentPlayer,current)){
@@ -203,7 +205,7 @@ public class GameSessionService implements IGameSessionService {
 
 			Card drawnCard= gameEngine.drawCard(current,currentPlayer);
 			drawnCardRef.set(drawnCard);
-
+			deckSizeRef.set(current.getDeck().size());
 
 			NextTurnResult nextTurnResult=gameEngine.nextTurn(currentPlayer,gameSession,current);
 			nextTurnRef.set(nextTurnResult);
@@ -216,9 +218,9 @@ public class GameSessionService implements IGameSessionService {
 			if (!player.getIsBot()) {
 				DrawCardResponse personalizedResponse;
 				if(player.getPlayerId().equals(currentPlayer.getPlayerId())){
-					 personalizedResponse = responseMapper.toDrawCardResponse(newGameState,drawnCardRef.get(),player.getPlayerId());
+					 personalizedResponse = responseMapper.toDrawCardResponse(newGameState,drawnCardRef.get(),player.getPlayerId(),deckSizeRef.get());
 				}else {
-					 personalizedResponse = responseMapper.toDrawCardResponse(newGameState,null,player.getPlayerId());
+					 personalizedResponse = responseMapper.toDrawCardResponse(newGameState,null,player.getPlayerId(),deckSizeRef.get());
 				}
 				simpMessagingTemplate.convertAndSendToUser(
 						player.getUser().getId().toString(),
@@ -236,7 +238,6 @@ public class GameSessionService implements IGameSessionService {
 	}
 
 	@Override
-	//todo: kell egy olyan logika hogy ha leteszunk kartyakat és mondjuka  közepebol majd aa elejerol is kiveszunk a akezunkbol kartyakat akkor az osszes tobbi kartyank positionja legyen aktuális
 	public void playCards(PlayCardsRequest playCardsRequest) {
 
 		if (playCardsRequest.getPlayCards() == null || playCardsRequest.getPlayCards().isEmpty()){
@@ -305,9 +306,61 @@ public class GameSessionService implements IGameSessionService {
 		handleIfNextPlayerIsBot(next,gameSession);
 
 	}
+
+	@Override
+	public void skipTurn(SkipTurnRequest skipTurnRequest) {
+		Player currentPlayer = playerRepository.findById(skipTurnRequest.getPlayerId())
+				.orElseThrow(() -> new PlayerNotFoundException("Player not found"));
+
+		GameSession gameSession = gameSessionRepository.findByIdWithPlayers(currentPlayer.getGameSession().getGameSessionId())
+				.orElseThrow(() -> new GameSessionNotFoundException("GameSession not found"));
+
+		AtomicReference<NextTurnResult> nextTurnRef = new AtomicReference<>();
+
+		GameState gameState = gameSessionUtils.updateGameState(gameSession.getGameSessionId(), current -> {
+			if (!gameEngine.isPlayersTurn(currentPlayer, current)) {
+				throw new IllegalStateException("This is not your turn");
+			}
+
+			// Verify that skip is valid (can't draw and can't play)
+			if (!current.getDeck().isEmpty()) {
+				throw new IllegalStateException("You can still draw cards");
+			}
+
+			if (current.getPlayedCards().size() > 1) {
+				throw new IllegalStateException("Cards can be reshuffled");
+			}
+
+			NextTurnResult nextTurnResult = gameEngine.nextTurn(currentPlayer, gameSession, current);
+			nextTurnRef.set(nextTurnResult);
+
+			return current;
+		});
+
+		NextTurnResult next = nextTurnRef.get();
+
+		// Notify all players about the skip
+		for (Player player : gameSession.getPlayers()) {
+			if (!player.getIsBot()) {
+				simpMessagingTemplate.convertAndSendToUser(
+						player.getUser().getId().toString(),
+						"/queue/game/skip",
+						SkipTurnResponse.builder()
+								.skippedPlayerId(currentPlayer.getPlayerId())
+								.skippedPlayerSeat(currentPlayer.getSeat())
+								.deckSize(gameState.getDeck().size())
+								.build()
+				);
+			}
+		}
+
+		sendNextTurnNotification(next.nextPlayer(), gameSession.getPlayers(), next.nextSeatIndex());
+		handleIfNextPlayerIsBot(next, gameSession);
+	}
+
 	@Transactional
 	@Override
-	public void leaveGameSession(LeaveGameSessionRequest request) {
+	public LeaveGameSessionResponse leaveGameSession(LeaveGameSessionRequest request) {
 		User user = authenticationService.getAuthenticatedUser();
 
 		// Get the game session
@@ -346,15 +399,48 @@ public class GameSessionService implements IGameSessionService {
 					);
 				}
 			}
+			UserCurrentStatus userStatus=responseMapper.toUserCurrentStatus(user, true);
+			RoomResponse currentRoom=responseMapper.toRoomResponse(user.getCurrentRoom());
+			RoomResponse managedRoom=responseMapper.toRoomResponse(Objects.requireNonNull(user.getManagedRooms().stream().filter(Room::isActive).findFirst().orElse(null)));
+			return LeaveGameSessionResponse.builder().userStatus(userStatus).currentRoom(currentRoom).managedRoom(managedRoom).build();
 		}else {
 			//todo: még értesiteni kell a playereket hogy valaki kilepett es egy bot vette át a helyet
 			gameEngine.handlePlayerLeaving(gameSession,leavingPlayer,user);
+
+			//ha a user akkor lép ki amikor ő van soron akkor a bottal rögtön lépnünk kell
+			GameState gameState = gameSessionUtils.getGameState(gameSession.getGameSessionId());
+
+			if(gameState.getCurrentPlayerId().equals(leavingPlayer.getPlayerId())){
+				//ide a bot logikát
+				NextTurnResult nextTurnResult=botLogic.botDrawTest(gameSession,leavingPlayer);
+				sendNextTurnNotification(nextTurnResult.nextPlayer(),gameSession.getPlayers(), nextTurnResult.nextSeatIndex());
+
+				handleIfNextPlayerIsBot(nextTurnResult,gameSession);
+			}
+
+			sendPlayerLeftNotification(leavingPlayer,gameSession.getPlayers());
+			UserCurrentStatus userStatus=responseMapper.toUserCurrentStatus(user, true);
+			return LeaveGameSessionResponse.builder().userStatus(userStatus).currentRoom(null).managedRoom(null).build();
 		}
+
+
 
 
 	}
 
+	private void sendPlayerLeftNotification(Player leavingPlayer, List<Player> players) {
 
+		for (Player player : players) {
+			if (!player.getIsBot() || !player.getPlayerId().equals(leavingPlayer.getPlayerId())) {
+				simpMessagingTemplate.convertAndSendToUser(
+						player.getUser().getId().toString(),
+						"/queue/game/player-left",
+						PlayerLeftResponse.builder().newName(leavingPlayer.getBot().getName()).playerId(leavingPlayer.getPlayerId()).build()
+				);
+			}
+		}
+
+	}
 
 
 	private boolean hasActiveGame(Room room) {
@@ -382,16 +468,16 @@ public class GameSessionService implements IGameSessionService {
 	}
 
 	public void sendNextTurnNotification(Player nextPlayer, List<Player> players,int nextSeatIndex){
-        if (!nextPlayer.getIsBot()) {
-            for (Player player : players) {
-                boolean isCurrentPlayer = player.equals(nextPlayer);
+		for (Player player : players) {
+			if (!player.getIsBot()) {
+				boolean isCurrentPlayer = player.equals(nextPlayer);
                 simpMessagingTemplate.convertAndSendToUser(
-                        player.getUser().getId().toString(),
+						player.getUser().getId().toString(),
                         "/queue/game/turn",
                         NextTurnResponse.builder().isYourTurn(isCurrentPlayer).currentSeat(nextSeatIndex).build()
                 );
-            }
-        }
+			}
+		}
     }
 
 	private void sendPersonalizedGameStateResponse(){

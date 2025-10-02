@@ -24,4 +24,6 @@ public class GameSessionResponse {
 	private List<PlayedCardResponse> playedCards=new ArrayList<>();
 	private List<PlayerStatusResponse> players=new ArrayList<>();
 	@Enumerated(EnumType.STRING)
-	private GameStatus gameStatus;}
+	private GameStatus gameStatus;
+	private Integer deckSize;
+}

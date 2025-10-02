@@ -11,9 +11,11 @@ import org.game.pharaohcardgame.Model.DTO.Request.BotEditRequest;
 import org.game.pharaohcardgame.Model.DTO.Request.BotRemoveFromRoomRequest;
 import org.game.pharaohcardgame.Model.DTO.Response.SuccessMessageResponse;
 import org.game.pharaohcardgame.Model.DTO.ResponseMapper;
+import org.game.pharaohcardgame.Model.Player;
 import org.game.pharaohcardgame.Model.Room;
 import org.game.pharaohcardgame.Model.User;
 import org.game.pharaohcardgame.Repository.BotRepository;
+import org.game.pharaohcardgame.Repository.PlayerRepository;
 import org.game.pharaohcardgame.Repository.RoomRepository;
 import org.game.pharaohcardgame.Service.IAuthenticationService;
 import org.game.pharaohcardgame.Service.IBotService;
@@ -33,6 +35,7 @@ public class BotService implements IBotService {
 	private final BotRepository botRepository;
 	private final RoomService roomService;
 	private final SimpMessagingTemplate simpMessagingTemplate;
+	private final PlayerRepository playerRepository;
 
 	@Override
 	@Transactional
@@ -72,29 +75,48 @@ public class BotService implements IBotService {
 	}
 
 	@Override
-	//todo: vlamiérrt ha player kilép majd atalakul botá majd a jatékvégetér akkor a szobából nem tudom kitenni azt a abotot
+	@Transactional
 	public SuccessMessageResponse removeBot(BotRemoveFromRoomRequest botRemoveFromRoomRequest) {
-		User gamemaster=authenticationService.getAuthenticatedUser();
+		User gamemaster = authenticationService.getAuthenticatedUser();
 
 		try {
-			Room room = roomRepository.findById(botRemoveFromRoomRequest.getRoomId()).orElseThrow(() -> new RoomNotFoundException("Room Not Found"));
+			Room room = roomRepository.findById(botRemoveFromRoomRequest.getRoomId())
+					.orElseThrow(() -> new RoomNotFoundException("Room Not Found"));
 
+			roomService.checkPermission(room, gamemaster);
 
-			roomService.checkPermission(room,gamemaster);
+			Bot bot = botRepository.findById(botRemoveFromRoomRequest.getBotId())
+					.orElseThrow(() -> new BotNotFoundException("Bot not found"));
 
+			String botName = bot.getName();
 
-			Bot bot=botRepository.findById(botRemoveFromRoomRequest.getBotId())
-					.orElseThrow(()->new BotNotFoundException("Bot not found"));
-			String botName=bot.getName();
+			// 💡 Kapcsolat bontás
+			Player player = bot.getBotPlayer();
+			if (player != null) {
+				player.setBot(null);
+				bot.setBotPlayer(null);
+				playerRepository.save(player);
+			}
 
+			// 💡 Szoba kapcsolat bontás
+			room.getBots().remove(bot);
+			roomRepository.save(room);
+
+			// 💡 Bot törlés
 			botRepository.delete(bot);
 
-			simpMessagingTemplate.convertAndSend("/topic/room/"+room.getRoomId()+"/participant-update", responseMapper.toRoomResponse(room));
-			return responseMapper.createSuccessResponse(true, botName+" has been successfully deleted");
-		}catch (AccessDeniedException e){
+			simpMessagingTemplate.convertAndSend(
+					"/topic/room/" + room.getRoomId() + "/participant-update",
+					responseMapper.toRoomResponse(room)
+			);
+
+			return responseMapper.createSuccessResponse(true, botName + " has been successfully deleted");
+
+		} catch (AccessDeniedException e) {
 			return responseMapper.createSuccessResponse(false, e.getMessage());
 		}
 	}
+
 
 	@Override
 	public SuccessMessageResponse editBot(BotEditRequest botEditRequest) {

@@ -19,5 +19,6 @@ public class DrawCardResponse {
 	private Long playerId;
 	private CardInHandResponse newCard; // saját kártya
 	private Map<Long, Integer> otherPlayersCardCount; // más játékosok kártyaszámai
+	private Integer deckSize;
 
 }

@@ -2,12 +2,10 @@ package org.game.pharaohcardgame.Controller;
 
 
 import lombok.RequiredArgsConstructor;
-import org.game.pharaohcardgame.Model.DTO.Request.DrawCardRequest;
-import org.game.pharaohcardgame.Model.DTO.Request.GameStartRequest;
-import org.game.pharaohcardgame.Model.DTO.Request.LeaveGameSessionRequest;
-import org.game.pharaohcardgame.Model.DTO.Request.PlayCardsRequest;
+import org.game.pharaohcardgame.Model.DTO.Request.*;
 import org.game.pharaohcardgame.Model.DTO.Response.CurrentTurnResponse;
 import org.game.pharaohcardgame.Model.DTO.Response.GameSessionResponse;
+import org.game.pharaohcardgame.Model.DTO.Response.LeaveGameSessionResponse;
 import org.game.pharaohcardgame.Model.DTO.Response.SuccessMessageResponse;
 import org.game.pharaohcardgame.Service.Implementation.GameSessionService;
 import org.springframework.messaging.handler.annotation.MessageExceptionHandler;
@@ -48,11 +46,14 @@ public class GameSessionController {
 
 
 	@PostMapping("/leave")
-	public void leaveGameSession(@RequestBody LeaveGameSessionRequest leaveGameSessionRequest) {
-			 gameSessionService.leaveGameSession(leaveGameSessionRequest);
+	public LeaveGameSessionResponse leaveGameSession(@RequestBody LeaveGameSessionRequest leaveGameSessionRequest) {
+			return gameSessionService.leaveGameSession(leaveGameSessionRequest);
 
 	}
-
+	@MessageMapping("/game/skip")
+	public void skipTurn(SkipTurnRequest request) {
+		gameSessionService.skipTurn(request);
+	}
 	@MessageExceptionHandler
 	@SendToUser("/queue/errors")
 	public String handleException(Exception ex) {

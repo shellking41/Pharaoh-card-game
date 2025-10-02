@@ -5,12 +5,11 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-@Data
-@NoArgsConstructor
 @AllArgsConstructor
+@NoArgsConstructor
 @Builder
-public class LeaveGameSessionResponse {
-	private UserCurrentStatus userStatus;
-	RoomResponse currentRoom;
-	RoomResponse managedRoom;
+@Data
+public class PlayerLeftResponse {
+	String newName;
+	Long playerId;
 }
