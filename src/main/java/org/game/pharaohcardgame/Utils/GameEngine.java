@@ -19,19 +19,20 @@ import org.game.pharaohcardgame.Model.User;
 import org.game.pharaohcardgame.Repository.GameSessionRepository;
 import org.game.pharaohcardgame.Repository.PlayerRepository;
 import org.game.pharaohcardgame.Repository.UserRepository;
+import org.game.pharaohcardgame.Utils.SpecialCardLogic.SpecialCardHandler;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 @Slf4j
 @Component
 public class GameEngine implements IGameEngine {
+
 
 	private final GameSessionUtils gameSessionUtils;
 	private final SimpMessagingTemplate simpMessagingTemplate;
@@ -41,79 +42,22 @@ public class GameEngine implements IGameEngine {
 	private final PlayerRepository playerRepository;
 	private final CacheManager cacheManager;
 	private final UserRepository userRepository;
-
+	private final List<SpecialCardHandler> specialCardHandlers;
 
 	private final int MAXCARDNUMBER = 1;
 
 
 	@Override
-	public NextTurnResult nextTurn(Player currentPlayer, GameSession gameSession, GameState gameState) {
-		// Lekérjük a játékban részt vevő Player objektumokat (a GameSession-ből)
-		List<Player> players = gameSession.getPlayers();
+	public NextTurnResult nextTurn(Player currentPlayer, GameSession gameSession, GameState gameState,Integer skipPlayerCount) {
 
-		// Kinyerjük az ülésindexeket (seat értékeket) ugyanabban a sorrendben,
-		// ez alapján tudunk körbe lépegetni (pl. [0,1,2,3])
-		List<Integer> seatIndexes = players.stream().map(Player::getSeat).toList();
 
-		// A gameState.gameData egy Map<String,Object>, itt kiveszünk (vagy létrehozunk)
-		// egy Set<Long>-ot, ami a "finishedPlayers" – azok a játékosok, akik már befejezték.
-		// computeIfAbsent biztosítja, hogy ha még nincs ilyen kulcs, akkor beteszünk egy üres HashSet-et.
-		@SuppressWarnings("unchecked")
-		Set<Long> finishedPlayers = (Set<Long>) gameState.getGameData()
-				.computeIfAbsent("finishedPlayers", k -> new HashSet<Long>());
-
-		//ez kell ahhoz hogy ne keruljon sorra olyan player aki mar kiesett a jatekbol
-		@SuppressWarnings("unchecked")
-		Set<Long> lostPlayers = (Set<Long>) gameState.getGameData()
-				.computeIfAbsent("lostPlayers", k -> new HashSet<Long>());
-
-		// Megkeressük az aktuális játékos helyét (seat) a seatIndexes listában.
-		// Ha nincs benne, hiba (pl. ha a player nincs a session-ben).
-		int currentSeatPosition = seatIndexes.indexOf(currentPlayer.getSeat());
-		if (currentSeatPosition == -1) {
-			throw new IllegalStateException("Current Player's seat is not found");
-		}
-
-		// Inicializáljuk a kereséshez szükséges változókat.
-		int nextSeatPosition = currentSeatPosition; // innen fogunk lépni tovább
-		Player nextPlayer = null;
-		int nextSeatIndex = -1;
-
-		// do-while ciklussal lépegetünk tovább a következő seat-re,
-		// amíg olyan játékost nem találunk, aki még nincs a finishedPlayers-ben.
-		do {
-			// Lépjünk a következő seat pozícióra (körbe: ha a végén vagyunk, kezdjük elölről)
-			nextSeatPosition = (nextSeatPosition + 1) % seatIndexes.size();
-
-			// Ezt a seat-értéket elmentjük egy final változóba, mert a lambda (stream.filter) csak final/eff. final változót használhat.
-			final int seatToCheck = seatIndexes.get(nextSeatPosition);
-
-			// Megkeressük azt a Player-t, akinek ez a seat értéke.
-			// Ha nincs ilyen Player a players listában, akkor IllegalStateException-t dobunk.
-			nextPlayer = players.stream()
-					.filter(p -> p.getSeat().equals(seatToCheck))
-					.findFirst()
-					.orElseThrow(() -> new IllegalStateException("Player is not found on the current seat"));
-
-			// Tartsuk meg a nextSeatIndex-et, hogy a visszatérési értékben is meglegyen.
-			nextSeatIndex = seatToCheck;
-
-			// addig ismételjük, amíg a megtalált játékos szerepel a finishedPlayers-ben
-			// (és még nem keringtük körbe az összes játékost — ezt a ciklus feltétele ellenőrzi)
-		} while ((finishedPlayers.contains(nextPlayer.getPlayerId()) || lostPlayers.contains(nextPlayer.getPlayerId())) &&
-				nextSeatPosition != currentSeatPosition);
-
-		// Ha a ciklusból kilépve a nextPlayer is finished, akkor mindenki befejezte a játékot —
-		// ez logikailag nem kéne, hogy megtörténjen; ilyenkor hibát dobunk.
-		if (finishedPlayers.contains(nextPlayer.getPlayerId())) {
-			throw new IllegalStateException("All players have finished - this should not happen");
-		}
+		NextTurnResult nextTurnResult=gameSessionUtils.calculateNextTurn(currentPlayer,gameSession,gameState,skipPlayerCount);
 
 		// Beállítjuk a gameState-ben az új currentPlayerId-t (a következő játékos azonosítóját)
-		gameState.setCurrentPlayerId(nextPlayer.getPlayerId());
+		gameState.setCurrentPlayerId(nextTurnResult.nextPlayer().getPlayerId());
 
 		// Visszaadjuk a NextTurnResult-et, ami tartalmazza a következő Player objektumot és a seat indexet.
-		return new NextTurnResult(nextPlayer, nextSeatIndex);
+		return nextTurnResult;
 	}
 
 	@Override
@@ -167,37 +111,76 @@ public class GameEngine implements IGameEngine {
 	public Card drawCard(GameState gameState, Player currentPlayer) {
 
 		List<Card> deck = gameState.getDeck();
-		//todo: ha már tud letenni a bot kartyat akkor kell nekunk olyan  hogy ide teszunk egy custom exceptiont és majd a bot azt elcatcheli  akkor majd ha akarna huzni, de nem tud akkor helyette muszaj letennie valamelyik kartyajat. De ha nem tud letenni egy kartyat sem akkor ne csinajon semmit ebben a körben. Ez azert kell mert ha mar nincs tobb kartya a deckben akkor ne áljon meg a jaték a bot nál
-		if (deck.isEmpty()) {
-			if (gameState.getPlayedCards().size() == 1) {
-				throw new IllegalStateException("No more cards in deck");
-				//ez azÉrt kelll mert ha az egyik user felhuzta az utolso kartyat es a played cardban is csak 1 kartya volt, ilyenkor nem kerul a deckbe kartya a következo player mar nem tudott felhuzni kartyat mert ures volt a deck. Ezért muszály neki letenni kartyat.Majd a következo player akarna kartyat huzni de az nem volt megshufflezva és nem kerult bele a frissen letett kartya a deckbe ezért empty maradt a deck. de most ez beleteszi azt a egy frissen letett kartyat a deckbe
-			} else {
-				//todo: ha reshuflezzuk a kartyakat akkor arrol a afrontendnek kuldeni kell infot és elkell kuldeni a decksizet is
+
+		//ha elfogyott a kartya a deckbol akkor itt a logika rá
+		deck = handleIfDeckIsEmpty(deck,gameState);
+
+		if(!deck.isEmpty()){
+			Map<Long, List<Card>> hands = gameState.getPlayerHands();
+			List<Card> hand = hands.get(currentPlayer.getPlayerId());
+			Card card = deck.getFirst();  // "lehúzzuk a tetejéről"
+
+			card.setOwnerId(currentPlayer.getPlayerId());
+			card.setPosition(hand.size());
+
+			hand.add(card);
+
+			//a deckből kiszuedjük a felso kartyat
+			gameState.setDeck(new ArrayList<>(deck.subList(1, deck.size())));
+
+			List<Card> newHand = gameState.getPlayerHands().get(currentPlayer.getPlayerId());
+
+			//ha a kartya huzas után nincs a deckben kartya akkor is újra keverjuka a played cardal
+			if(checkNotDrawnCardsNumber(gameState) == 0 ){
 				reShuffleCards(gameState);
-				deck = gameState.getDeck();
 			}
+
+			return newHand.getLast();
+		}
+		return null;
+	}
+
+
+
+	@Override
+	public List<Card> drawStackOfCards(Player currentPlayer, GameState gameState) {
+
+		Long currentPlayerId=currentPlayer.getPlayerId();
+
+		Map<Long, Integer> drawStack=gameSessionUtils.getSpecificGameDataTypeMap("drawStack",gameState);
+
+		if(!drawStack.containsKey(currentPlayerId)){
+			throw new IllegalStateException("Player don't have to draw stack of cards");
+		}
+
+		Integer CardToBeDrawn=drawStack.get(currentPlayerId);
+
+		//ide tároljuk a húzott kártyákat
+		List<Card> drawnCards=new ArrayList<>();
+		//kihúzunk annyi kártyát amenyit kell
+		for (int i=1;i<=CardToBeDrawn;i++){
+			Card drawnCard=drawCard(gameState,currentPlayer);
+			if(drawnCard!=null){
+				drawnCards.add(drawnCard);
+			}else{
+				break;
+			}
+
+		}
+
+		if(drawnCards.size()==CardToBeDrawn){
+			drawStack.remove(currentPlayerId);
+		}else {
+			//ha nem tudtuk felhuzni ugyan anyi akrtyat amenyit muszály lett volna akkor csak simmán kivonyjuk a drawStackbol majd a kovetkezo körve felhuzza ha tudja
+			/*int remaining = CardToBeDrawn - drawnCards.size();
+			drawStack.put(currentPlayerId, remaining);*/
+
+			//egyenlore simán engedjuk továbbb a usert
+			drawStack.remove(currentPlayerId);
 		}
 
 
-		Map<Long, List<Card>> hands = gameState.getPlayerHands();
-		List<Card> hand = hands.get(currentPlayer.getPlayerId());
-		Card card = deck.getFirst();  // "lehúzzuk a tetejéről"
-
-		card.setOwnerId(currentPlayer.getPlayerId());
-		card.setPosition(hand.size());
-
-		hand.add(card);
-
-		gameState.setDeck(new ArrayList<>(deck.subList(1, deck.size())));
-
-		List<Card> newHand = gameState.getPlayerHands().get(currentPlayer.getPlayerId());
-
-		if(checkNotDrawnCardsNumber(gameState) == 0 ){
-			reShuffleCards(gameState);
-		}
-
-		return newHand.getLast();
+		return drawnCards;
 	}
 
 	@Override
@@ -310,7 +293,7 @@ public class GameEngine implements IGameEngine {
 
 	@Override
 	//leteszi a kartyakat
-	public GameState playCards(List<CardRequest> playCards,Player currentPlayer,GameState gameState) {
+	public void playCards(List<CardRequest> playCards,Player currentPlayer,GameState gameState,GameSession gameSession) {
 
 
 		if (playCards == null || playCards.isEmpty()) {
@@ -334,6 +317,12 @@ public class GameEngine implements IGameEngine {
 			card.setOwnerId(null);
 			card.setPosition(0);
 		}
+		//ha speciális a kártyák akkor elinditjuk a specialiskartya logikat
+		for (SpecialCardHandler handler : specialCardHandlers){
+			if(handler.applies(incoming)){
+				handler.onPlay(incoming,currentPlayer,gameSession ,gameState);
+			}
+		}
 
 		//leteszi a kartyat
 		gameState.getPlayedCards().addAll(incoming);
@@ -342,16 +331,17 @@ public class GameEngine implements IGameEngine {
 			handlePlayerEmptyhand(gameState,currentPlayer);
 		}
 
-		return gameState;
+		return;
 	}
+
+
 
 	@Override
 	//ha ures a keze akkor már nem kell lépnie és az adot kort nyerte,de még a jatek folytatódik
 	public void handlePlayerEmptyhand(GameState gameState,Player player){
 		// Játékos kiszáll az adott körből - már nem játszik tovább ebben a körben
-		@SuppressWarnings("unchecked")
-		Set<Long> finishedPlayers = (Set<Long>) gameState.getGameData()
-				.computeIfAbsent("finishedPlayers", k -> new HashSet<Long>());
+		Set<Long> finishedPlayers = gameSessionUtils.getSpecificGameDataTypeSet("finishedPlayers",gameState);
+
 
 		finishedPlayers.add(player.getPlayerId());
 
@@ -399,9 +389,8 @@ public class GameEngine implements IGameEngine {
 	}
 
 	private List<Player> getActivePlayers(GameState gameState) {
-		@SuppressWarnings("unchecked")
-		Set<Long> finishedPlayers = (Set<Long>) gameState.getGameData()
-				.getOrDefault("finishedPlayers", new HashSet<Long>());
+
+		Set<Long> finishedPlayers = gameSessionUtils.getSpecificGameDataTypeSet("finishedPlayers",gameState);
 
 		return gameState.getPlayerHands().entrySet().stream()
 				.filter(entry -> !finishedPlayers.contains(entry.getKey()))
@@ -502,9 +491,7 @@ public class GameEngine implements IGameEngine {
 		List<Integer>lossCounts=players.stream().map(Player::getLossCount).toList();
 
 		//lecheckeljuk hogy ki vesztett már es beleteszzuk a gamedataba
-		@SuppressWarnings("unchecked")
-		Set<Long> lostPlayers = (Set<Long>) gameState.getGameData()
-				.computeIfAbsent("lostPlayers", k -> new HashSet<Long>());
+		Set<Long> lostPlayers = gameSessionUtils.getSpecificGameDataTypeSet("lostPlayers",gameState);
 
 
 		Set<Long> newLost = players.stream()
@@ -573,6 +560,12 @@ public class GameEngine implements IGameEngine {
 
 
 	}
+	//leelenorizzuk hogy a playernek kell e huznia kartyat
+	public boolean playerHaveToDrawStack(Player player,GameState gameState){
+		Long playerId= player.getPlayerId();
+		Map<Long,Integer> drawStack = gameSessionUtils.getSpecificGameDataTypeMap("drawStack", gameState);
+		return drawStack.containsKey(playerId);
+	}
 
 	private Player getFirstPlayer(List<Player> players){
 		 return players.stream()
@@ -634,7 +627,29 @@ public class GameEngine implements IGameEngine {
 	}
 
 
+	public boolean isPlayerFinished(Player currentPlayer, GameState gameState) {
+		Set<Long> finishedPlayers=gameSessionUtils.getSpecificGameDataTypeSet("finishedPlayers",gameState);
+		return finishedPlayers.contains(currentPlayer.getPlayerId());
+	}
 
+	public boolean isPlayerLost(Player currentPlayer, GameState gameState) {
+		Set<Long> finishedPlayers=gameSessionUtils.getSpecificGameDataTypeSet("lostPlayers",gameState);
+		return finishedPlayers.contains(currentPlayer.getPlayerId());
+	}
+	private List<Card> handleIfDeckIsEmpty(List<Card> deck, GameState gameState) {
+		//todo: ha már tud letenni a bot kartyat akkor kell nekunk olyan  hogy ide teszunk egy custom exceptiont és majd a bot azt elcatcheli  akkor majd ha akarna huzni, de nem tud akkor helyette muszaj letennie valamelyik kartyajat. De ha nem tud letenni egy kartyat sem akkor ne csinajon semmit ebben a körben. Ez azert kell mert ha mar nincs tobb kartya a deckben akkor ne áljon meg a jaték a bot nál
+		if (deck.isEmpty()) {
+			if (gameState.getPlayedCards().size() == 1) {
+				//ez azért kell mert ha volt akinek kellett huznia kartyat akkor most nem kell
+				log.info("No more cards in deck gamesession id: {}",gameState.getGameSessionId());
 
-
+				//ez azÉrt kelll mert ha az egyik user felhuzta az utolso kartyat es a played cardban is csak 1 kartya volt, ilyenkor nem kerul a deckbe kartya a következo player mar nem tudott felhuzni kartyat mert ures volt a deck. Ezért muszály neki letenni kartyat.Majd a következo player akarna kartyat huzni de az nem volt megshufflezva és nem kerult bele a frissen letett kartya a deckbe ezért empty maradt a deck. de most ez beleteszi azt a egy frissen letett kartyat a deckbe
+			} else {
+				//todo: ha reshuflezzuk a kartyakat akkor arrol a afrontendnek kuldeni kell infot és elkell kuldeni a decksizet is
+				reShuffleCards(gameState);
+				deck = gameState.getDeck();
+			}
+		}
+		return deck;
+	}
 }

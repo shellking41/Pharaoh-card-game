@@ -12,8 +12,7 @@ import java.util.Map;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class PlayerHandResponse {
-    private Long playerId;
-    private List<CardInHandResponse> ownCards; // saját kártyák teljes adatokkal
-    private Map<Long, Integer> otherPlayersCardCount; // más játékosok kártyaszámai
+public class PlayCardResponse {
+	private Map<String,Object> gameData;
+	private PlayerHandResponse playerHand;
 }

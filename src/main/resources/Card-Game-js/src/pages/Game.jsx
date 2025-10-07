@@ -12,7 +12,7 @@ import useDetermineCardsPlayability from "../components/Game/Hooks/useDetermineC
 
 
 function Game() {
-    const {gameSession,playerSelf,turn,setTurn}=useContext(GameSessionContext);
+    const {gameSession,playerSelf,turn,setTurn,setPlayerSelf}=useContext(GameSessionContext);
     const {gameSessionId} = useParams();
     const {sendMessage}=useWebsocket();
     const {userCurrentStatus}=useContext(UserContext);
@@ -101,6 +101,10 @@ function Game() {
         console.log(response);
 
     }
+    const drawStackOfCards=()=>{
+        sendMessage("/app/game/draw-stack-of-cards",{playerId:playerSelf.playerId});
+        setPlayerSelf((prev)=>({...prev,drawStackNumber:null}))
+    }
 
     const skipTurn = () => {
         sendMessage("/app/game/skip", { playerId: playerSelf.playerId });
@@ -142,7 +146,7 @@ function Game() {
 
             {/* Deck size display */}
             <div>Deck size: {gameSession?.deckSize ?? 0}</div>
-
+            <div>PlayedCards size: {gameSession?.playedCardsSize ?? 0}</div>
             {/* Action buttons */}
             {turn?.yourTurn && (
                 <>
@@ -162,7 +166,7 @@ function Game() {
 
             {turn?.yourTurn && <div>Te vagy</div>}
             {turn?.currentSeat && <div>Current seat: {turn.currentSeat}</div>}
-
+            {gameSession?.gameData?.drawStack?.[playerSelf.playerId] && <button onClick={drawStackOfCards}>have to draw : {gameSession?.gameData?.drawStack[playerSelf.playerId]}</button>}
             <button onClick={() => leaveGame()}>Leave</button>
         </>
     );

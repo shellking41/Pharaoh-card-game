@@ -187,13 +187,15 @@ public class ResponseMapper {
 
 
 
-	public GameSessionResponse toGameSessionResponse(GameSession gameSession,List<Player> players,PlayerHandResponse playerHand,List<PlayedCardResponse> playedCards,Integer deckSize) {
+	public GameSessionResponse toGameSessionResponse(GameSession gameSession, List<Player> players, PlayerHandResponse playerHand, List<PlayedCardResponse> playedCards, GameState gameState) {
 		return GameSessionResponse.builder()
 				.gameSessionId(gameSession.getGameSessionId())
 				.players(toPlayerStatusResponseList(gameSession.getPlayers()))
 				.playerHand(playerHand)
 				.playedCards(playedCards)
-				.deckSize(deckSize)
+				.deckSize(gameState.getDeck().size())
+				.playedCardsSize(gameState.getPlayedCards().size())
+				.gameData(gameState.getGameData())
 				.gameStatus(gameSession.getGameStatus())
 				.build();
 	}
@@ -246,7 +248,7 @@ public class ResponseMapper {
 
 	}
 
-	public DrawCardResponse toDrawCardResponse(GameState gameState, Card drawnCard,Long playerId,Integer deckSize) {
+	public DrawCardResponse toDrawCardResponse(GameState gameState, List<Card> drawnCards,Long playerId,Integer deckSize,Integer playedCardsSize) {
 
 		Map<Long, Integer> otherPlayersCardCount = gameState.getPlayerHands().entrySet()
 				.stream()
@@ -255,14 +257,16 @@ public class ResponseMapper {
 						Map.Entry::getKey,
 						entry -> entry.getValue().size()
 				));
-		CardInHandResponse cardInHandResponse = drawnCard != null ? toCardInHandResponse(drawnCard) : null;
+		List<CardInHandResponse> cardInHandResponses = drawnCards != null ? toCardInHandResponseList(drawnCards) : null;
 
 		return DrawCardResponse.builder()
-				.newCard(cardInHandResponse)
+				.newCard(cardInHandResponses)
 				.playerId(playerId)
 				.gameSessionId(gameState.getGameSessionId())
 				.otherPlayersCardCount(otherPlayersCardCount)
 				.deckSize(deckSize)
+				.gameData(gameState.getGameData())
+				.playedCardsSize(playedCardsSize)
 				.build();
 	}
 }

@@ -125,18 +125,27 @@ const getPageSubscriptions = (contexts) => {
                 console.log(message)
                 console.log( message.otherPlayersCardCount[message.playerId])
                 console.log(message.playerId === playerSelf.playerId && message.newCard!=null)
+
+
+
                 if (message.playerId === playerSelf.playerId && message.newCard!=null) {
                     // Saját húzás → új kártyát hozzáadjuk az ownCards-hoz
                     if (message.newCard) { // csak ha van új kártya
-                        setGameSession(prev => ({
-                            ...prev,
-                            deckSize: message.deckSize,
-                            playerHand: {
-                                ...prev.playerHand,
-                                ownCards: [...prev.playerHand.ownCards.filter(Boolean), message.newCard], // szűrjük a null-t
-                                otherPlayersCardCount: { ...prev.playerHand.otherPlayersCardCount }
-                            }
-                        }));
+                        setGameSession(prev => {
+                            const prevOwn = (prev.playerHand?.ownCards ?? []).filter(Boolean);
+                            const merged = message.newCard.length > 0 ? [...prevOwn, ...message.newCard] : prevOwn;
+                            return {
+                                ...prev,
+                                gameData: message.gameData ?? prev.gameData,
+                                deckSize: message.deckSize ?? prev.deckSize,
+                                playedCardsSize:message.playedCardsSize ?? prev.playedCardsSize,
+                                playerHand: {
+                                    ...prev.playerHand,
+                                    ownCards: merged,
+                                    otherPlayersCardCount: message.otherPlayersCardCount ?? prev.playerHand.otherPlayersCardCount
+                                }
+                            };
+                        });
                     }
                 } else {
                     // Más húzott → csak az otherPlayersCardCount frissítése
@@ -144,7 +153,9 @@ const getPageSubscriptions = (contexts) => {
 
                     setGameSession(prev => ({
                         ...prev,
+                        gameData: message.gameData ?? prev.gameData,
                         deckSize: message.deckSize,
+                        playedCardsSize:message.playedCardsSize ?? prev.playedCardsSize,
                         playerHand: {
                             ...prev.playerHand,
                             otherPlayersCardCount: message.otherPlayersCardCount,
@@ -157,14 +168,14 @@ const getPageSubscriptions = (contexts) => {
             destination: "/topic/game/"+gameSession.gameSessionId+"/played-cards",
             callback:(message)=>{
                 console.log(message)
-                setGameSession((prev)=>({...prev,playedCards:message}))
+                setGameSession((prev)=>({...prev,playedCards:message.playedCards,playedCardsSize: message.playedCardsSize}))
 
             }
         },{
             destination: "/user/queue/game/play-cards",
             callback: (message) => {
                 console.log(message)
-                setGameSession((prev)=>({...prev,playerHand:message}))
+                setGameSession((prev)=>({...prev,playerHand:message.playerHand,gameData: message.gameData}))
             }
         },{
             destination: "/user/queue/game/turn",
@@ -187,11 +198,13 @@ const getPageSubscriptions = (contexts) => {
                     playerHand:[],
                     playedCards:[],
                     gameStatus:"",
+                    gameData:{},
                 });
                setPlayerSelf({
                     playerId:null,
                     seat:null,
                     userId:null,
+                    drawStackNumber:null,
                 });
 
                setTurn({
@@ -226,6 +239,19 @@ const getPageSubscriptions = (contexts) => {
             destination:"/user/queue/game/player-left",
             callback:(message)=>{
                 console.log(message);
+            }
+        },{
+            destination: "/user/queue/game/draw-stack",
+            callback:(message)=>{
+                console.log(message);
+                setGameSession(prev => ({
+                    ...prev,
+                    gameData: {
+                        // megtartjuk a korábbi gameData mezőket, csak az drawStackNumber-t frissítjük
+                        ...(prev.gameData || {}),
+                        drawStack: message.drawStack
+                    }
+                }));
             }
         }],
 

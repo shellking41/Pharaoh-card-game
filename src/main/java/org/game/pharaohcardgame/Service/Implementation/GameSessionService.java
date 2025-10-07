@@ -4,6 +4,7 @@ import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.game.pharaohcardgame.Enum.CardRank;
 import org.game.pharaohcardgame.Enum.GameStatus;
 import org.game.pharaohcardgame.Exception.GameSessionNotFoundException;
 import org.game.pharaohcardgame.Exception.PlayerNotFoundException;
@@ -35,6 +36,9 @@ import java.util.concurrent.atomic.AtomicReference;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+//todo: kell egy olyan endpoint ami arra van hogy a playerek felhuzzak a acard stackeket.
+
+//todo: megkell csinalni azt amikor belepunk loginnal és van gamesessiona a usernek akkor a gamesession jelenjen meg az odlalon.(frontend)
 public class GameSessionService implements IGameSessionService {
 
 	private final AuthenticationService authenticationService;
@@ -116,7 +120,7 @@ public class GameSessionService implements IGameSessionService {
 
 					List<Card> playedCards =gameState.getPlayedCards();
 					List<PlayedCardResponse> playedCardResponses = responseMapper.toPlayedCardResponseListFromCards(playedCards);
-					GameSessionResponse personalizedResponse = responseMapper.toGameSessionResponse(gameSession,gameSession.getPlayers(),playerHand,playedCardResponses,gameState.getDeck().size());
+					GameSessionResponse personalizedResponse = responseMapper.toGameSessionResponse(gameSession,gameSession.getPlayers(),playerHand,playedCardResponses,gameState);
 
 					simpMessagingTemplate.convertAndSendToUser(
 							player.getUser().getId().toString(),
@@ -173,7 +177,7 @@ public class GameSessionService implements IGameSessionService {
 		List<PlayedCardResponse> playedCardResponses = responseMapper.toPlayedCardResponseListFromCards(playedCards);
 
 		GameSessionResponse response = responseMapper.toGameSessionResponse(
-				gameSession, gameSession.getPlayers(), playerHand, playedCardResponses,gameState.getDeck().size());
+				gameSession, gameSession.getPlayers(), playerHand, playedCardResponses,gameState);
 
 
 
@@ -199,43 +203,46 @@ public class GameSessionService implements IGameSessionService {
 		AtomicReference<Integer> deckSizeRef = new AtomicReference<>();
 
 		GameState newGameState=gameSessionUtils.updateGameState(gameSession.getGameSessionId(),current->{
+			if(gameEngine.isPlayerFinished(currentPlayer,current)){
+				throw new IllegalStateException("You Are already finished");
+			}
+			if(gameEngine.isPlayerLost(currentPlayer,current)){
+				throw new IllegalStateException("You already lost");
+			}
 			if(!gameEngine.isPlayersTurn(currentPlayer,current)){
 				throw new IllegalStateException("This is not your turn");
 			};
 
+			//ha kell huznia kartyat
+			if(gameEngine.playerHaveToDrawStack(currentPlayer,current)){
+				throw new IllegalStateException("You have to draw stack of cards");
+			}
+
 			Card drawnCard= gameEngine.drawCard(current,currentPlayer);
+			if(drawnCard==null && current.getDeck().isEmpty()){
+				throw new IllegalStateException("No more cards in deck");
+			}
 			drawnCardRef.set(drawnCard);
 			deckSizeRef.set(current.getDeck().size());
 
-			NextTurnResult nextTurnResult=gameEngine.nextTurn(currentPlayer,gameSession,current);
+			NextTurnResult nextTurnResult=gameEngine.nextTurn(currentPlayer,gameSession,current,0);
 			nextTurnRef.set(nextTurnResult);
 
 			return current;
 		});
 
 		//itt ha huzunk egy kartyat akkor a kartyahuzo user lassa a kartyat mások nem kapjak meg a tartalmát
-		for (Player player : players) {
-			if (!player.getIsBot()) {
-				DrawCardResponse personalizedResponse;
-				if(player.getPlayerId().equals(currentPlayer.getPlayerId())){
-					 personalizedResponse = responseMapper.toDrawCardResponse(newGameState,drawnCardRef.get(),player.getPlayerId(),deckSizeRef.get());
-				}else {
-					 personalizedResponse = responseMapper.toDrawCardResponse(newGameState,null,player.getPlayerId(),deckSizeRef.get());
-				}
-				simpMessagingTemplate.convertAndSendToUser(
-						player.getUser().getId().toString(),
-						"/queue/game/draw",
-						personalizedResponse
-				);
-			}
-		}
+		sendDrawCardNotification(players,currentPlayer, Collections.singletonList(drawnCardRef.get()),deckSizeRef.get(),newGameState.getPlayedCards().size(),newGameState);
 
+
+		//kikuldjuk a kovetkezo kor notifkációit
 		NextTurnResult next = nextTurnRef.get();
 		sendNextTurnNotification(next.nextPlayer(),players, next.nextSeatIndex());
 
 		handleIfNextPlayerIsBot(next,gameSession);
 		return null;
 	}
+
 
 	@Override
 	public void playCards(PlayCardsRequest playCardsRequest) {
@@ -250,14 +257,25 @@ public class GameSessionService implements IGameSessionService {
 		GameSession gameSession = gameSessionRepository.findByIdWithPlayers(currentPlayer.getGameSession().getGameSessionId())
 				.orElseThrow(() -> new GameSessionNotFoundException("GameSession not found"));
 
+
+
 		//ez azert kell mert lambdan belul nem lehet modositani olyan valtozokat amiket a lamban kivol decralaltunk
 		AtomicReference<NextTurnResult> nextTurnRef = new AtomicReference<>();
 
 		//a getgameSTATE helyett egy lock alatt adjuk át a gamestatet a methodoknak mert igy megakadályozhassuk a raceconditiont
 		GameState gameState=gameSessionUtils.updateGameState(gameSession.getGameSessionId(),current ->{
+
+			if(gameEngine.isPlayerFinished(currentPlayer,current)){
+				throw new IllegalStateException("You Are already finished");
+			}
+			if(gameEngine.isPlayerLost(currentPlayer,current)){
+				throw new IllegalStateException("You already lost");
+			}
+
 			if(!gameEngine.isPlayersTurn(currentPlayer,current)){
 				throw new IllegalStateException("This is not your turn");
 			};
+
 
 			if(!gameEngine.areCardsValid(currentPlayer,playCardsRequest.getPlayCards(),current)){
 				throw new IllegalArgumentException("Invalid Cards");
@@ -267,12 +285,29 @@ public class GameSessionService implements IGameSessionService {
 				throw new IllegalArgumentException("Card's suit or rank are not matching");
 			};
 
-			gameEngine.playCards(playCardsRequest.getPlayCards(),currentPlayer,current);
 
-			NextTurnResult nextTurnResult = gameEngine.nextTurn(currentPlayer, gameSession, current);
+			//ha kell huznia kartyat akkor nem engedjuk hogy rakjon le kartyat és amikor kell huznia kartyat és akar letenni kartyat de a kartya nem hetes akkor exception
+			if(!playCardsRequest.getPlayCards().getFirst().getRank().equals(CardRank.VII) && gameEngine.playerHaveToDrawStack(currentPlayer,current)){
+				throw new IllegalStateException("You have to draw stack of cards");
+			}
+
+			gameEngine.playCards(playCardsRequest.getPlayCards(),currentPlayer,current,gameSession);
+
+			//ha a kartya lerakasakor olyan kartyat raktunk le ami skippeli a plajereket akkor az szerint kezdodik el a turn.
+			Set<Long> skippedPlayers = gameSessionUtils.getSpecificGameDataTypeSet("skippedPlayers", current);
+			NextTurnResult nextTurnResult = gameEngine.nextTurn(currentPlayer, gameSession, current,skippedPlayers.size());
+			skippedPlayers.clear();
 
 			// Mentjük a referenciába, hogy a lambda végén kívül is elérjük
 			nextTurnRef.set(nextTurnResult);
+
+
+			//ha húznia kell a usernek több kartyat akkor arrol értesítjük
+			Map<Long,Integer> drawStack = gameSessionUtils.getSpecificGameDataTypeMap("drawStack", current);
+			if(gameEngine.playerHaveToDrawStack(nextTurnResult.nextPlayer(),current)){
+				//ha kell huznia akkor elkuldjuk mennyit.
+				sendPlayerHasToDrawStack(nextTurnResult.nextPlayer(),drawStack);
+			}
 
 			return current;
 		});
@@ -281,11 +316,18 @@ public class GameSessionService implements IGameSessionService {
 
 
 		List<PlayedCardResponse> playedCardResponses= responseMapper.toPlayedCardResponseListFromCardRequests(playCardsRequest.getPlayCards());
+
+		int playedCardsSize = gameState.getPlayedCards().size();
+
 		//ez azt kuldi el hogy milyen kartyak vannak már letéve
+		Map<String, Object> payload = new HashMap<>();
+		payload.put("playedCards", playedCardResponses);
+		payload.put("playedCardsSize", playedCardsSize);
+
 		simpMessagingTemplate.convertAndSend(
-				"/topic/game/"+gameSession.getGameSessionId()+"/played-cards",
-				playedCardResponses
-				);
+				"/topic/game/" + gameSession.getGameSessionId() + "/played-cards",
+				payload
+		);
 
 		//ez elkuldi a frissitett player handet hogy a játszo usernek a kezebol eltunnjon a kartya es mas playerek is lassak ezt
 		for (Player player : gameSession.getPlayers()) {
@@ -293,10 +335,12 @@ public class GameSessionService implements IGameSessionService {
 				PlayerHandResponse playerHand = gameSessionUtils.getPlayerHand(
 						gameSession.getGameSessionId(), player.getPlayerId());
 
+
+
 				simpMessagingTemplate.convertAndSendToUser(
 						player.getUser().getId().toString(),
 						"/queue/game/play-cards",
-						playerHand
+						PlayCardResponse.builder().playerHand(playerHand).gameData(gameState.getGameData()).build()
 				);
 			}
 		}
@@ -306,6 +350,8 @@ public class GameSessionService implements IGameSessionService {
 		handleIfNextPlayerIsBot(next,gameSession);
 
 	}
+
+
 
 	@Override
 	public void skipTurn(SkipTurnRequest skipTurnRequest) {
@@ -318,8 +364,21 @@ public class GameSessionService implements IGameSessionService {
 		AtomicReference<NextTurnResult> nextTurnRef = new AtomicReference<>();
 
 		GameState gameState = gameSessionUtils.updateGameState(gameSession.getGameSessionId(), current -> {
+
+			if(gameEngine.isPlayerFinished(currentPlayer,current)){
+				throw new IllegalStateException("You Are already finished");
+			}
+			if(gameEngine.isPlayerLost(currentPlayer,current)){
+				throw new IllegalStateException("You already lost");
+			}
+
 			if (!gameEngine.isPlayersTurn(currentPlayer, current)) {
 				throw new IllegalStateException("This is not your turn");
+			}
+
+			//ha kell huznia kartyat akkor nem engedjuk hogy rakjon le kartyat
+			if(gameEngine.playerHaveToDrawStack(currentPlayer,current)){
+				throw new IllegalStateException("You have to draw stack of cards");
 			}
 
 			// Verify that skip is valid (can't draw and can't play)
@@ -331,7 +390,7 @@ public class GameSessionService implements IGameSessionService {
 				throw new IllegalStateException("Cards can be reshuffled");
 			}
 
-			NextTurnResult nextTurnResult = gameEngine.nextTurn(currentPlayer, gameSession, current);
+			NextTurnResult nextTurnResult = gameEngine.nextTurn(currentPlayer, gameSession, current,0);
 			nextTurnRef.set(nextTurnResult);
 
 			return current;
@@ -357,6 +416,60 @@ public class GameSessionService implements IGameSessionService {
 		sendNextTurnNotification(next.nextPlayer(), gameSession.getPlayers(), next.nextSeatIndex());
 		handleIfNextPlayerIsBot(next, gameSession);
 	}
+
+	@Override
+	public void drawStackOfCards(DrawStackOfCardsRequest drawStackOfCardsRequest) {
+		Player currentPlayer=playerRepository.findById(drawStackOfCardsRequest.getPlayerId())
+				.orElseThrow(()-> new PlayerNotFoundException("Player not found"));
+
+		GameSession gameSession = gameSessionRepository.findByIdWithPlayers(currentPlayer.getGameSession().getGameSessionId())
+				.orElseThrow(() -> new GameSessionNotFoundException("GameSession not found"));
+
+		List<Player> players = gameSession.getPlayers();
+
+
+		AtomicReference<NextTurnResult> nextTurnRef = new AtomicReference<>();
+		AtomicReference<List<Card>> drawnCardsRef = new AtomicReference<>();
+		AtomicReference<Integer> deckSizeRef = new AtomicReference<>();
+		GameState newGameState=gameSessionUtils.updateGameState(gameSession.getGameSessionId(),current->{
+
+			if(!gameEngine.playerHaveToDrawStack(currentPlayer,current)){
+				throw new IllegalStateException("You do not have to draw stack of cards");
+			}
+
+			if(gameEngine.isPlayerFinished(currentPlayer,current)){
+				throw new IllegalStateException("You Are already finished");
+			}
+			if(gameEngine.isPlayerLost(currentPlayer,current)){
+				throw new IllegalStateException("You already lost");
+			}
+			if(!gameEngine.isPlayersTurn(currentPlayer,current)){
+				throw new IllegalStateException("This is not your turn");
+			};
+
+
+			List<Card> drawnCards= gameEngine.drawStackOfCards(currentPlayer,current);
+
+			drawnCardsRef.set(drawnCards);
+			deckSizeRef.set(current.getDeck().size());
+
+			NextTurnResult nextTurnResult=gameEngine.nextTurn(currentPlayer,gameSession,current,0);
+			nextTurnRef.set(nextTurnResult);
+			return current;
+		});
+
+		NextTurnResult nextTurnResult=nextTurnRef.get();
+
+		//itt ha huzunk egy kartyat akkor a kartyahuzo user lassa a kartyat mások nem kapjak meg a tartalmát
+		sendDrawCardNotification(players,currentPlayer,drawnCardsRef.get(),deckSizeRef.get(),newGameState.getPlayedCards().size(),newGameState);
+
+		sendNextTurnNotification(nextTurnResult.nextPlayer(), gameSession.getPlayers(), nextTurnResult.nextSeatIndex());
+		handleIfNextPlayerIsBot(nextTurnResult, gameSession);
+
+
+	}
+
+
 
 	@Transactional
 	@Override
@@ -422,10 +535,6 @@ public class GameSessionService implements IGameSessionService {
 			UserCurrentStatus userStatus=responseMapper.toUserCurrentStatus(user, true);
 			return LeaveGameSessionResponse.builder().userStatus(userStatus).currentRoom(null).managedRoom(null).build();
 		}
-
-
-
-
 	}
 
 	private void sendPlayerLeftNotification(Player leavingPlayer, List<Player> players) {
@@ -467,7 +576,7 @@ public class GameSessionService implements IGameSessionService {
 				.orElseThrow(() -> new EntityNotFoundException("Player not found for this user"));
 	}
 
-	public void sendNextTurnNotification(Player nextPlayer, List<Player> players,int nextSeatIndex){
+	private void sendNextTurnNotification(Player nextPlayer, List<Player> players,int nextSeatIndex){
 		for (Player player : players) {
 			if (!player.getIsBot()) {
 				boolean isCurrentPlayer = player.equals(nextPlayer);
@@ -480,8 +589,29 @@ public class GameSessionService implements IGameSessionService {
 		}
     }
 
-	private void sendPersonalizedGameStateResponse(){
+	private void sendPlayerHasToDrawStack(Player player,Map<Long,Integer> drawStack) {
+		if(!player.getIsBot()){
+			simpMessagingTemplate.convertAndSendToUser(player.getUser().getId().toString(),"/queue/game/draw-stack", DrawStackResponse.builder().drawStack(drawStack).build());
 
+		}
+	}
+
+	private void sendDrawCardNotification(List<Player> players,Player currentPlayer ,List<Card> drawnCards, Integer deckSize,Integer playedCardsSize, GameState newGameState) {
+		for (Player player : players) {
+			if (!player.getIsBot()) {
+				DrawCardResponse personalizedResponse;
+				if(player.getPlayerId().equals(currentPlayer.getPlayerId())){
+					personalizedResponse = responseMapper.toDrawCardResponse(newGameState,drawnCards,player.getPlayerId(),deckSize,playedCardsSize);
+				}else {
+					personalizedResponse = responseMapper.toDrawCardResponse(newGameState,null,player.getPlayerId(),deckSize,playedCardsSize);
+				}
+				simpMessagingTemplate.convertAndSendToUser(
+						player.getUser().getId().toString(),
+						"/queue/game/draw",
+						personalizedResponse
+				);
+			}
+		}
 	}
 
 

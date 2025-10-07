@@ -11,7 +11,7 @@ import org.game.pharaohcardgame.Model.User;
 import java.util.List;
 
 public interface IGameEngine {
-	NextTurnResult nextTurn(Player currentPlayer, GameSession gameSession, GameState gameState);
+	NextTurnResult nextTurn(Player currentPlayer, GameSession gameSession, GameState gameState,Integer skipPlayerCount);
 
 	boolean isPlayersTurn(Player player, GameState gameState);
 
@@ -25,7 +25,8 @@ public interface IGameEngine {
 
 	Boolean checkCardsPlayability(List<CardRequest> playCards, GameState gameState);
 
-	GameState playCards(List<CardRequest> playCards,Player currentPlayer,GameState gameState);
+	void playCards(List<CardRequest> playCards,Player currentPlayer,GameState gameState,GameSession gameSession);
+
 
 	boolean areCardsValid(Player currentPlayer,List<CardRequest> playCards, GameState gameState);
 
@@ -33,5 +34,7 @@ public interface IGameEngine {
 	void handlePlayerLeaving(GameSession gameSession, Player leavingPlayer, User user);
 
 	void handleGamemasterLeaving(GameSession gameSession, Player leavingPlayer);
+
+	List<Card> drawStackOfCards(Player currentPlayer, GameState current);
 }
 

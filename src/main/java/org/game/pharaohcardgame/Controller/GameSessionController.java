@@ -43,7 +43,9 @@ public class GameSessionController {
 	public void playCards(PlayCardsRequest playCardsRequest){
 		gameSessionService.playCards(playCardsRequest);
 	}
-
+	@MessageMapping("/game/draw-stack-of-cards")
+	public void drawStackOfCards(DrawStackOfCardsRequest drawStackOfCardsRequest){
+		gameSessionService.drawStackOfCards(drawStackOfCardsRequest);}
 
 	@PostMapping("/leave")
 	public LeaveGameSessionResponse leaveGameSession(@RequestBody LeaveGameSessionRequest leaveGameSessionRequest) {

@@ -8,12 +8,15 @@ import org.game.pharaohcardgame.Enum.CardRank;
 import org.game.pharaohcardgame.Enum.CardSuit;
 import org.game.pharaohcardgame.Exception.LockAcquisitionException;
 import org.game.pharaohcardgame.Exception.LockInterruptedException;
-import org.game.pharaohcardgame.Exception.VersionMismatchException;
 import org.game.pharaohcardgame.Model.DTO.Response.CardInHandResponse;
+import org.game.pharaohcardgame.Model.DTO.Response.PlayCardResponse;
 import org.game.pharaohcardgame.Model.DTO.Response.PlayerHandResponse;
 import org.game.pharaohcardgame.Model.DTO.ResponseMapper;
+import org.game.pharaohcardgame.Model.GameSession;
+import org.game.pharaohcardgame.Model.Player;
 import org.game.pharaohcardgame.Model.RedisModel.Card;
 import org.game.pharaohcardgame.Model.RedisModel.GameState;
+import org.game.pharaohcardgame.Model.Results.NextTurnResult;
 import org.game.pharaohcardgame.Service.Implementation.CacheService;
 
 import org.springframework.cache.Cache;
@@ -67,6 +70,57 @@ public class GameSessionUtils {
 		}
 
 		log.info("Deleted game state for session: {}", gameSessionId);
+	}
+	@SuppressWarnings("unchecked")
+	public <T> Set<T> getSpecificGameDataTypeSet(String key, GameState gameState) {
+		Object value = gameState.getGameData().get(key);
+
+		if (value == null) {
+			Set<T> newSet = new HashSet<>();
+			gameState.getGameData().put(key, newSet); // vissza a gameState-be
+			return newSet;
+		}
+
+		if (!(value instanceof Set<?>)) {
+			throw new IllegalArgumentException("Value for key '" + key + "' is not a Set!");
+		}
+
+		return (Set<T>) value;
+	}
+	@SuppressWarnings("unchecked")
+	public <K, V> Map<K, V> getSpecificGameDataTypeMap(String key, GameState gameState) {
+		Object value = gameState.getGameData().get(key);
+
+		if (value == null) {
+			Map<K, V> newMap = new HashMap<>();
+			gameState.getGameData().put(key, newMap);
+			return newMap;
+		};
+
+		if (!(value instanceof Map)) {
+			throw new IllegalArgumentException("Value for key '" + key + "' is not a Map!");
+		}
+
+		return (Map<K, V>) value;
+	}
+
+
+	@SuppressWarnings("unchecked")
+	public <T> T getSpecificGameData(String key, GameState gameState, T defaultValue) {
+		Object value = gameState.getGameData().get(key);
+
+		if (value == null) {
+			if (defaultValue != null) {
+				gameState.getGameData().put(key, defaultValue); // vissza a gameState-be
+			}
+			return defaultValue;
+		}
+
+		try {
+			return (T) value;
+		} catch (ClassCastException e) {
+			throw new IllegalArgumentException("Invalid type for key: " + key, e);
+		}
 	}
 
 	//it ez kulon vissza adja a sajat kartyait  ausernek es adatok nelkul a masik userek kartya számát.
@@ -156,4 +210,70 @@ public class GameSessionUtils {
 			}
 		}
 	}
+
+
+	public NextTurnResult calculateNextTurn(Player currentPlayer, GameSession gameSession, GameState gameState, Integer skipPlayerCount) {
+
+		if (skipPlayerCount == null) {
+			skipPlayerCount = 0;
+		}
+
+		List<Player> players = gameSession.getPlayers();
+		List<Integer> seatIndexes = players.stream().map(Player::getSeat).toList();
+
+		Set<Long> finishedPlayers = getSpecificGameDataTypeSet("finishedPlayers", gameState);
+		Set<Long> lostPlayers = getSpecificGameDataTypeSet("lostPlayers", gameState);
+		Set<Long> skippedPlayers = getSpecificGameDataTypeSet("skippedPlayers", gameState); // <-- itt hozzuk létre vagy lekérjük
+
+		int currentSeatPosition = seatIndexes.indexOf(currentPlayer.getSeat());
+		if (currentSeatPosition == -1) {
+			throw new IllegalStateException("Current Player's seat is not found");
+		}
+
+		int nextSeatPosition = currentSeatPosition;
+		Player nextPlayer = null;
+		int nextSeatIndex = -1;
+
+		// Ha skipPlayerCount > 0, itt léptetjük át a játékosokat
+		for (int i = 0; i < skipPlayerCount; i++) {
+			nextSeatPosition = (nextSeatPosition + 1) % seatIndexes.size();
+			final int seatToCheck = seatIndexes.get(nextSeatPosition);
+
+			Player skipped = players.stream()
+					.filter(p -> p.getSeat().equals(seatToCheck))
+					.findFirst()
+					.orElseThrow(() -> new IllegalStateException("Player is not found on the current seat"));
+
+			// Csak akkor adjuk hozzá, ha nem fejezte be és nem vesztett
+			if (!finishedPlayers.contains(skipped.getPlayerId()) && !lostPlayers.contains(skipped.getPlayerId())) {
+				skippedPlayers.add(skipped.getPlayerId()); // <-- ide kerül a skipelt player
+			}
+		}
+
+		// Most találjuk meg a tényleges nextPlayer-t
+		do {
+			nextSeatPosition = (nextSeatPosition + 1) % seatIndexes.size();
+			final int seatToCheck = seatIndexes.get(nextSeatPosition);
+
+			nextPlayer = players.stream()
+					.filter(p -> p.getSeat().equals(seatToCheck))
+					.findFirst()
+					.orElseThrow(() -> new IllegalStateException("Player is not found on the current seat"));
+
+			nextSeatIndex = seatToCheck;
+
+		} while ((finishedPlayers.contains(nextPlayer.getPlayerId()) || lostPlayers.contains(nextPlayer.getPlayerId())) &&
+				nextSeatPosition != currentSeatPosition);
+
+		NextTurnResult nextTurnResult = new NextTurnResult(nextPlayer, nextSeatIndex);
+
+		if (finishedPlayers.contains(nextTurnResult.nextPlayer().getPlayerId())) {
+			throw new IllegalStateException("All players have finished - this should not happen");
+		}
+
+		return nextTurnResult;
+	}
+
+
+
 }

@@ -1,5 +1,6 @@
 package org.game.pharaohcardgame.Model.DTO.Response;
 
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -12,8 +13,12 @@ import java.util.Map;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class PlayerHandResponse {
+public class DrawStackOfCardsResponse {
+
+
+    private Long gameSessionId;
     private Long playerId;
-    private List<CardInHandResponse> ownCards; // saját kártyák teljes adatokkal
+    private List<CardInHandResponse> newCards; // saját kártya
     private Map<Long, Integer> otherPlayersCardCount; // más játékosok kártyaszámai
+    private Integer deckSize;
 }

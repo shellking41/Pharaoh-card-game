@@ -13,6 +13,7 @@ public interface IGameSessionService {
 	void playCards(PlayCardsRequest playCardsRequest);
 	 CurrentTurnResponse getCurrentTurnInfo();
 	void skipTurn(SkipTurnRequest skipTurnRequest);
+	void drawStackOfCards(DrawStackOfCardsRequest drawStackOfCardsRequest);
 
 	LeaveGameSessionResponse leaveGameSession(LeaveGameSessionRequest request);
 }

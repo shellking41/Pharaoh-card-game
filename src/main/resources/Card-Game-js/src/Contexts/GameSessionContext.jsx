@@ -10,11 +10,15 @@ export const GameSessionContextProvider = ({ children }) => {
         playerHand:[],
         playedCards:[],
         gameStatus:"",
+        playedCardsSize:0,
+        deckSize:0,
+        gameData:{}
     });
     const [playerSelf,setPlayerSelf]=useState({
         playerId:null,
         seat:null,
         userId:null,
+
     });
 
     const [turn,setTurn]=useState({
