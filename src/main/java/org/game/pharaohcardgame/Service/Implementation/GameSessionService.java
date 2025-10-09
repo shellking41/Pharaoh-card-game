@@ -5,6 +5,7 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.game.pharaohcardgame.Enum.CardRank;
+import org.game.pharaohcardgame.Enum.CardSuit;
 import org.game.pharaohcardgame.Enum.GameStatus;
 import org.game.pharaohcardgame.Exception.GameSessionNotFoundException;
 import org.game.pharaohcardgame.Exception.PlayerNotFoundException;
@@ -56,6 +57,7 @@ public class GameSessionService implements IGameSessionService {
 
 
 	@Override
+	//todo: még azt kell ebbe beleirni hogy ha a csak egy player van a szobvaba akkor ne lehessen elinditani a metcset
 	public SuccessMessageResponse startGame(GameStartRequest gameStartRequest) {
 		User gamemaster=authenticationService.getAuthenticatedUser();
 
@@ -284,25 +286,42 @@ public class GameSessionService implements IGameSessionService {
 			if(!gameEngine.checkCardsPlayability(playCardsRequest.getPlayCards(),current)){
 				throw new IllegalArgumentException("Card's suit or rank are not matching");
 			};
+			gameEngine.ensureNoDuplicatePlayCards(playCardsRequest.getPlayCards());
 
-
+			CardRequest firstCard=playCardsRequest.getPlayCards().getFirst();
 			//ha kell huznia kartyat akkor nem engedjuk hogy rakjon le kartyat és amikor kell huznia kartyat és akar letenni kartyat de a kartya nem hetes akkor exception
-			if(!playCardsRequest.getPlayCards().getFirst().getRank().equals(CardRank.VII) && gameEngine.playerHaveToDrawStack(currentPlayer,current)){
+			if(!(firstCard.getRank().equals(CardRank.VII) || (firstCard.getRank().equals(CardRank.JACK) && firstCard.getSuit().equals(CardSuit.LEAVES))) && gameEngine.playerHaveToDrawStack(currentPlayer,current)){
 				throw new IllegalStateException("You have to draw stack of cards");
 			}
 
+
 			gameEngine.playCards(playCardsRequest.getPlayCards(),currentPlayer,current,gameSession);
+
+			CardRequest lastCard=playCardsRequest.getPlayCards().getLast();
+
+			//ha over a kard rangja akkor vegye figyelembe azt hogy mire akarja váltani a színt
+			if(lastCard.getRank().equals(CardRank.OVER) && playCardsRequest.getChangeSuitTo()!=null) gameEngine.suitChangedTo(playCardsRequest.getChangeSuitTo(),current);
 
 			//ha a kartya lerakasakor olyan kartyat raktunk le ami skippeli a plajereket akkor az szerint kezdodik el a turn.
 			Set<Long> skippedPlayers = gameSessionUtils.getSpecificGameDataTypeSet("skippedPlayers", current);
-			NextTurnResult nextTurnResult = gameEngine.nextTurn(currentPlayer, gameSession, current,skippedPlayers.size());
-			skippedPlayers.clear();
+			//ha a player égetett akkor ujra jojjon o
+			Long streakPlayerId= gameSessionUtils.getSpecificGameData("streakPlayerId",current,null);
+			NextTurnResult nextTurnResult;
+
+			if(streakPlayerId!=currentPlayer.getPlayerId()){
+				nextTurnResult = gameEngine.nextTurn(currentPlayer, gameSession, current,skippedPlayers.size());
+			}else{
+				//ha egetett a player akkor o kovetkezzen ujra //todo ezt megkell csinalni  majd a bot oldalon is.
+				nextTurnResult= new NextTurnResult(currentPlayer, currentPlayer.getSeat());
+				current.getGameData().remove("streakPlayerId");
+			}
+
 
 			// Mentjük a referenciába, hogy a lambda végén kívül is elérjük
 			nextTurnRef.set(nextTurnResult);
 
 
-			//ha húznia kell a usernek több kartyat akkor arrol értesítjük
+			//ha húznia kell a következő usernek több kartyat akkor arrol értesítjük
 			Map<Long,Integer> drawStack = gameSessionUtils.getSpecificGameDataTypeMap("drawStack", current);
 			if(gameEngine.playerHaveToDrawStack(nextTurnResult.nextPlayer(),current)){
 				//ha kell huznia akkor elkuldjuk mennyit.
@@ -344,6 +363,10 @@ public class GameSessionService implements IGameSessionService {
 				);
 			}
 		}
+		Set<Long> skippedPlayers = gameSessionUtils.getSpecificGameDataTypeSet("skippedPlayers", gameState);
+		sendSkippedPlayersNotification(skippedPlayers,gameSession.getPlayers());
+
+
 
 		sendNextTurnNotification(next.nextPlayer(),gameSession.getPlayers(),next.nextSeatIndex());
 
@@ -550,6 +573,20 @@ public class GameSessionService implements IGameSessionService {
 		}
 
 	}
+	private void sendSkippedPlayersNotification(Set<Long> skippedPlayers, List<Player> players) {
+		for (Player player : players) {
+			if (!player.getIsBot()) {
+				simpMessagingTemplate.convertAndSendToUser(
+						player.getUser().getId().toString(),
+						"/queue/game/skip",
+						SkipPlayersResponse.builder()
+								.SkippedPlayersId(skippedPlayers)
+								.build()
+				);
+			}
+		}
+		skippedPlayers.clear();
+	}
 
 
 	private boolean hasActiveGame(Room room) {
@@ -595,6 +632,8 @@ public class GameSessionService implements IGameSessionService {
 
 		}
 	}
+
+
 
 	private void sendDrawCardNotification(List<Player> players,Player currentPlayer ,List<Card> drawnCards, Integer deckSize,Integer playedCardsSize, GameState newGameState) {
 		for (Player player : players) {

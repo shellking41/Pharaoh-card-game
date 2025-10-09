@@ -1,8 +1,22 @@
 import { useMemo } from 'react'
 
-function useDetermineCardsPlayability(playedCards, ownCards, selectedCards) {
+function useDetermineCardsPlayability(playedCards, ownCards, selectedCards,suitChangedTo) {
     const compareSuitsAndRanks = (firstCard, secondCard) => {
+
+
+
         if (!firstCard || !secondCard) return false;
+        //ha szín váltós kártyát tesz le akkor akármire leteheti
+        if(secondCard.rank=== "OVER") return true;
+        //a fáreóra lelehet tenni mindent
+        if(firstCard.rank==="JACK" && firstCard.suit=== "LEAVES") return true;
+
+        if((secondCard.rank==="JACK" && secondCard.suit==="LEAVES") && firstCard.rank==="VII") return true;
+
+
+        if(suitChangedTo!=null){
+            return secondCard.suit === suitChangedTo;
+        }
         return firstCard.rank === secondCard.rank || firstCard.suit === secondCard.suit;
     };
 
@@ -25,7 +39,7 @@ function useDetermineCardsPlayability(playedCards, ownCards, selectedCards) {
             if (!lastSelectedCard) return ownCards.map(() => false);
             return ownCards.map((c) => compareRanks(lastSelectedCard, c));
         }
-    }, [ownCards, playedCards, selectedCards]);
+    }, [ownCards, playedCards, selectedCards,suitChangedTo]);
 }
 
 export default useDetermineCardsPlayability;

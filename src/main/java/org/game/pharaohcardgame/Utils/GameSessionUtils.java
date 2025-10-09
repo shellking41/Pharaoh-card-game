@@ -234,7 +234,10 @@ public class GameSessionUtils {
 		Player nextPlayer = null;
 		int nextSeatIndex = -1;
 
+		//todo: TALÁN MINDEN MUKODIK
 		// Ha skipPlayerCount > 0, itt léptetjük át a játékosokat
+		//todo: talán nincs gond ha saját magát és skippeli a játékos
+		//todo: csak azzal van a baj ha egy player kiléppett akkor megbolondul
 		for (int i = 0; i < skipPlayerCount; i++) {
 			nextSeatPosition = (nextSeatPosition + 1) % seatIndexes.size();
 			final int seatToCheck = seatIndexes.get(nextSeatPosition);
@@ -246,10 +249,16 @@ public class GameSessionUtils {
 
 			// Csak akkor adjuk hozzá, ha nem fejezte be és nem vesztett
 			if (!finishedPlayers.contains(skipped.getPlayerId()) && !lostPlayers.contains(skipped.getPlayerId())) {
+				//todo: itt valamiert nem skippel senkit amikor pl. a 2. player lerakja a asz és a 3. player mar kiszált akkor a 1. player kezd mert figyeli azt hogy a 3. a finished player és nem jut ide ebbe a ifbe bele
 				skippedPlayers.add(skipped.getPlayerId()); // <-- ide kerül a skipelt player
+			}else{
+				//ha nem tudja beallitani a playert akkor megprobalja beallitani a akovetkezo playert
+				skipPlayerCount++;
 			}
 		}
 
+		//todo: van baj azzal hogy ha mondjuk 3 player van és 4 asz kartyat teszunk le. ezt meg kell oldani
+		//todo: volt baj azzal is amikor a elso player kiszált majd a 3. player lerakott egy ászt akkor nem következett ő ujra hanem a 2. player kovetkezett.
 		// Most találjuk meg a tényleges nextPlayer-t
 		do {
 			nextSeatPosition = (nextSeatPosition + 1) % seatIndexes.size();
@@ -261,9 +270,8 @@ public class GameSessionUtils {
 					.orElseThrow(() -> new IllegalStateException("Player is not found on the current seat"));
 
 			nextSeatIndex = seatToCheck;
-
-		} while ((finishedPlayers.contains(nextPlayer.getPlayerId()) || lostPlayers.contains(nextPlayer.getPlayerId())) &&
-				nextSeatPosition != currentSeatPosition);
+																															//ezt kiszedtem mert volt baj azzal hogy ha befejezte a player a kort kozben az ász kartya végett pon to kovewtkezett volna akkor ez megoldotta
+		} while ((finishedPlayers.contains(nextPlayer.getPlayerId()) || lostPlayers.contains(nextPlayer.getPlayerId())) /*&& nextSeatPosition != currentSeatPosition*/);
 
 		NextTurnResult nextTurnResult = new NextTurnResult(nextPlayer, nextSeatIndex);
 

@@ -3,6 +3,8 @@ package org.game.pharaohcardgame.Utils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.game.pharaohcardgame.Enum.BotDifficulty;
+import org.game.pharaohcardgame.Enum.CardRank;
+import org.game.pharaohcardgame.Enum.CardSuit;
 import org.game.pharaohcardgame.Enum.GameStatus;
 import org.game.pharaohcardgame.Exception.GameSessionNotFoundException;
 import org.game.pharaohcardgame.Exception.PlayerNotFoundException;
@@ -20,12 +22,14 @@ import org.game.pharaohcardgame.Repository.GameSessionRepository;
 import org.game.pharaohcardgame.Repository.PlayerRepository;
 import org.game.pharaohcardgame.Repository.UserRepository;
 import org.game.pharaohcardgame.Utils.SpecialCardLogic.SpecialCardHandler;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
@@ -44,8 +48,9 @@ public class GameEngine implements IGameEngine {
 	private final UserRepository userRepository;
 	private final List<SpecialCardHandler> specialCardHandlers;
 
-	private final int MAXCARDNUMBER = 1;
 
+	@Value("${application.game.Init.STARTER_CARD_NUMBER}")
+	private int STARTER_CARD_NUMBER;
 
 	@Override
 	public NextTurnResult nextTurn(Player currentPlayer, GameSession gameSession, GameState gameState,Integer skipPlayerCount) {
@@ -113,7 +118,7 @@ public class GameEngine implements IGameEngine {
 		List<Card> deck = gameState.getDeck();
 
 		//ha elfogyott a kartya a deckbol akkor itt a logika rá
-		deck = handleIfDeckIsEmpty(deck,gameState);
+		deck = handleIfDeckIsEmpty(deck,gameState,currentPlayer);
 
 		if(!deck.isEmpty()){
 			Map<Long, List<Card>> hands = gameState.getPlayerHands();
@@ -132,7 +137,25 @@ public class GameEngine implements IGameEngine {
 
 			//ha a kartya huzas után nincs a deckben kartya akkor is újra keverjuka a played cardal
 			if(checkNotDrawnCardsNumber(gameState) == 0 ){
+
 				reShuffleCards(gameState);
+				//todo--------------------------------
+				Map<Long,List<Card>> playerHands=gameState.getPlayerHands();
+				//ez azért van hogy ne keruljon bele tobb kartya a pakliba mint amenyinek kéne lennie
+				List<Card> otherPlayersCards = playerHands.entrySet().stream()
+						.filter(entry -> !entry.getKey().equals(currentPlayer.getPlayerId()))
+						.flatMap(entry -> entry.getValue().stream())
+						.toList();
+				int otherPlayersCardsNumber=otherPlayersCards.size();
+
+				List<Card> currentPlayerCards=playerHands.get(currentPlayer.getPlayerId());
+				int currentPlayerCardNumber=currentPlayerCards.size();
+				int playedCardsNumber=gameState.getPlayedCards().size();
+				int deckNumber=gameState.getDeck().size();
+				if(otherPlayersCardsNumber+currentPlayerCardNumber+playedCardsNumber+deckNumber>32){
+					log.error("BAJVAN");
+				}
+				//todo--------------------------------
 			}
 
 			return newHand.getLast();
@@ -143,6 +166,7 @@ public class GameEngine implements IGameEngine {
 
 
 	@Override
+	//todo: valahogy duplikálodott az egyik kártya amikor felhuztam a stacket. A playedCardot is felhuztam, de a playeCard az a helyén maradt
 	public List<Card> drawStackOfCards(Player currentPlayer, GameState gameState) {
 
 		Long currentPlayerId=currentPlayer.getPlayerId();
@@ -184,21 +208,46 @@ public class GameEngine implements IGameEngine {
 	}
 
 	@Override
+	public void suitChangedTo(CardSuit changeSuitTo, GameState gameState) {
+		//ez állitolag elég hogy beállítjuk a gamedataban a színváltást
+		gameSessionUtils.getSpecificGameData("suitChangedTo",gameState,changeSuitTo);
+	}
+
+	@Override
 	public void reShuffleCards(GameState gameState) {
 		List<Card> playedCards = gameState.getPlayedCards();
-		 // nincs mit újrahúzni
 
-		// Készítsünk új listát a "deckbe kerülő" kártyákból
-		List<Card> allExceptLast = new ArrayList<>(playedCards.subList(0, playedCards.size() - 1));
+		if (playedCards == null || playedCards.size() <= 1) {
+			// Nincs mit újrakeverni (0 vagy 1 kártya van)
+			return;
+		}
 
-		// Deckbe állítjuk az új listát
-		gameState.setDeck(allExceptLast);
+		// Az utolsó kártya (tetején lévő) megmarad a playedCards-ban
+		Card topCard = playedCards.getLast();
 
-		// Eltávolítjuk a playedCards-ból
-		playedCards.subList(0, playedCards.size() - 1).clear(); // ez már safe, mert külön listát adtunk a deck-nek
+		// Készítünk egy ÚJ listát a deck-hez (az összes kártya KIVÉVE az utolsó)
+		List<Card> cardsToShuffle = new ArrayList<>();
+		for (int i = 0; i < playedCards.size() - 1; i++) {
+			Card card = playedCards.get(i);
+			// Reset card properties
+			card.setOwnerId(null);
+			card.setPosition(0);
+			cardsToShuffle.add(card);
+		}
 
-		// Shuffle a deck
-		Collections.shuffle(gameState.getDeck());
+		// Shuffle a new deck
+		Collections.shuffle(cardsToShuffle);
+
+		// Beállítjuk a deck-et
+		gameState.setDeck(cardsToShuffle);
+
+		// PlayedCards-ot TELJESEN kiürítjük és csak a felső kártyát hagyjuk benne
+		playedCards.clear();
+		playedCards.add(topCard);
+
+
+		log.info("Reshuffled {} cards into deck for game session {}",
+				cardsToShuffle.size(), gameState.getGameSessionId());
 	}
 
 
@@ -221,6 +270,7 @@ public class GameEngine implements IGameEngine {
 		int currentPlayerCardNumber=currentPlayerCards.size();
 		int playedCardsNumber=gameState.getPlayedCards().size();
 		int deckNumber=gameState.getDeck().size();
+		//todo: itt van olyan baj hogy a frontendrol ketto ughyan olyan kartyat terszunk fel akkor azt nem irj ahibanak mert itt csak a currentPlayerCardNumbert fgigyeli.
 		if(otherPlayersCardsNumber+currentPlayerCardNumber+playedCardsNumber+deckNumber>32){
 			return false;
 		}
@@ -262,6 +312,28 @@ public class GameEngine implements IGameEngine {
 		return true;
 	}
 	@Override
+	public void ensureNoDuplicatePlayCards(List<CardRequest> playCards) {
+		if (playCards == null || playCards.isEmpty()) {
+			return;
+		}
+
+		// suit + rank alapján képezzük az egyedi azonosítót
+		Map<String, Long> countsByCombo = playCards.stream()
+				.map(card -> card.getSuit() + "_" + card.getRank()) // például: "HEARTS_ACE"
+				.collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
+
+		// megkeressük a duplikált kombinációkat
+		List<String> duplicated = countsByCombo.entrySet().stream()
+				.filter(e -> e.getValue() > 1)
+				.map(Map.Entry::getKey)
+				.toList();
+
+		if (!duplicated.isEmpty()) {
+			throw new IllegalArgumentException("Duplicate cards (same suit and rank) in playCards: " + duplicated);
+		}
+	}
+
+	@Override
 	//ez azt ellenorzni hogy lelehete tenni a kártyákat a az adott szimbol és a szamra
 	public Boolean checkCardsPlayability(List<CardRequest> playCards,GameState gameState) {
 		if (playCards == null || playCards.isEmpty()) return false;
@@ -279,7 +351,9 @@ public class GameEngine implements IGameEngine {
 
 		// Első elem csak olvasva — NEM töröljük az eredeti listából
 		CardRequest firstPlayCard = playCards.get(0);
-		if (!compareSuitsAndRanks(currentCard, firstPlayCard)) return false;
+		CardSuit suitChangedTo = gameSessionUtils.getSpecificGameData("suitChangedTo", gameState,null);
+
+		if (!compareSuitsAndRanks(currentCard, firstPlayCard,suitChangedTo,gameState)) return false;
 		currentCard = firstPlayCard;
 
 		for (int i = 1; i < playCards.size(); i++) {
@@ -293,6 +367,7 @@ public class GameEngine implements IGameEngine {
 
 	@Override
 	//leteszi a kartyakat
+	//todo: van baj akkor ha a fareoval blokkolni akarjuk a hetes huztast és még streakelni is akarunk akkor kapok olyat hugy Unexpected handler method invocation error
 	public void playCards(List<CardRequest> playCards,Player currentPlayer,GameState gameState,GameSession gameSession) {
 
 
@@ -329,6 +404,10 @@ public class GameEngine implements IGameEngine {
 
 		if(hand.isEmpty()){
 			handlePlayerEmptyhand(gameState,currentPlayer);
+		}
+		//ha a player éget akkor ezt mentjuk el.
+		if(playCards.size()==4){
+			gameSessionUtils.getSpecificGameData("streakPlayerId",gameState,currentPlayer.getPlayerId());
 		}
 
 		return;
@@ -381,7 +460,7 @@ public class GameEngine implements IGameEngine {
 
 		// Számoljuk, hány játékosnak VAN még <5 lossCount-ja (azaz még nem esett ki)
 		long stillActiveCount = allPlayers.stream()
-				.filter(p -> p.getLossCount() == null || p.getLossCount() < MAXCARDNUMBER)
+				.filter(p -> p.getLossCount() == null || p.getLossCount() < STARTER_CARD_NUMBER)
 				.count();
 
 		// Ha 1 vagy kevesebb aktív játékos maradt, akkor vége a játéknak
@@ -495,7 +574,7 @@ public class GameEngine implements IGameEngine {
 
 
 		Set<Long> newLost = players.stream()
-				.filter(p -> p.getLossCount() == MAXCARDNUMBER)
+				.filter(p -> p.getLossCount() == STARTER_CARD_NUMBER)
 				.map(Player::getPlayerId)
 				.collect(Collectors.toSet());
 
@@ -555,17 +634,18 @@ public class GameEngine implements IGameEngine {
 		// End game state in cache
 		gameSessionUtils.deleteGameState(gameSession.getGameSessionId());
 
-
-
-
-
 	}
+
+
+
 	//leelenorizzuk hogy a playernek kell e huznia kartyat
 	public boolean playerHaveToDrawStack(Player player,GameState gameState){
 		Long playerId= player.getPlayerId();
 		Map<Long,Integer> drawStack = gameSessionUtils.getSpecificGameDataTypeMap("drawStack", gameState);
 		return drawStack.containsKey(playerId);
 	}
+
+
 
 	private Player getFirstPlayer(List<Player> players){
 		 return players.stream()
@@ -576,7 +656,31 @@ public class GameEngine implements IGameEngine {
 		return firstCard.getRank().equals(secondCard.getRank());
 	}
 
-	private Boolean compareSuitsAndRanks(CardRequest firstCard,CardRequest secondCard){
+
+	private Boolean compareSuitsAndRanks(CardRequest firstCard,CardRequest secondCard,CardSuit suitChangedTo,GameState gameState){
+
+
+		//ha szín váltós kártyát tesz le akkor akármire leteheti
+		if(secondCard.getRank()== CardRank.OVER ){
+			gameState.getGameData().remove("suitChangedTo");
+			return true;
+		};
+		//a fáreóra lelehet tenni mindent
+		if(firstCard.getRank()==CardRank.JACK && firstCard.getSuit()== CardSuit.LEAVES) return true;
+
+		//a feraot az osszes hetesre lelehet tenni
+		if((secondCard.getRank()==CardRank.JACK && secondCard.getSuit()== CardSuit.LEAVES) && firstCard.getRank().equals(CardRank.VII)) return true;
+
+		//ha a suit meg lett változatva akkor  azt vegyük figyelembe
+		if(suitChangedTo!=null){
+			if(secondCard.getSuit()==suitChangedTo){
+				gameState.getGameData().remove("suitChangedTo");
+				return true;
+			}else {
+				return false;
+			}
+		}
+
 		return firstCard.getRank().equals(secondCard.getRank()) || firstCard.getSuit().equals(secondCard.getSuit());
 	}
 
@@ -597,7 +701,7 @@ public class GameEngine implements IGameEngine {
 		int[] need = new int[n];
 		int remainingToDeal = 0;
 		for (int i = 0; i < n; i++) {
-			need[i] = Math.max(0, MAXCARDNUMBER - lossCount.get(i));
+			need[i] = Math.max(0, STARTER_CARD_NUMBER - lossCount.get(i));
 			remainingToDeal += need[i];
 		}
 
@@ -636,7 +740,7 @@ public class GameEngine implements IGameEngine {
 		Set<Long> finishedPlayers=gameSessionUtils.getSpecificGameDataTypeSet("lostPlayers",gameState);
 		return finishedPlayers.contains(currentPlayer.getPlayerId());
 	}
-	private List<Card> handleIfDeckIsEmpty(List<Card> deck, GameState gameState) {
+	private List<Card> handleIfDeckIsEmpty(List<Card> deck, GameState gameState,Player currentPlayer) {
 		//todo: ha már tud letenni a bot kartyat akkor kell nekunk olyan  hogy ide teszunk egy custom exceptiont és majd a bot azt elcatcheli  akkor majd ha akarna huzni, de nem tud akkor helyette muszaj letennie valamelyik kartyajat. De ha nem tud letenni egy kartyat sem akkor ne csinajon semmit ebben a körben. Ez azert kell mert ha mar nincs tobb kartya a deckben akkor ne áljon meg a jaték a bot nál
 		if (deck.isEmpty()) {
 			if (gameState.getPlayedCards().size() == 1) {
@@ -646,7 +750,41 @@ public class GameEngine implements IGameEngine {
 				//ez azÉrt kelll mert ha az egyik user felhuzta az utolso kartyat es a played cardban is csak 1 kartya volt, ilyenkor nem kerul a deckbe kartya a következo player mar nem tudott felhuzni kartyat mert ures volt a deck. Ezért muszály neki letenni kartyat.Majd a következo player akarna kartyat huzni de az nem volt megshufflezva és nem kerult bele a frissen letett kartya a deckbe ezért empty maradt a deck. de most ez beleteszi azt a egy frissen letett kartyat a deckbe
 			} else {
 				//todo: ha reshuflezzuk a kartyakat akkor arrol a afrontendnek kuldeni kell infot és elkell kuldeni a decksizet is
+				//todo--------------------------------
+				Map<Long,List<Card>> playerHands=gameState.getPlayerHands();
+				//ez azért van hogy ne keruljon bele tobb kartya a pakliba mint amenyinek kéne lennie
+				List<Card> otherPlayersCards = playerHands.entrySet().stream()
+						.filter(entry -> !entry.getKey().equals(currentPlayer.getPlayerId()))
+						.flatMap(entry -> entry.getValue().stream())
+						.toList();
+				int otherPlayersCardsNumber=otherPlayersCards.size();
+
+				List<Card> currentPlayerCards=playerHands.get(currentPlayer.getPlayerId());
+				int currentPlayerCardNumber=currentPlayerCards.size();
+				int playedCardsNumber=gameState.getPlayedCards().size();
+				int deckNumber=gameState.getDeck().size();
+				if(otherPlayersCardsNumber+currentPlayerCardNumber+playedCardsNumber+deckNumber>32){
+					log.error("BAJVAN");
+				}
+				//todo--------------------------------
 				reShuffleCards(gameState);
+				//todo--------------------------------
+				Map<Long,List<Card>> playerHandss=gameState.getPlayerHands();
+				//ez azért van hogy ne keruljon bele tobb kartya a pakliba mint amenyinek kéne lennie
+				List<Card> otherPlayersCardss = playerHandss.entrySet().stream()
+						.filter(entry -> !entry.getKey().equals(currentPlayer.getPlayerId()))
+						.flatMap(entry -> entry.getValue().stream())
+						.toList();
+				int otherPlayersCardsNumbers=otherPlayersCardss.size();
+
+				List<Card> currentPlayerCardss=playerHandss.get(currentPlayer.getPlayerId());
+				int currentPlayerCardNumbers=currentPlayerCardss.size();
+				int playedCardsNumbers=gameState.getPlayedCards().size();
+				int deckNumbers=gameState.getDeck().size();
+				if(otherPlayersCardsNumbers+currentPlayerCardNumbers+playedCardsNumbers+deckNumbers>32){
+					log.error("BAJVAN");
+				}
+				//todo--------------------------------
 				deck = gameState.getDeck();
 			}
 		}

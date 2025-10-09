@@ -8,7 +8,10 @@ import org.game.pharaohcardgame.Model.Player;
 import org.game.pharaohcardgame.Model.RedisModel.Card;
 import org.game.pharaohcardgame.Model.RedisModel.GameState;
 import org.game.pharaohcardgame.Model.Results.NextTurnResult;
+import org.game.pharaohcardgame.Utils.GameEngine;
 import org.game.pharaohcardgame.Utils.GameSessionUtils;
+import org.game.pharaohcardgame.Utils.IGameEngine;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -20,7 +23,10 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class SevenHandler implements SpecialCardHandler{
     private final GameSessionUtils gameSessionUtils;
-    private static final int DRAW_PER_SEVEN = 3;
+
+    @Value("${application.game.VII.DRAW_PER_SEVEN}")
+    private int DRAW_PER_SEVEN;
+
     @Override
     public boolean applies(List<Card> playedCards) {
         for (Card playedCard: playedCards){
@@ -65,8 +71,6 @@ public class SevenHandler implements SpecialCardHandler{
 
         log.info("Player {} must now draw {} cards (was: current={}, nextBefore={})",
                 nextPlayerId, updated, existingForCurrent, existingForNext);
-
-
 
     }
 }

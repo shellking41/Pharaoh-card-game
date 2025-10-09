@@ -1,5 +1,6 @@
 package org.game.pharaohcardgame.Utils;
 
+import org.game.pharaohcardgame.Enum.CardSuit;
 import org.game.pharaohcardgame.Model.DTO.Request.CardRequest;
 import org.game.pharaohcardgame.Model.GameSession;
 import org.game.pharaohcardgame.Model.Player;
@@ -16,6 +17,7 @@ public interface IGameEngine {
 	boolean isPlayersTurn(Player player, GameState gameState);
 
 	GameState initGame(Long gameSessionId, List<Player> players);
+
 
 	Card drawCard(GameState gameState, Player currentPlayer);
 	void reShuffleCards(GameState gameState);
@@ -36,5 +38,9 @@ public interface IGameEngine {
 	void handleGamemasterLeaving(GameSession gameSession, Player leavingPlayer);
 
 	List<Card> drawStackOfCards(Player currentPlayer, GameState current);
+
+	void suitChangedTo(CardSuit changeSuitTo, GameState gameState);
+
+	void ensureNoDuplicatePlayCards(List<CardRequest> playCards);
 }
 

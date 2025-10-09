@@ -23,11 +23,13 @@ function Game() {
     useSubscribeToTopicByPage({page: "game"})
 
     const [selectedCards, setSelectedCards] = useState([]);
+    const [changeSuitTo,setChangeSuitTo]=useState("");
 
     const isCardsPlayable = useDetermineCardsPlayability(
         gameSession?.playedCards,
         gameSession?.playerHand?.ownCards,
-        selectedCards
+        selectedCards,
+        gameSession?.gameData?.suitChangedTo
     );
 
     useEffect(() => {
@@ -91,8 +93,13 @@ function Game() {
         }));
 
         console.log(playCards);
-        sendMessage("/app/game/play-cards",{playCards,playerId:playerSelf.playerId})
+        sendMessage("/app/game/play-cards", {
+            playCards,
+            playerId: playerSelf.playerId,
+            ...(changeSuitTo ? { changeSuitTo } : {})
+        });
         setSelectedCards([]);
+        setChangeSuitTo(null)
     }
     const leaveGame=async ()=>{
         console.log("asd")
@@ -166,6 +173,14 @@ function Game() {
 
             {turn?.yourTurn && <div>Te vagy</div>}
             {turn?.currentSeat && <div>Current seat: {turn.currentSeat}</div>}
+            {selectedCards[selectedCards.length-1]?.rank==="OVER" &&
+                <div>
+                    <button onClick={()=>setChangeSuitTo("HEARTS")} style={{backgroundColor:"red",width:"50px",height:"50px"}}></button>
+                    <button onClick={()=>setChangeSuitTo("ACORNS")} style={{backgroundColor:"orange",width:"50px",height:"50px"}}></button>
+                    <button onClick={()=>setChangeSuitTo("BELLS")} style={{backgroundColor:"brown",width:"50px",height:"50px"}}></button>
+                    <button onClick={()=>setChangeSuitTo("LEAVES")} style={{backgroundColor:"green",width:"50px",height:"50px"}}></button>
+                </div>
+            }
             {gameSession?.gameData?.drawStack?.[playerSelf.playerId] && <button onClick={drawStackOfCards}>have to draw : {gameSession?.gameData?.drawStack[playerSelf.playerId]}</button>}
             <button onClick={() => leaveGame()}>Leave</button>
         </>
