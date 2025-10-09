@@ -139,23 +139,7 @@ public class GameEngine implements IGameEngine {
 			if(checkNotDrawnCardsNumber(gameState) == 0 ){
 
 				reShuffleCards(gameState);
-				//todo--------------------------------
-				Map<Long,List<Card>> playerHands=gameState.getPlayerHands();
-				//ez azért van hogy ne keruljon bele tobb kartya a pakliba mint amenyinek kéne lennie
-				List<Card> otherPlayersCards = playerHands.entrySet().stream()
-						.filter(entry -> !entry.getKey().equals(currentPlayer.getPlayerId()))
-						.flatMap(entry -> entry.getValue().stream())
-						.toList();
-				int otherPlayersCardsNumber=otherPlayersCards.size();
 
-				List<Card> currentPlayerCards=playerHands.get(currentPlayer.getPlayerId());
-				int currentPlayerCardNumber=currentPlayerCards.size();
-				int playedCardsNumber=gameState.getPlayedCards().size();
-				int deckNumber=gameState.getDeck().size();
-				if(otherPlayersCardsNumber+currentPlayerCardNumber+playedCardsNumber+deckNumber>32){
-					log.error("BAJVAN");
-				}
-				//todo--------------------------------
 			}
 
 			return newHand.getLast();
@@ -750,41 +734,9 @@ public class GameEngine implements IGameEngine {
 				//ez azÉrt kelll mert ha az egyik user felhuzta az utolso kartyat es a played cardban is csak 1 kartya volt, ilyenkor nem kerul a deckbe kartya a következo player mar nem tudott felhuzni kartyat mert ures volt a deck. Ezért muszály neki letenni kartyat.Majd a következo player akarna kartyat huzni de az nem volt megshufflezva és nem kerult bele a frissen letett kartya a deckbe ezért empty maradt a deck. de most ez beleteszi azt a egy frissen letett kartyat a deckbe
 			} else {
 				//todo: ha reshuflezzuk a kartyakat akkor arrol a afrontendnek kuldeni kell infot és elkell kuldeni a decksizet is
-				//todo--------------------------------
-				Map<Long,List<Card>> playerHands=gameState.getPlayerHands();
-				//ez azért van hogy ne keruljon bele tobb kartya a pakliba mint amenyinek kéne lennie
-				List<Card> otherPlayersCards = playerHands.entrySet().stream()
-						.filter(entry -> !entry.getKey().equals(currentPlayer.getPlayerId()))
-						.flatMap(entry -> entry.getValue().stream())
-						.toList();
-				int otherPlayersCardsNumber=otherPlayersCards.size();
 
-				List<Card> currentPlayerCards=playerHands.get(currentPlayer.getPlayerId());
-				int currentPlayerCardNumber=currentPlayerCards.size();
-				int playedCardsNumber=gameState.getPlayedCards().size();
-				int deckNumber=gameState.getDeck().size();
-				if(otherPlayersCardsNumber+currentPlayerCardNumber+playedCardsNumber+deckNumber>32){
-					log.error("BAJVAN");
-				}
-				//todo--------------------------------
 				reShuffleCards(gameState);
-				//todo--------------------------------
-				Map<Long,List<Card>> playerHandss=gameState.getPlayerHands();
-				//ez azért van hogy ne keruljon bele tobb kartya a pakliba mint amenyinek kéne lennie
-				List<Card> otherPlayersCardss = playerHandss.entrySet().stream()
-						.filter(entry -> !entry.getKey().equals(currentPlayer.getPlayerId()))
-						.flatMap(entry -> entry.getValue().stream())
-						.toList();
-				int otherPlayersCardsNumbers=otherPlayersCardss.size();
 
-				List<Card> currentPlayerCardss=playerHandss.get(currentPlayer.getPlayerId());
-				int currentPlayerCardNumbers=currentPlayerCardss.size();
-				int playedCardsNumbers=gameState.getPlayedCards().size();
-				int deckNumbers=gameState.getDeck().size();
-				if(otherPlayersCardsNumbers+currentPlayerCardNumbers+playedCardsNumbers+deckNumbers>32){
-					log.error("BAJVAN");
-				}
-				//todo--------------------------------
 				deck = gameState.getDeck();
 			}
 		}
