@@ -4,6 +4,7 @@ import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.game.pharaohcardgame.Enum.BotDifficulty;
 import org.game.pharaohcardgame.Enum.CardRank;
 import org.game.pharaohcardgame.Enum.CardSuit;
 import org.game.pharaohcardgame.Enum.GameStatus;
@@ -25,6 +26,7 @@ import org.game.pharaohcardgame.Service.IGameSessionService;
 import org.game.pharaohcardgame.Utils.BotLogic;
 import org.game.pharaohcardgame.Utils.GameEngine;
 import org.game.pharaohcardgame.Utils.GameSessionUtils;
+import org.game.pharaohcardgame.Utils.NotificationHelpers;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -54,6 +56,7 @@ public class GameSessionService implements IGameSessionService {
 	private final PlayerRepository playerRepository;
 	private final CacheManager cacheManager;
 	private final BotLogic botLogic;
+	private final NotificationHelpers notificationHelpers;
 
 
 	@Override
@@ -234,14 +237,13 @@ public class GameSessionService implements IGameSessionService {
 		});
 
 		//itt ha huzunk egy kartyat akkor a kartyahuzo user lassa a kartyat mások nem kapjak meg a tartalmát
-		sendDrawCardNotification(players,currentPlayer, Collections.singletonList(drawnCardRef.get()),deckSizeRef.get(),newGameState.getPlayedCards().size(),newGameState);
-
+		notificationHelpers.sendDrawCardNotification(players,currentPlayer, Collections.singletonList(drawnCardRef.get()),deckSizeRef.get(),newGameState.getPlayedCards().size(),newGameState);
 
 		//kikuldjuk a kovetkezo kor notifkációit
 		NextTurnResult next = nextTurnRef.get();
-		sendNextTurnNotification(next.nextPlayer(),players, next.nextSeatIndex());
+		notificationHelpers.sendNextTurnNotification(next.nextPlayer(),players, next.nextSeatIndex());
 
-		handleIfNextPlayerIsBot(next,gameSession);
+		handleIfNextPlayerIsBot(next,gameSession,newGameState);
 		return null;
 	}
 
@@ -298,7 +300,6 @@ public class GameSessionService implements IGameSessionService {
 			gameEngine.playCards(playCardsRequest.getPlayCards(),currentPlayer,current,gameSession);
 
 			CardRequest lastCard=playCardsRequest.getPlayCards().getLast();
-
 			//ha over a kard rangja akkor vegye figyelembe azt hogy mire akarja váltani a színt
 			if(lastCard.getRank().equals(CardRank.OVER) && playCardsRequest.getChangeSuitTo()!=null) gameEngine.suitChangedTo(playCardsRequest.getChangeSuitTo(),current);
 
@@ -311,68 +312,41 @@ public class GameSessionService implements IGameSessionService {
 			if(streakPlayerId!=currentPlayer.getPlayerId()){
 				nextTurnResult = gameEngine.nextTurn(currentPlayer, gameSession, current,skippedPlayers.size());
 			}else{
-				//ha egetett a player akkor o kovetkezzen ujra //todo ezt megkell csinalni  majd a bot oldalon is.
+				//ha egetett a player akkor o kovetkezzen ujra
 				nextTurnResult= new NextTurnResult(currentPlayer, currentPlayer.getSeat());
 				current.getGameData().remove("streakPlayerId");
 			}
 
-
 			// Mentjük a referenciába, hogy a lambda végén kívül is elérjük
 			nextTurnRef.set(nextTurnResult);
-
-
-			//ha húznia kell a következő usernek több kartyat akkor arrol értesítjük
-			Map<Long,Integer> drawStack = gameSessionUtils.getSpecificGameDataTypeMap("drawStack", current);
-			if(gameEngine.playerHaveToDrawStack(nextTurnResult.nextPlayer(),current)){
-				//ha kell huznia akkor elkuldjuk mennyit.
-				sendPlayerHasToDrawStack(nextTurnResult.nextPlayer(),drawStack);
-			}
-
 			return current;
 		});
 
 		NextTurnResult next = nextTurnRef.get();
 
-
+		//ha húznia kell a következő usernek több kartyat akkor arrol értesítjük
+		Map<Long,Integer> drawStack = gameSessionUtils.getSpecificGameDataTypeMap("drawStack", gameState);
+		if(gameEngine.playerHaveToDrawStack(next.nextPlayer(),gameState)){
+			//ha kell huznia akkor elkuldjuk mennyit.
+			notificationHelpers.sendPlayerHasToDrawStack(next.nextPlayer(),drawStack);
+		}
 		List<PlayedCardResponse> playedCardResponses= responseMapper.toPlayedCardResponseListFromCardRequests(playCardsRequest.getPlayCards());
 
-		int playedCardsSize = gameState.getPlayedCards().size();
-
 		//ez azt kuldi el hogy milyen kartyak vannak már letéve
-		Map<String, Object> payload = new HashMap<>();
-		payload.put("playedCards", playedCardResponses);
-		payload.put("playedCardsSize", playedCardsSize);
-
-		simpMessagingTemplate.convertAndSend(
-				"/topic/game/" + gameSession.getGameSessionId() + "/played-cards",
-				payload
-		);
+		notificationHelpers.sendPlayedCardsNotification(gameSession.getGameSessionId(),gameState,playedCardResponses);
 
 		//ez elkuldi a frissitett player handet hogy a játszo usernek a kezebol eltunnjon a kartya es mas playerek is lassak ezt
-		for (Player player : gameSession.getPlayers()) {
-			if (!player.getIsBot()) {
-				PlayerHandResponse playerHand = gameSessionUtils.getPlayerHand(
-						gameSession.getGameSessionId(), player.getPlayerId());
+		notificationHelpers.sendPlayCardsNotification(gameSession,gameState);
 
-
-
-				simpMessagingTemplate.convertAndSendToUser(
-						player.getUser().getId().toString(),
-						"/queue/game/play-cards",
-						PlayCardResponse.builder().playerHand(playerHand).gameData(gameState.getGameData()).build()
-				);
-			}
-		}
 		Set<Long> skippedPlayers = gameSessionUtils.getSpecificGameDataTypeSet("skippedPlayers", gameState);
-		sendSkippedPlayersNotification(skippedPlayers,gameSession.getPlayers());
+		notificationHelpers.sendSkippedPlayersNotification(skippedPlayers,gameSession.getPlayers());
 
+		notificationHelpers.sendNextTurnNotification(next.nextPlayer(),gameSession.getPlayers(),next.nextSeatIndex());
 
-
-		sendNextTurnNotification(next.nextPlayer(),gameSession.getPlayers(),next.nextSeatIndex());
-
-		handleIfNextPlayerIsBot(next,gameSession);
+		handleIfNextPlayerIsBot(next,gameSession,gameState);
 
 	}
+
 
 
 
@@ -422,22 +396,10 @@ public class GameSessionService implements IGameSessionService {
 		NextTurnResult next = nextTurnRef.get();
 
 		// Notify all players about the skip
-		for (Player player : gameSession.getPlayers()) {
-			if (!player.getIsBot()) {
-				simpMessagingTemplate.convertAndSendToUser(
-						player.getUser().getId().toString(),
-						"/queue/game/skip",
-						SkipTurnResponse.builder()
-								.skippedPlayerId(currentPlayer.getPlayerId())
-								.skippedPlayerSeat(currentPlayer.getSeat())
-								.deckSize(gameState.getDeck().size())
-								.build()
-				);
-			}
-		}
+		notificationHelpers.sendTurnSkipped(gameSession,currentPlayer,gameState);
 
-		sendNextTurnNotification(next.nextPlayer(), gameSession.getPlayers(), next.nextSeatIndex());
-		handleIfNextPlayerIsBot(next, gameSession);
+		notificationHelpers.sendNextTurnNotification(next.nextPlayer(), gameSession.getPlayers(), next.nextSeatIndex());
+		handleIfNextPlayerIsBot(next, gameSession,gameState);
 	}
 
 	@Override
@@ -484,10 +446,10 @@ public class GameSessionService implements IGameSessionService {
 		NextTurnResult nextTurnResult=nextTurnRef.get();
 
 		//itt ha huzunk egy kartyat akkor a kartyahuzo user lassa a kartyat mások nem kapjak meg a tartalmát
-		sendDrawCardNotification(players,currentPlayer,drawnCardsRef.get(),deckSizeRef.get(),newGameState.getPlayedCards().size(),newGameState);
+		notificationHelpers.sendDrawCardNotification(players,currentPlayer,drawnCardsRef.get(),deckSizeRef.get(),newGameState.getPlayedCards().size(),newGameState);
 
-		sendNextTurnNotification(nextTurnResult.nextPlayer(), gameSession.getPlayers(), nextTurnResult.nextSeatIndex());
-		handleIfNextPlayerIsBot(nextTurnResult, gameSession);
+		notificationHelpers.sendNextTurnNotification(nextTurnResult.nextPlayer(), gameSession.getPlayers(), nextTurnResult.nextSeatIndex());
+		handleIfNextPlayerIsBot(nextTurnResult, gameSession,newGameState);
 
 
 	}
@@ -549,61 +511,52 @@ public class GameSessionService implements IGameSessionService {
 			if(gameState.getCurrentPlayerId().equals(leavingPlayer.getPlayerId())){
 				//ide a bot logikát
 				NextTurnResult nextTurnResult=botLogic.botDrawTest(gameSession,leavingPlayer);
-				sendNextTurnNotification(nextTurnResult.nextPlayer(),gameSession.getPlayers(), nextTurnResult.nextSeatIndex());
+				notificationHelpers.sendNextTurnNotification(nextTurnResult.nextPlayer(),gameSession.getPlayers(), nextTurnResult.nextSeatIndex());
 
-				handleIfNextPlayerIsBot(nextTurnResult,gameSession);
+				handleIfNextPlayerIsBot(nextTurnResult,gameSession,gameState);
 			}
 
-			sendPlayerLeftNotification(leavingPlayer,gameSession.getPlayers());
+			notificationHelpers.sendPlayerLeftNotification(leavingPlayer,gameSession.getPlayers());
 			UserCurrentStatus userStatus=responseMapper.toUserCurrentStatus(user, true);
 			return LeaveGameSessionResponse.builder().userStatus(userStatus).currentRoom(null).managedRoom(null).build();
 		}
 	}
 
-	private void sendPlayerLeftNotification(Player leavingPlayer, List<Player> players) {
+	private void handleIfNextPlayerIsBot(NextTurnResult next, GameSession gameSession,GameState gameState){
+		//ha a nextplayer bot akkor elinditjuk a abot logikat majd a next turnrol értesitjuk a usereket,
+		if(next.nextPlayer().getIsBot()){
+			Player currentPlayer=next.nextPlayer();
+			//addig indítgassuk el a bot logikat amig a kovetkezo user nem bot
+			while (currentPlayer.getIsBot()){
 
-		for (Player player : players) {
-			if (!player.getIsBot() || !player.getPlayerId().equals(leavingPlayer.getPlayerId())) {
-				simpMessagingTemplate.convertAndSendToUser(
-						player.getUser().getId().toString(),
-						"/queue/game/player-left",
-						PlayerLeftResponse.builder().newName(leavingPlayer.getBot().getName()).playerId(leavingPlayer.getPlayerId()).build()
-				);
+				NextTurnResult nextTurnResult;
+				//csak akkor lépjen a player bot ha még játékban van
+				if(!gameEngine.isPlayerFinished(currentPlayer,gameState) || !gameEngine.isPlayerLost(currentPlayer,gameState)){
+					if(currentPlayer.getBotDifficulty()== BotDifficulty.EASY){
+						nextTurnResult=botLogic.easyBotPlays(gameState,gameSession,currentPlayer);
+					}else{
+						nextTurnResult=botLogic.botDrawTest(gameSession,currentPlayer);
+					}
+				}else{//ha már a player nem jatszik akkor a kovetkezŐ player kovetkezzen
+					nextTurnResult=gameEngine.nextTurn(currentPlayer,gameSession,gameState,0);
+				}
+				notificationHelpers.sendNextTurnNotification(nextTurnResult.nextPlayer(),gameSession.getPlayers(), nextTurnResult.nextSeatIndex());
+				currentPlayer=nextTurnResult.nextPlayer();
+				//ha húznia kell a következő usernek több kartyat akkor arrol értesítjük
+				Map<Long,Integer> drawStack = gameSessionUtils.getSpecificGameDataTypeMap("drawStack", gameState);
+				if(gameEngine.playerHaveToDrawStack(next.nextPlayer(),gameState)){
+					//ha kell huznia akkor elkuldjuk mennyit.
+					notificationHelpers.sendPlayerHasToDrawStack(next.nextPlayer(),drawStack);
+				}
+				Set<Long> skippedPlayers = gameSessionUtils.getSpecificGameDataTypeSet("skippedPlayers", gameState);
+				notificationHelpers.sendSkippedPlayersNotification(skippedPlayers,gameSession.getPlayers());
 			}
-		}
 
-	}
-	private void sendSkippedPlayersNotification(Set<Long> skippedPlayers, List<Player> players) {
-		for (Player player : players) {
-			if (!player.getIsBot()) {
-				simpMessagingTemplate.convertAndSendToUser(
-						player.getUser().getId().toString(),
-						"/queue/game/skip",
-						SkipPlayersResponse.builder()
-								.SkippedPlayersId(skippedPlayers)
-								.build()
-				);
-			}
 		}
-		skippedPlayers.clear();
 	}
-
 
 	private boolean hasActiveGame(Room room) {
 		return gameSessionRepository.existsByRoomAndGameStatus(room, GameStatus.IN_PROGRESS);
-	}
-	private void handleIfNextPlayerIsBot(NextTurnResult next,GameSession gameSession){
-		//ha a nextplayer bot akkor elinditjuk a abot logikat majd a next turnrol értesitjuk a usereket,
-		if(next.nextPlayer().getIsBot()){
-			Player nextPlayer=next.nextPlayer();
-			//addig indítgassuk el a bot logikat amig a kovetkezo user nem bot
-			while (nextPlayer.getIsBot()){
-				NextTurnResult nextTurnResult=botLogic.botDrawTest(gameSession,nextPlayer);
-				sendNextTurnNotification(nextTurnResult.nextPlayer(),gameSession.getPlayers(), nextTurnResult.nextSeatIndex());
-				nextPlayer=nextTurnResult.nextPlayer();
-			}
-
-		}
 	}
 	private Long getPlayerIdFromUserAndGameSession(User user, GameSession gameSession) {
 		return gameSession.getPlayers().stream()
@@ -611,46 +564,6 @@ public class GameSessionService implements IGameSessionService {
 				.map(Player::getPlayerId)
 				.findFirst()
 				.orElseThrow(() -> new EntityNotFoundException("Player not found for this user"));
-	}
-
-	private void sendNextTurnNotification(Player nextPlayer, List<Player> players,int nextSeatIndex){
-		for (Player player : players) {
-			if (!player.getIsBot()) {
-				boolean isCurrentPlayer = player.equals(nextPlayer);
-                simpMessagingTemplate.convertAndSendToUser(
-						player.getUser().getId().toString(),
-                        "/queue/game/turn",
-                        NextTurnResponse.builder().isYourTurn(isCurrentPlayer).currentSeat(nextSeatIndex).build()
-                );
-			}
-		}
-    }
-
-	private void sendPlayerHasToDrawStack(Player player,Map<Long,Integer> drawStack) {
-		if(!player.getIsBot()){
-			simpMessagingTemplate.convertAndSendToUser(player.getUser().getId().toString(),"/queue/game/draw-stack", DrawStackResponse.builder().drawStack(drawStack).build());
-
-		}
-	}
-
-
-
-	private void sendDrawCardNotification(List<Player> players,Player currentPlayer ,List<Card> drawnCards, Integer deckSize,Integer playedCardsSize, GameState newGameState) {
-		for (Player player : players) {
-			if (!player.getIsBot()) {
-				DrawCardResponse personalizedResponse;
-				if(player.getPlayerId().equals(currentPlayer.getPlayerId())){
-					personalizedResponse = responseMapper.toDrawCardResponse(newGameState,drawnCards,player.getPlayerId(),deckSize,playedCardsSize);
-				}else {
-					personalizedResponse = responseMapper.toDrawCardResponse(newGameState,null,player.getPlayerId(),deckSize,playedCardsSize);
-				}
-				simpMessagingTemplate.convertAndSendToUser(
-						player.getUser().getId().toString(),
-						"/queue/game/draw",
-						personalizedResponse
-				);
-			}
-		}
 	}
 
 

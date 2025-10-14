@@ -150,7 +150,6 @@ public class GameEngine implements IGameEngine {
 
 
 	@Override
-	//todo: valahogy duplikálodott az egyik kártya amikor felhuztam a stacket. A playedCardot is felhuztam, de a playeCard az a helyén maradt
 	public List<Card> drawStackOfCards(Player currentPlayer, GameState gameState) {
 
 		Long currentPlayerId=currentPlayer.getPlayerId();
@@ -194,7 +193,7 @@ public class GameEngine implements IGameEngine {
 	@Override
 	public void suitChangedTo(CardSuit changeSuitTo, GameState gameState) {
 		//ez állitolag elég hogy beállítjuk a gamedataban a színváltást
-		gameSessionUtils.getSpecificGameData("suitChangedTo",gameState,changeSuitTo);
+		gameState.getGameData().put("suitChangedTo", changeSuitTo);
 	}
 
 	@Override
@@ -238,6 +237,8 @@ public class GameEngine implements IGameEngine {
 	public int checkNotDrawnCardsNumber(GameState gameState) {
 		return gameState.getDeck().size();
 	}
+
+
 
 	@Override
 	public boolean areCardsValid(Player currentPlayer,List<CardRequest> playCardsR, GameState gameState) {
@@ -335,6 +336,7 @@ public class GameEngine implements IGameEngine {
 
 		// Első elem csak olvasva — NEM töröljük az eredeti listából
 		CardRequest firstPlayCard = playCards.get(0);
+
 		CardSuit suitChangedTo = gameSessionUtils.getSpecificGameData("suitChangedTo", gameState,null);
 
 		if (!compareSuitsAndRanks(currentCard, firstPlayCard,suitChangedTo,gameState)) return false;
@@ -393,6 +395,9 @@ public class GameEngine implements IGameEngine {
 		if(playCards.size()==4){
 			gameSessionUtils.getSpecificGameData("streakPlayerId",gameState,currentPlayer.getPlayerId());
 		}
+		//ha volt changetto akkor az most már nem kell mert már a player letette a kartyait
+		CardSuit suitChangedTo=gameSessionUtils.getSpecificGameData("suitChangedTo",gameState,null);
+		if(suitChangedTo!=null)gameState.getGameData().remove("suitChangedTo");
 
 		return;
 	}
@@ -569,12 +574,8 @@ public class GameEngine implements IGameEngine {
 		dealInitialCards(gameState,lossCounts );
 
 		//nem kell beállítanunk hogy ki kezdje a kovetkezo kort mert a nextturnben az utoljára lépett user utáni player fogja inditani a kört
-
-
-
-
-
-		//todo: (opcionális) reseteljük a version-t, vagy bármilyen round-specific mezőt itt
+		//todo: ezzel az a baj hogy ha botokkal játszom és én léptem ki utoljara és a botnak kellene kezdenie, de nem kezd mert nem indul eé a logikaja,
+		//todo: és akkor is gond van ezzel ha két bot egymassal jatszik akkor a kovetkezo player akkor is lehet bot
 	}
 
 	@Override
@@ -646,7 +647,6 @@ public class GameEngine implements IGameEngine {
 
 		//ha szín váltós kártyát tesz le akkor akármire leteheti
 		if(secondCard.getRank()== CardRank.OVER ){
-			gameState.getGameData().remove("suitChangedTo");
 			return true;
 		};
 		//a fáreóra lelehet tenni mindent
@@ -658,7 +658,6 @@ public class GameEngine implements IGameEngine {
 		//ha a suit meg lett változatva akkor  azt vegyük figyelembe
 		if(suitChangedTo!=null){
 			if(secondCard.getSuit()==suitChangedTo){
-				gameState.getGameData().remove("suitChangedTo");
 				return true;
 			}else {
 				return false;
