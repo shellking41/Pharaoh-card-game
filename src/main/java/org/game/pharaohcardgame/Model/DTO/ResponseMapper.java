@@ -5,6 +5,7 @@ import org.game.pharaohcardgame.Model.DTO.Request.CardRequest;
 import org.game.pharaohcardgame.Model.DTO.Response.*;
 import org.game.pharaohcardgame.Model.RedisModel.Card;
 import org.game.pharaohcardgame.Model.RedisModel.GameState;
+import org.game.pharaohcardgame.Utils.GameSessionUtils;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -13,7 +14,6 @@ import java.util.stream.Collectors;
 
 @Component
 public class ResponseMapper {
-
 
 	// User mappings
 	public UserInfoResponse toUserInfoResponse(User user) {
@@ -167,18 +167,35 @@ public class ResponseMapper {
 	}
 
 
-	public List<PlayerStatusResponse> toPlayerStatusResponseList(List<Player> players) {
+	public List<PlayerStatusResponse> toPlayerStatusResponseList(List<Player> players,GameState gameState) {
 		return players.stream()
-				.map(this::toPlayerStatusResponse)
+				.map(p->toPlayerStatusResponse(p,gameState))
 				.toList();
 	}
 
-	public PlayerStatusResponse toPlayerStatusResponse(Player player) {
+	public PlayerStatusResponse toPlayerStatusResponse(Player player,GameState gameState) {
+
+		Object raw = gameState.getGameData().get("lossCount");
+		Map<Object, Object> map = (Map<Object, Object>) raw;
+		Integer loss;
+		// Első próbálkozás: Long kulcs
+		Object val = map.get(player.getPlayerId());
+
+		// Ha nincs Long kulcs alatt, próbáljuk String kulccsal (JSON/Redis esetén gyakori)
+		if (val == null) {
+			val = map.get(String.valueOf(player.getPlayerId()));
+		}
+
+		if (val instanceof Number) {
+			loss= ((Number) val).intValue();
+		}else{
+			loss=0;
+		}
 		return PlayerStatusResponse.builder()
 				.seat(player.getSeat())
 				.playerId(player.getPlayerId())
 				.isBot(player.getIsBot())
-				.lossCount(player.getLossCount())
+				.lossCount(loss)
 				.playerName(player.getUser()!=null?player.getUser().getName():player.getBot().getName())
 				.userId(player.getUser() != null ? player.getUser().getId() : null)
 				.botDifficulty(player.getBotDifficulty())
@@ -190,7 +207,7 @@ public class ResponseMapper {
 	public GameSessionResponse toGameSessionResponse(GameSession gameSession, List<Player> players, PlayerHandResponse playerHand, List<PlayedCardResponse> playedCards, GameState gameState) {
 		return GameSessionResponse.builder()
 				.gameSessionId(gameSession.getGameSessionId())
-				.players(toPlayerStatusResponseList(gameSession.getPlayers()))
+				.players(toPlayerStatusResponseList(players,gameState))
 				.playerHand(playerHand)
 				.playedCards(playedCards)
 				.deckSize(gameState.getDeck().size())
@@ -269,4 +286,6 @@ public class ResponseMapper {
 				.playedCardsSize(playedCardsSize)
 				.build();
 	}
+
+
 }

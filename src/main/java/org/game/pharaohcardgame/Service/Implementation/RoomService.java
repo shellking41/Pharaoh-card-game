@@ -310,9 +310,8 @@ public class RoomService implements IRoomService {
 
     @Override
     @Transactional
-    public UserCurrentStatus leaveRoom(LeaveRequest leaveRequest) {
+    public UserCurrentStatus leaveRoom(LeaveRequest leaveRequest,User user) {
 
-        User user = authenticationService.getAuthenticatedUser();
 
         //cache evict
         Cache cache = cacheManager.getCache("userStatus");

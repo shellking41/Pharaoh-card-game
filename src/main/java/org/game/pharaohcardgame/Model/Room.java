@@ -1,10 +1,7 @@
 package org.game.pharaohcardgame.Model;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -15,11 +12,14 @@ import java.util.List;
 @Entity
 @Table
 @Builder
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 
 public class Room {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @EqualsAndHashCode.Include
+
     private Long roomId;
 
     private String name;

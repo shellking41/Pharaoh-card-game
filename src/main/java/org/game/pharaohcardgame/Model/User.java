@@ -1,12 +1,9 @@
 package org.game.pharaohcardgame.Model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import lombok.*;
 import org.game.pharaohcardgame.Enum.Role;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -21,9 +18,12 @@ import java.util.List;
 @Entity
 @Table(name="user_entity")
 @Builder
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
+
 public class User implements UserDetails {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @EqualsAndHashCode.Include
     private Long id;
 
     @Column(nullable = false,unique = true)
@@ -41,18 +41,26 @@ public class User implements UserDetails {
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
+    @ToString.Exclude
+    @JsonIgnore
     private List<Player> userPlayers=new ArrayList<>();
 
     // Egy user több szobának is lehet a gamemastere
     @OneToMany(mappedBy = "gamemaster")
     @Builder.Default
+    @ToString.Exclude
+    @JsonIgnore
     private List<Room> managedRooms = new ArrayList<>();
 
     @OneToMany(mappedBy = "sender", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default  // Ez fontos a Lombok Builder-hez!
+    @ToString.Exclude
+    @JsonIgnore
     private List<Message> messages = new ArrayList<>();
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL,orphanRemoval = true)
+    @ToString.Exclude
+    @JsonIgnore
     private List<Tokens> tokens;
 
     @Override

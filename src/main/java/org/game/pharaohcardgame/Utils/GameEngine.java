@@ -39,13 +39,9 @@ public class GameEngine implements IGameEngine {
 
 
 	private final GameSessionUtils gameSessionUtils;
-	private final SimpMessagingTemplate simpMessagingTemplate;
 	private final EntityMapper entityMapper;
-	private final GameSessionRepository gameSessionRepository;
 	private final ResponseMapper responseMapper;
-	private final PlayerRepository playerRepository;
 	private final CacheManager cacheManager;
-	private final UserRepository userRepository;
 	private final List<SpecialCardHandler> specialCardHandlers;
 
 
@@ -83,7 +79,6 @@ public class GameEngine implements IGameEngine {
 				throw new IllegalStateException("Game already initialized for session " + gameSessionId);
 			}
 
-
 			// Üres kezek inicializálása
 			players.forEach(player ->
 					playerHands.put(player.getPlayerId(), new ArrayList<>()));
@@ -99,17 +94,21 @@ public class GameEngine implements IGameEngine {
 					.version(0L)
 					.build();
 
+			// Inicializáljuk a lossCount map-et
+			Map<Long, Integer> lossCountMap=gameSessionUtils.getSpecificGameDataTypeMap("lossCount",gameState);
+			players.forEach(player -> lossCountMap.put(player.getPlayerId(), 0));
+
 
 			Card firstCard = gameState.getDeck().getFirst();
-
 			gameState.getPlayedCards().add(firstCard);
-
 			gameState.setDeck(new ArrayList<>(gameState.getDeck().subList(1, gameState.getDeck().size())));
 
-			List<Integer>lossCounts=players.stream().map(Player::getLossCount).toList();
-			return dealInitialCards(gameState,lossCounts );
-		});
+			List<Integer> lossCounts = players.stream()
+					.map(player -> lossCountMap.get(player.getPlayerId()))
+					.toList();
 
+			return dealInitialCards(gameState, lossCounts);
+		});
 	}
 
 	@Override
@@ -365,7 +364,13 @@ public class GameEngine implements IGameEngine {
 
 		//elveszi a playertol a kartyakat
 		List<Card> hand = gameState.getPlayerHands().get(currentPlayer.getPlayerId());
-		hand.removeAll(incoming);
+		// Gyűjtsük össze az eltávolítandó cardId-kat
+		Set<String> incomingCardIds = incoming.stream()
+				.map(Card::getCardId)
+				.collect(Collectors.toSet());
+
+		// Távolítsuk el a kártyákat cardId alapján
+		hand.removeIf(card -> incomingCardIds.contains(card.getCardId()));
 
 		//a positionokat ujra vissza alakitja 1,2,3-ra, nem marad meg pl a postion igy : 2,3,5
 		for (int i = 0; i < hand.size(); i++) {
@@ -388,8 +393,9 @@ public class GameEngine implements IGameEngine {
 		//leteszi a kartyat
 		gameState.getPlayedCards().addAll(incoming);
 
+		//todo: ez repository-t modositja, ennek nem kéne a gameenginebe lennie
 		if(hand.isEmpty()){
-			handlePlayerEmptyhand(gameState,currentPlayer);
+			handlePlayerEmptyhand(gameState,currentPlayer,gameSession);
 		}
 		//ha a player éget akkor ezt mentjuk el.
 		if(playCards.size()==4){
@@ -406,7 +412,7 @@ public class GameEngine implements IGameEngine {
 
 	@Override
 	//ha ures a keze akkor már nem kell lépnie és az adot kort nyerte,de még a jatek folytatódik
-	public void handlePlayerEmptyhand(GameState gameState,Player player){
+	public void handlePlayerEmptyhand(GameState gameState,Player player,GameSession gameSession){
 		// Játékos kiszáll az adott körből - már nem játszik tovább ebben a körben
 		Set<Long> finishedPlayers = gameSessionUtils.getSpecificGameDataTypeSet("finishedPlayers",gameState);
 
@@ -416,81 +422,69 @@ public class GameEngine implements IGameEngine {
 		log.info("Player {} finished the round (empty hand)", player.getPlayerId());
 
 		// Ellenőrizzük, hány játékos van még játékban
-		List<Player> activePlayers = getActivePlayers(gameState);
+		List<Player> activePlayers = getActivePlayers(gameState,gameSession);
 
 		if (activePlayers.size() == 1) {
 			// Csak egy játékos maradt - ő a vesztes
 			Player lastPlayer = activePlayers.get(0);
 			handleRoundEnd(gameState, lastPlayer);
-			if(!isGameEnded(gameState)){
+			if(!isGameEnded(gameState,gameSession)){
 				// Új kör indítása
-				startNewRound(gameState);
+				startNewRound(gameState,gameSession);
 			}else{
 				gameFinished(gameState);
 			}
 		}
 	}
 
-	private boolean isGameEnded(GameState gameState) {
-		Long sessionId = gameState.getGameSessionId();
-		if (sessionId == null) {
-			throw new IllegalArgumentException("GameState has no gameSessionId");
-		}
-
-		// Lekérjük a GameSession-t
-		GameSession gameSession = gameSessionRepository.findByIdWithPlayers(sessionId)
-				.orElseThrow(() -> new GameSessionNotFoundException("GameSession not found: " + sessionId));
-
+	private boolean isGameEnded(GameState gameState,GameSession gameSession) {
 		// Az összes játékos a sessionből
 		List<Player> allPlayers = gameSession.getPlayers();
 		if (allPlayers == null || allPlayers.isEmpty()) {
-			return true; // nincs játékos — tekinthetjük befejezettnek
+			return true;
 		}
 
-		// Számoljuk, hány játékosnak VAN még <5 lossCount-ja (azaz még nem esett ki)
+		// A lossCount map lekérése a gameState-ből
+		Map<Long, Integer> lossCountMap = gameSessionUtils.getSpecificGameDataTypeMap("lossCount", gameState);
+
+		// Számoljuk, hány játékosnak VAN még <5 lossCount-ja
 		long stillActiveCount = allPlayers.stream()
-				.filter(p -> p.getLossCount() == null || p.getLossCount() < STARTER_CARD_NUMBER)
+				.filter(p -> {
+					Integer lossCount = lossCountMap.getOrDefault(p.getPlayerId(), 0);
+					return lossCount < STARTER_CARD_NUMBER;
+				})
 				.count();
 
 		// Ha 1 vagy kevesebb aktív játékos maradt, akkor vége a játéknak
 		return stillActiveCount <= 1;
 	}
 
-	private List<Player> getActivePlayers(GameState gameState) {
+	private List<Player> getActivePlayers(GameState gameState,GameSession gameSession) {
 
 		Set<Long> finishedPlayers = gameSessionUtils.getSpecificGameDataTypeSet("finishedPlayers",gameState);
 
-		return gameState.getPlayerHands().entrySet().stream()
-				.filter(entry -> !finishedPlayers.contains(entry.getKey()))
-				.filter(entry -> !entry.getValue().isEmpty()) // Van még kártyája
-				.map(entry -> {
-					// Itt Player objektumot kellene visszaadni
-					// Ehhez szükség van a Player repository-ra vagy a GameSession-re
-					return playerRepository.findById(entry.getKey())
-							.orElseThrow(() -> new IllegalStateException("Player not found: " + entry.getKey()));
-				})
-				.collect(Collectors.toList());
+		return gameSession.getPlayers().stream().filter(p->!finishedPlayers.contains(p.getPlayerId())).toList();
+
+
 	}
 
 	private void handleRoundEnd(GameState gameState, Player lastPlayer) {
-		// Az utolsó játékos veszít - növeljük a loss count-ját
-		lastPlayer.setLossCount(lastPlayer.getLossCount() + 1);
-		playerRepository.save(lastPlayer);
+		// Az utolsó játékos veszít - növeljük a loss count-ját a gameData-ban
+		Map<Long, Integer> lossCountMap = gameSessionUtils.getSpecificGameDataTypeMap("lossCount", gameState);
+		Integer currentLossCount = lossCountMap.getOrDefault(lastPlayer.getPlayerId(), 0);
+		lossCountMap.put(lastPlayer.getPlayerId(), currentLossCount + 1);
 
 		log.info("Round ended. Player {} lost (loss count: {})",
-				lastPlayer.getPlayerId(), lastPlayer.getLossCount());
+				lastPlayer.getPlayerId(), currentLossCount + 1);
 
 		// Tisztítsuk meg a finished players setet a következő körre
 		gameState.getGameData().remove("finishedPlayers");
-
-		// Itt értesítheted a játékosokat a kör végéről
-		//notifyRoundEnd(gameState, lastPlayer);
 
 
 	}
 
 	@Override
-	public void startNewRound(GameState gameState) {
+	public void startNewRound(GameState gameState,GameSession gameSession) {
 		// Készítsük el az új, tiszta deck-et
 		List<Card> newDeck = new ArrayList<>();
 
@@ -527,14 +521,6 @@ public class GameEngine implements IGameEngine {
 		//  Töröljük a playerHands map-et
 		gameState.getPlayerHands().clear();
 
-		Long sessionId = gameState.getGameSessionId();
-		if (sessionId == null) {
-			throw new IllegalArgumentException("GameState has no gameSessionId");
-		}
-
-		// Lekérjük a GameSession-t
-		GameSession gameSession = gameSessionRepository.findByIdWithPlayers(sessionId)
-				.orElseThrow(() -> new GameSessionNotFoundException("GameSession not found: " + sessionId));
 		List <Player> players=gameSession.getPlayers();
 		//initializaljuk a player handset
 		if (players == null) {
@@ -556,14 +542,18 @@ public class GameEngine implements IGameEngine {
 		gameState.getPlayedCards().add(firstCard);
 		gameState.setDeck(new ArrayList<>(gameState.getDeck().subList(1, gameState.getDeck().size())));
 
-		List<Integer>lossCounts=players.stream().map(Player::getLossCount).toList();
+		// LossCount lekérése a gameData-ból
+		Map<Long, Integer> lossCountMap = gameSessionUtils.getSpecificGameDataTypeMap("lossCount", gameState);
+		List<Integer> lossCounts = players.stream()
+				.map(p -> lossCountMap.getOrDefault(p.getPlayerId(), 0))
+				.toList();
 
 		//lecheckeljuk hogy ki vesztett már es beleteszzuk a gamedataba
 		Set<Long> lostPlayers = gameSessionUtils.getSpecificGameDataTypeSet("lostPlayers",gameState);
 
 
 		Set<Long> newLost = players.stream()
-				.filter(p -> p.getLossCount() == STARTER_CARD_NUMBER)
+				.filter(p -> lossCountMap.getOrDefault(p.getPlayerId(), 0) == STARTER_CARD_NUMBER)
 				.map(Player::getPlayerId)
 				.collect(Collectors.toSet());
 
@@ -582,45 +572,6 @@ public class GameEngine implements IGameEngine {
 	public void gameFinished(GameState gameState) {
 		return;
 	}
-
-
-	@Override
-	//todo: még megkell oldalni azt hogy mitortenyen ha a user akkor lepki amikor o van soron, mert ha ő van soron és kilép akkor a helyére érkezett bot nem csinal semmit még és megálhat a játék
-	public void handlePlayerLeaving(GameSession gameSession, Player leavingPlayer, User user) {
-		//a userplayer lecserelese erre a botra
-		Bot newBot=Bot.builder()
-				.name(user.getName()+"-bot")
-				.room(user.getCurrentRoom())
-				.botPlayer(leavingPlayer)
-				.difficulty(BotDifficulty.MEDIUM)
-				.build();
-
-		leavingPlayer.setBot(newBot);
-		leavingPlayer.setBotDifficulty(newBot.getDifficulty());
-		leavingPlayer.setUser(null);
-		leavingPlayer.setIsBot(true);
-		playerRepository.save(leavingPlayer);
-
-		user.setCurrentRoom(null);
-
-		userRepository.save(user);
-
-		Cache cache=cacheManager.getCache("userStatus");
-		if (cache != null) {
-			cache.evict("userStatus_" + user.getId());
-		}
-	}
-	@Override
-	public void handleGamemasterLeaving(GameSession gameSession, Player leavingPlayer) {
-		// End the game session
-		gameSession.setGameStatus(GameStatus.FINISHED);
-		gameSessionRepository.save(gameSession);
-
-		// End game state in cache
-		gameSessionUtils.deleteGameState(gameSession.getGameSessionId());
-
-	}
-
 
 
 	//leelenorizzuk hogy a playernek kell e huznia kartyat

@@ -39,8 +39,6 @@ public class Player {
 
 	@NotNull
 	private Integer seat;
-	@Builder.Default
-	private Integer lossCount=0;
 
 	@Enumerated(EnumType.STRING)
 	private BotDifficulty botDifficulty;

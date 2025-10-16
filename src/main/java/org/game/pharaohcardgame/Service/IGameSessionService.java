@@ -5,6 +5,7 @@ import org.game.pharaohcardgame.Model.DTO.Response.CurrentTurnResponse;
 import org.game.pharaohcardgame.Model.DTO.Response.GameSessionResponse;
 import org.game.pharaohcardgame.Model.DTO.Response.LeaveGameSessionResponse;
 import org.game.pharaohcardgame.Model.DTO.Response.SuccessMessageResponse;
+import org.game.pharaohcardgame.Model.User;
 
 public interface IGameSessionService {
 	SuccessMessageResponse startGame(GameStartRequest gameStartRequest);
@@ -15,5 +16,5 @@ public interface IGameSessionService {
 	void skipTurn(SkipTurnRequest skipTurnRequest);
 	void drawStackOfCards(DrawStackOfCardsRequest drawStackOfCardsRequest);
 
-	LeaveGameSessionResponse leaveGameSession(LeaveGameSessionRequest request);
+	LeaveGameSessionResponse leaveGameSession(LeaveGameSessionRequest request, User user);
 }

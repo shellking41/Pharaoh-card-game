@@ -18,10 +18,7 @@ import org.game.pharaohcardgame.Model.DTO.ResponseMapper;
 import org.game.pharaohcardgame.Model.RedisModel.Card;
 import org.game.pharaohcardgame.Model.RedisModel.GameState;
 import org.game.pharaohcardgame.Model.Results.NextTurnResult;
-import org.game.pharaohcardgame.Repository.BotRepository;
-import org.game.pharaohcardgame.Repository.GameSessionRepository;
-import org.game.pharaohcardgame.Repository.PlayerRepository;
-import org.game.pharaohcardgame.Repository.RoomRepository;
+import org.game.pharaohcardgame.Repository.*;
 import org.game.pharaohcardgame.Service.IGameSessionService;
 import org.game.pharaohcardgame.Utils.BotLogic;
 import org.game.pharaohcardgame.Utils.GameEngine;
@@ -57,6 +54,7 @@ public class GameSessionService implements IGameSessionService {
 	private final CacheManager cacheManager;
 	private final BotLogic botLogic;
 	private final NotificationHelpers notificationHelpers;
+	private final UserRepository userRepository;
 
 
 	@Override
@@ -458,8 +456,8 @@ public class GameSessionService implements IGameSessionService {
 
 	@Transactional
 	@Override
-	public LeaveGameSessionResponse leaveGameSession(LeaveGameSessionRequest request) {
-		User user = authenticationService.getAuthenticatedUser();
+	public LeaveGameSessionResponse leaveGameSession(LeaveGameSessionRequest request,User user) {
+
 
 		// Get the game session
 		GameSession gameSession = gameSessionRepository.findByIdWithPlayers(request.getGameSessionId())
@@ -482,7 +480,7 @@ public class GameSessionService implements IGameSessionService {
 		}
 
 		if(isGamemaster){
-			gameEngine.handleGamemasterLeaving(gameSession, leavingPlayer);
+			handleGamemasterLeaving(gameSession);
 			// Notify all players that game has ended
 			for (Player player : gameSession.getPlayers()) {
 				if (!player.getIsBot()) {
@@ -503,15 +501,14 @@ public class GameSessionService implements IGameSessionService {
 			return LeaveGameSessionResponse.builder().userStatus(userStatus).currentRoom(currentRoom).managedRoom(managedRoom).build();
 		}else {
 			//todo: még értesiteni kell a playereket hogy valaki kilepett es egy bot vette át a helyet
-			gameEngine.handlePlayerLeaving(gameSession,leavingPlayer,user);
+			handlePlayerLeaving(gameSession,leavingPlayer,user);
 
 			//ha a user akkor lép ki amikor ő van soron akkor a bottal rögtön lépnünk kell
 			GameState gameState = gameSessionUtils.getGameState(gameSession.getGameSessionId());
 
 			if(gameState.getCurrentPlayerId().equals(leavingPlayer.getPlayerId())){
 				//ide a bot logikát
-				NextTurnResult nextTurnResult=botLogic.botDrawTest(gameSession,leavingPlayer);
-				notificationHelpers.sendNextTurnNotification(nextTurnResult.nextPlayer(),gameSession.getPlayers(), nextTurnResult.nextSeatIndex());
+				NextTurnResult nextTurnResult=new NextTurnResult(leavingPlayer, leavingPlayer.getSeat());
 
 				handleIfNextPlayerIsBot(nextTurnResult,gameSession,gameState);
 			}
@@ -522,6 +519,43 @@ public class GameSessionService implements IGameSessionService {
 		}
 	}
 
+
+	private void handlePlayerLeaving(GameSession gameSession, Player leavingPlayer, User user) {
+		//a userplayer lecserelese erre a botra
+		Bot newBot=Bot.builder()
+				.name(user.getName()+"-bot")
+				.room(user.getCurrentRoom())
+				.botPlayer(leavingPlayer)
+				.difficulty(BotDifficulty.MEDIUM)
+				.build();
+
+		leavingPlayer.setBot(newBot);
+		leavingPlayer.setBotDifficulty(newBot.getDifficulty());
+		leavingPlayer.setUser(null);
+		leavingPlayer.setIsBot(true);
+		playerRepository.save(leavingPlayer);
+
+		user.setCurrentRoom(null);
+
+		userRepository.save(user);
+
+		Cache cache=cacheManager.getCache("userStatus");
+		if (cache != null) {
+			cache.evict("userStatus_" + user.getId());
+		}
+	}
+	public void handleGamemasterLeaving(GameSession gameSession) {
+		// End the game session
+		gameSession.setGameStatus(GameStatus.FINISHED);
+		gameSessionRepository.save(gameSession);
+
+		// End game state in cache
+		gameSessionUtils.deleteGameState(gameSession.getGameSessionId());
+
+	}
+	//todo: amikor a bot nyert akkor valamiert nem volt elkuldve a playedCards amikor uj kor kezdodott
+	//todo: A montecarlo tul lassu es ilyen 60-50% os esélyek vannak ami nem nagyon nagy elteres
+	//todo: amikor a bot nyert es a first playedcard 7es lett akkor kell huznom 3mat.
 	private void handleIfNextPlayerIsBot(NextTurnResult next, GameSession gameSession,GameState gameState){
 		//ha a nextplayer bot akkor elinditjuk a abot logikat majd a next turnrol értesitjuk a usereket,
 		if(next.nextPlayer().getIsBot()){
@@ -533,9 +567,10 @@ public class GameSessionService implements IGameSessionService {
 				//csak akkor lépjen a player bot ha még játékban van
 				if(!gameEngine.isPlayerFinished(currentPlayer,gameState) || !gameEngine.isPlayerLost(currentPlayer,gameState)){
 					if(currentPlayer.getBotDifficulty()== BotDifficulty.EASY){
-						nextTurnResult=botLogic.easyBotPlays(gameState,gameSession,currentPlayer);
+						nextTurnResult=botLogic.botPlays(gameState,gameSession,currentPlayer);
 					}else{
-						nextTurnResult=botLogic.botDrawTest(gameSession,currentPlayer);
+						//ha return null akkor huzni kell kartyat.
+						nextTurnResult=botLogic.botPlays(gameState,gameSession,currentPlayer);
 					}
 				}else{//ha már a player nem jatszik akkor a kovetkezŐ player kovetkezzen
 					nextTurnResult=gameEngine.nextTurn(currentPlayer,gameSession,gameState,0);

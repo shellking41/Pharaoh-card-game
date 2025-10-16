@@ -1,16 +1,23 @@
 package org.game.pharaohcardgame.Controller;
 
 
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.game.pharaohcardgame.Authentication.UserPrincipal;
 import org.game.pharaohcardgame.Model.DTO.Request.*;
 import org.game.pharaohcardgame.Model.DTO.Response.CurrentTurnResponse;
 import org.game.pharaohcardgame.Model.DTO.Response.GameSessionResponse;
 import org.game.pharaohcardgame.Model.DTO.Response.LeaveGameSessionResponse;
 import org.game.pharaohcardgame.Model.DTO.Response.SuccessMessageResponse;
+import org.game.pharaohcardgame.Model.User;
+import org.game.pharaohcardgame.Repository.UserRepository;
+import org.game.pharaohcardgame.Service.Implementation.AuthenticationService;
 import org.game.pharaohcardgame.Service.Implementation.GameSessionService;
 import org.springframework.messaging.handler.annotation.MessageExceptionHandler;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.simp.annotation.SendToUser;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,6 +28,8 @@ import org.springframework.web.bind.annotation.*;
 public class GameSessionController {
 
 	private final GameSessionService gameSessionService;
+	private final AuthenticationService authenticationService;
+	private final UserRepository userRepository;
 
 	@PostMapping("/start")
 	public SuccessMessageResponse StartGame(@RequestBody GameStartRequest gameStartRequest){
@@ -49,7 +58,13 @@ public class GameSessionController {
 
 	@PostMapping("/leave")
 	public LeaveGameSessionResponse leaveGameSession(@RequestBody LeaveGameSessionRequest leaveGameSessionRequest) {
-			return gameSessionService.leaveGameSession(leaveGameSessionRequest);
+		Authentication authentication= SecurityContextHolder.getContext().getAuthentication();
+
+		Long id = ((UserPrincipal) authentication.getPrincipal()).getUserId();
+		User user= userRepository.findById(id)
+				.orElseThrow(()->new EntityNotFoundException("User not found"));
+
+		return gameSessionService.leaveGameSession(leaveGameSessionRequest,user);
 
 	}
 	@MessageMapping("/game/skip")

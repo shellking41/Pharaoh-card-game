@@ -4,6 +4,7 @@ import org.game.pharaohcardgame.Model.DTO.Request.*;
 import org.game.pharaohcardgame.Model.DTO.Response.CurrentAndManagedRoomResponse;
 import org.game.pharaohcardgame.Model.DTO.Response.MinimalRoomResponse;
 import org.game.pharaohcardgame.Model.DTO.Response.UserCurrentStatus;
+import org.game.pharaohcardgame.Model.User;
 import org.springframework.data.domain.Page;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 
@@ -23,7 +24,7 @@ public interface IRoomService {
 
 	MinimalRoomResponse createRoom(RoomCreationRequest createRoomRequest, StompHeaderAccessor accessor);
 
-	UserCurrentStatus leaveRoom(LeaveRequest leaveRequest);
+	UserCurrentStatus leaveRoom(LeaveRequest leaveRequest, User user);
 
 	CompletableFuture<CurrentAndManagedRoomResponse> currentRoomAndManagedRoomStatus(CurrentAndManagedRoomRequest currentAndManagedRoomRequest);
 

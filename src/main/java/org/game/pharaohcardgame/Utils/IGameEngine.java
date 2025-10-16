@@ -21,9 +21,9 @@ public interface IGameEngine {
 
 	Card drawCard(GameState gameState, Player currentPlayer);
 	void reShuffleCards(GameState gameState);
-	void  startNewRound(GameState gameState);
+	void  startNewRound(GameState gameState,GameSession gameSession);
 	void gameFinished(GameState gameState);
-	 void handlePlayerEmptyhand(GameState gameState,Player player);
+	 void handlePlayerEmptyhand(GameState gameState,Player player,GameSession gameSession);
 
 	Boolean checkCardsPlayability(List<CardRequest> playCards, GameState gameState);
 
@@ -31,11 +31,6 @@ public interface IGameEngine {
 
 
 	boolean areCardsValid(Player currentPlayer,List<CardRequest> playCards, GameState gameState);
-
-
-	void handlePlayerLeaving(GameSession gameSession, Player leavingPlayer, User user);
-
-	void handleGamemasterLeaving(GameSession gameSession, Player leavingPlayer);
 
 	List<Card> drawStackOfCards(Player currentPlayer, GameState current);
 
