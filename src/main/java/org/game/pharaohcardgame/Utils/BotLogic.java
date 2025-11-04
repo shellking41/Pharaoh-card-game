@@ -16,6 +16,7 @@ import org.game.pharaohcardgame.Model.Player;
 import org.game.pharaohcardgame.Model.RedisModel.Card;
 import org.game.pharaohcardgame.Model.RedisModel.GameState;
 import org.game.pharaohcardgame.Model.Results.NextTurnResult;
+import org.game.pharaohcardgame.Repository.GameSessionRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
@@ -42,6 +43,7 @@ public class BotLogic implements IBotLogic{
 	private final RequestMapper requestMapper;
 	private final NotificationHelpers notificationHelpers;
 	private final ThreadPoolTaskScheduler taskScheduler;
+	private final GameSessionRepository gameSessionRepository;
 
 	@Value("${application.game.BOT.THINK_TIME_Ms}")
 	private int BOT_THINK_TIME_Ms;
@@ -674,15 +676,19 @@ public class BotLogic implements IBotLogic{
 					nextTurnResult = botPlays(gameState, gameSession, currentPlayer);
 				}
 
+
 				// új gameState után
 				gameState = gameSessionUtils.getGameState(gameSession.getGameSessionId());
-
+				//ha vége a jateknak akkor toroljuk a gamestatust es ertesitjuk a playereket
+				if(gameState.getStatus().equals(GameStatus.FINISHED)){
+					gameSession.setGameStatus(GameStatus.FINISHED);
+					gameSessionRepository.save(gameSession);
+					gameSessionUtils.deleteGameState(gameSession.getGameSessionId());
+					notificationHelpers.sendGameEnded(gameSession,"Game is finished");
+					return;
+				}
 				Boolean roundEnded = (Boolean) gameState.getGameData().getOrDefault("roundEnded", false);
 				if (roundEnded) {
-					if (gameEngine.isGameEnded(gameState, gameSession)) {
-						log.info("Game ended! Stopping bot loop");
-						return;
-					}
 
 					log.info("Bot {} finished the round, starting new round", currentPlayer.getPlayerId());
 

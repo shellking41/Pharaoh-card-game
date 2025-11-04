@@ -569,7 +569,8 @@ public class GameEngine implements IGameEngine {
 
 	@Override
 	public void gameFinished(GameState gameState) {
-		return;
+		gameState.setStatus(GameStatus.FINISHED);
+
 	}
 
 	public NextTurnResult determineWhoWillStartTheRound(GameSession gameSession, GameState gameState) {
