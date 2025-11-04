@@ -181,7 +181,7 @@ public class GameSessionUtils {
 		ReentrantLock lock = locks.computeIfAbsent(cacheKey, k -> new ReentrantLock());
 		boolean locked = false;
 		try {
-			locked = lock.tryLock(10, TimeUnit.SECONDS);
+			locked = lock.tryLock(30, TimeUnit.SECONDS);
 			if (!locked) {
 				throw new LockAcquisitionException("Failed to acquire lock");
 			}

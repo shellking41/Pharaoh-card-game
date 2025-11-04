@@ -60,6 +60,7 @@ public class WebsocketController {
     @MessageExceptionHandler
     @SendToUser("/queue/errors")
     public String handleException(Exception ex) {
+        log.error(ex.getMessage());
         return ex.getMessage();
     }
 }

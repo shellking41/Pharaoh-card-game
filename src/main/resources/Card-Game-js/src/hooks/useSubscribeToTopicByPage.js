@@ -323,7 +323,8 @@ function UseSubscribeToTopicByPage({page, currentRoomId}) {
         };
     }, [page,
         currentRoomId,
-        userCurrentStatus.authenticated, subscribe]);
+        userCurrentStatus.authenticated,  gameSession?.gameSessionId,
+        playerSelf?.playerId,subscribe]);
 }
 
 export default UseSubscribeToTopicByPage

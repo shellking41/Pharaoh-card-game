@@ -2,13 +2,10 @@ package org.game.pharaohcardgame.Utils;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.game.pharaohcardgame.Enum.BotDifficulty;
 import org.game.pharaohcardgame.Enum.CardRank;
 import org.game.pharaohcardgame.Enum.CardSuit;
 import org.game.pharaohcardgame.Enum.GameStatus;
-import org.game.pharaohcardgame.Exception.GameSessionNotFoundException;
 import org.game.pharaohcardgame.Exception.PlayerNotFoundException;
-import org.game.pharaohcardgame.Model.Bot;
 import org.game.pharaohcardgame.Model.DTO.EntityMapper;
 import org.game.pharaohcardgame.Model.DTO.Request.CardRequest;
 import org.game.pharaohcardgame.Model.DTO.ResponseMapper;
@@ -17,15 +14,9 @@ import org.game.pharaohcardgame.Model.Player;
 import org.game.pharaohcardgame.Model.RedisModel.Card;
 import org.game.pharaohcardgame.Model.RedisModel.GameState;
 import org.game.pharaohcardgame.Model.Results.NextTurnResult;
-import org.game.pharaohcardgame.Model.User;
-import org.game.pharaohcardgame.Repository.GameSessionRepository;
-import org.game.pharaohcardgame.Repository.PlayerRepository;
-import org.game.pharaohcardgame.Repository.UserRepository;
 import org.game.pharaohcardgame.Utils.SpecialCardLogic.SpecialCardHandler;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
@@ -353,6 +344,7 @@ public class GameEngine implements IGameEngine {
 	@Override
 	//leteszi a kartyakat
 	//todo: van baj akkor ha a fareoval blokkolni akarjuk a hetes huztast és még streakelni is akarunk akkor kapok olyat hugy Unexpected handler method invocation error
+	//todo: VAN OLYAN BAJ HOGY HA MAR KOVETKEZO KOR JON ES  HUZATNI AKKAROK A BOTTAL KARTYAT AKKOR A BOT NEM HUZZA FEL ES UJRA ÉN KOVETKEZEM. ES CSAK AKKOR HUZZA FEL HA MAR CSINALTAM UJRA VALKAMIT. VALAMIERT TELJESEN KISKIPPELEM A BOTOKAT. EZ CSAK AKKOR JON ELO HA VAGY A CSAK KETTEN VAGYUNKA  ABOTTAL VAGY(?) HOGY FRISSEN KEZDOTOTT UJRA A KOR ES MEGKAKAROM HUZATNI
 	public void playCards(List<CardRequest> playCards,Player currentPlayer,GameState gameState,GameSession gameSession) {
 
 
@@ -393,7 +385,7 @@ public class GameEngine implements IGameEngine {
 		//leteszi a kartyat
 		gameState.getPlayedCards().addAll(incoming);
 
-		//todo: ez repository-t modositja, ennek nem kéne a gameenginebe lennie
+
 		if(hand.isEmpty()){
 			handlePlayerEmptyhand(gameState,currentPlayer,gameSession);
 		}
@@ -437,7 +429,7 @@ public class GameEngine implements IGameEngine {
 		}
 	}
 
-	private boolean isGameEnded(GameState gameState,GameSession gameSession) {
+	public boolean isGameEnded(GameState gameState,GameSession gameSession) {
 		// Az összes játékos a sessionből
 		List<Player> allPlayers = gameSession.getPlayers();
 		if (allPlayers == null || allPlayers.isEmpty()) {
@@ -459,15 +451,16 @@ public class GameEngine implements IGameEngine {
 		return stillActiveCount <= 1;
 	}
 
-	private List<Player> getActivePlayers(GameState gameState,GameSession gameSession) {
+	public List<Player> getActivePlayers(GameState gameState, GameSession gameSession) {
+		Set<Long> finishedPlayers = gameSessionUtils.getSpecificGameDataTypeSet("finishedPlayers", gameState);
+		Set<Long> lostPlayers = gameSessionUtils.getSpecificGameDataTypeSet("lostPlayers", gameState);
 
-		Set<Long> finishedPlayers = gameSessionUtils.getSpecificGameDataTypeSet("finishedPlayers",gameState);
-
-		return gameSession.getPlayers().stream().filter(p->!finishedPlayers.contains(p.getPlayerId())).toList();
-
-
+		return gameSession.getPlayers().stream()
+				.filter(p -> !finishedPlayers.contains(p.getPlayerId()) &&
+						!lostPlayers.contains(p.getPlayerId()))
+				.toList();
 	}
-
+	//todo: amikor a mar egy bot kiesett a jatekbol es azoota lejatszottunk megegy kort akkor valamiért a régen kiesett player kapta a losscount novelest
 	private void handleRoundEnd(GameState gameState, Player lastPlayer) {
 		// Az utolsó játékos veszít - növeljük a loss count-ját a gameData-ban
 		Map<Long, Integer> lossCountMap = gameSessionUtils.getSpecificGameDataTypeMap("lossCount", gameState);
@@ -480,10 +473,12 @@ public class GameEngine implements IGameEngine {
 		// Tisztítsuk meg a finished players setet a következő körre
 		gameState.getGameData().remove("finishedPlayers");
 
+		gameState.getGameData().put("roundEnded",true);
 
 	}
 
 	@Override
+
 	public void startNewRound(GameState gameState,GameSession gameSession) {
 		// Készítsük el az új, tiszta deck-et
 		List<Card> newDeck = new ArrayList<>();
@@ -563,14 +558,31 @@ public class GameEngine implements IGameEngine {
 
 		dealInitialCards(gameState,lossCounts );
 
-		//nem kell beállítanunk hogy ki kezdje a kovetkezo kort mert a nextturnben az utoljára lépett user utáni player fogja inditani a kört
-		//todo: ezzel az a baj hogy ha botokkal játszom és én léptem ki utoljara és a botnak kellene kezdenie, de nem kezd mert nem indul eé a logikaja,
-		//todo: és akkor is gond van ezzel ha két bot egymassal jatszik akkor a kovetkezo player akkor is lehet bot
+		// RESET ROUND-SPECIFIC GAME DATA
+		// Töröljük az előző kör speciális játék állapotait
+		gameState.getGameData().remove("streakPlayerId");      // Égés állapot törlése
+		gameState.getGameData().remove("suitChangedTo");       // OVER kártya színváltás törlése
+		gameState.getGameData().remove("skippedPlayers");      // ACE kártya skip állapot törlése
+		gameState.getGameData().remove("drawStack");           // 7-es kártya húzási kötelezettség törlése
+		gameState.getGameData().remove("finishedPlayers");
 	}
 
 	@Override
 	public void gameFinished(GameState gameState) {
 		return;
+	}
+
+	public NextTurnResult determineWhoWillStartTheRound(GameSession gameSession, GameState gameState) {
+		// Az utolsó vesztes kezd (aki bekerült a lossCount map-be legutoljára)
+		Map<Long, Integer> lossCountMap = gameSessionUtils.getSpecificGameDataTypeMap("lossCount", gameState);
+		Set<Long> lostPlayers = gameSessionUtils.getSpecificGameDataTypeSet("lostPlayers", gameState);
+
+		Player nextPlayer = gameSession.getPlayers().stream()
+				.filter(p -> !lostPlayers.contains(p.getPlayerId())) // Nem vesztett ki végleg
+				.max(Comparator.comparing(p -> lossCountMap.getOrDefault(p.getPlayerId(), 0))) // Legnagyobb lossCount
+				.orElseThrow(() -> new IllegalStateException("Can't find active player"));
+
+		return new NextTurnResult(nextPlayer, nextPlayer.getSeat());
 	}
 
 
@@ -692,4 +704,6 @@ public class GameEngine implements IGameEngine {
 		}
 		return deck;
 	}
+
+
 }

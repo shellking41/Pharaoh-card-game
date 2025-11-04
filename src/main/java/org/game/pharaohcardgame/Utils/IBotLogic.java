@@ -10,7 +10,7 @@ import java.util.List;
 
 public interface IBotLogic {
 	NextTurnResult botDrawTest(GameSession gameSession, Player botPlayer);
-	 List<Card> chooseMonteCarloPlay(Player botPlayer, GameState realState, GameSession realSession, int playoutsPerMove) ;
+	 List<Card> chooseMonteCarloPlay(List<List<Card>>validPlays,Player botPlayer, GameState realState, GameSession realSession, int playoutsPerMove) ;
 	 GameState cloneState(GameState realState) ;
 	 List<List<Card>> calculateValidPlays(GameState gameState, Player currentPlayer) ;
 	 NextTurnResult botPlays(GameState gameState,GameSession gameSession,Player botPlayer);

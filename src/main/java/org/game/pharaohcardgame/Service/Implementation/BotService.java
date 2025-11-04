@@ -60,8 +60,6 @@ public class BotService implements IBotService {
 			room.getBots().add(newBot);
 
 			roomRepository.save(room);
-			//todo: it nem a siman a botot akarom elkuldeni hanem a frissult szobát azaz roomresponse-t
-			//todo: faradt szabinak az jutott az eszébe hogy lehet baj az ha frontenden mindi egybe frissitema a currentroomot, mert mondjuk ha adunk egy botot a szobahoz majd csatlakozna a hozzáadás pillanatában egy user a szobához akkor ha a addbot gyorsabban lefutott volna mint a join room akkor a frontenden a két room status felulirna egymast igy hat csak azt kéne frissiteni amit muszály.
 
 
 
@@ -119,6 +117,7 @@ public class BotService implements IBotService {
 
 
 	@Override
+	//todo: amikor modositjuk az egyik botot akkor a sorrendjuk megvaltozik
 	public SuccessMessageResponse editBot(BotEditRequest botEditRequest) {
 		User gamemaster=authenticationService.getAuthenticatedUser();
 
