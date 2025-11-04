@@ -309,6 +309,11 @@ public class GameSessionService implements IGameSessionService {
 
 
 			gameEngine.playCards(playCardsRequest.getPlayCards(),currentPlayer,current,gameSession);
+			//ha finished akkor ne menjen tovább a logika
+			if(handleIfGameFinished(current,gameSession,playedCardResponses.get())){
+				return current;
+			}
+
 			//todo: van olyan baj a aroudendedel hogy akkor is true marad amikor már a kovetkezo kor megy
 			if(current.getGameData().getOrDefault("roundEnded", false).equals(false)){
 				CardRequest lastCard=playCardsRequest.getPlayCards().getLast();
@@ -344,6 +349,11 @@ public class GameSessionService implements IGameSessionService {
 			return current;
 		});
 
+		//ha finished akkor ne menjen tovább a logika
+		if(gameSession.getGameStatus().equals(GameStatus.FINISHED)){
+			notificationHelpers.sendGameEnded(gameSession,"Game is finished");
+			return;
+		}
 		NextTurnResult next = nextTurnRef.get();
 
 		//ha húznia kell a következő usernek több kartyat akkor arrol értesítjük
@@ -369,8 +379,6 @@ public class GameSessionService implements IGameSessionService {
 		botLogic.handleIfNextPlayerIsBot(next,gameSession);
 
 	}
-
-
 
 
 	@Override
@@ -507,19 +515,8 @@ public class GameSessionService implements IGameSessionService {
 		if(isGamemaster){
 			handleGamemasterLeaving(gameSession);
 			// Notify all players that game has ended
-			for (Player player : gameSession.getPlayers()) {
-				if (!player.getIsBot()) {
-					// Update user's current room status - they stay in room but game ends
+			notificationHelpers.sendGameEnded(gameSession,"Gamemaster left the game");
 
-					simpMessagingTemplate.convertAndSendToUser(
-							player.getUser().getId().toString(),
-							"/queue/game/end",
-							GameEndResponse.builder()
-									.reason("Gamemaster left the game")
-									.build()
-					);
-				}
-			}
 			UserCurrentStatus userStatus=responseMapper.toUserCurrentStatus(user, true);
 			RoomResponse currentRoom=responseMapper.toRoomResponse(user.getCurrentRoom());
 			RoomResponse managedRoom=responseMapper.toRoomResponse(Objects.requireNonNull(user.getManagedRooms().stream().filter(Room::isActive).findFirst().orElse(null)));
@@ -542,6 +539,21 @@ public class GameSessionService implements IGameSessionService {
 			UserCurrentStatus userStatus=responseMapper.toUserCurrentStatus(user, true);
 			return LeaveGameSessionResponse.builder().userStatus(userStatus).currentRoom(null).managedRoom(null).build();
 		}
+	}
+
+	private boolean handleIfGameFinished(GameState current, GameSession gameSession, List<PlayedCardResponse> playedCardResponses) {
+		if(current.getStatus().equals(GameStatus.FINISHED)){
+			// End the game session
+			gameSession.setGameStatus(GameStatus.FINISHED);
+			gameSessionRepository.save(gameSession);
+			notificationHelpers.sendPlayedCardsNotification(gameSession.getGameSessionId(),current,playedCardResponses);
+			notificationHelpers.sendPlayCardsNotification(gameSession,current);
+			// End game state in cache
+			gameSessionUtils.deleteGameState(gameSession.getGameSessionId());
+
+			return true;
+		}
+		return false;
 	}
 
 

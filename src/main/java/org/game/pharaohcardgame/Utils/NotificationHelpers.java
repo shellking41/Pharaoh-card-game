@@ -32,7 +32,7 @@ public class NotificationHelpers {
     public void sendPlayerLeftNotification(Player leavingPlayer, List<Player> players) {
 
         for (Player player : players) {
-            if (!player.getIsBot() || !player.getPlayerId().equals(leavingPlayer.getPlayerId())) {
+            if (!player.getIsBot() && !player.getPlayerId().equals(leavingPlayer.getPlayerId())) {
                 simpMessagingTemplate.convertAndSendToUser(
                         player.getUser().getId().toString(),
                         "/queue/game/player-left",
@@ -41,6 +41,21 @@ public class NotificationHelpers {
             }
         }
 
+    }
+    public void sendGameEnded(GameSession gameSession, String reason){
+        for (Player player : gameSession.getPlayers()) {
+            if (!player.getIsBot()) {
+                // Update user's current room status - they stay in room but game ends
+
+                simpMessagingTemplate.convertAndSendToUser(
+                        player.getUser().getId().toString(),
+                        "/queue/game/end",
+                        GameEndResponse.builder()
+                                .reason(reason)
+                                .build()
+                );
+            }
+        }
     }
 
     public void sendPlayedCardsNotification(Long gameSessionId, GameState gameState, List<PlayedCardResponse> playedCardResponses) {
