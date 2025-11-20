@@ -37,6 +37,8 @@ import java.util.*;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -209,7 +211,96 @@ public class GameSessionService implements IGameSessionService {
 
         return response;
     }
+    // Add this method to GameSessionService.java
 
+    @Override
+    public void reorderCards(ReorderCardsRequest reorderCardsRequest) {
+
+        if (reorderCardsRequest.getCardIds() == null || reorderCardsRequest.getCardIds().isEmpty()) {
+            throw new IllegalArgumentException("Card IDs list cannot be empty");
+        }
+
+
+        Player currentPlayer = playerRepository.findById(reorderCardsRequest.getPlayerId())
+                .orElseThrow(() -> new PlayerNotFoundException("Player not found"));
+
+
+        GameSession gameSession = gameSessionRepository.findByIdWithPlayers(
+                        currentPlayer.getGameSession().getGameSessionId())
+                .orElseThrow(() -> new GameSessionNotFoundException("GameSession not found"));
+
+
+        GameState gameState = gameSessionUtils.updateGameState(gameSession.getGameSessionId(), current -> {
+
+
+            List<Card> playerHand = current.getPlayerHands().get(currentPlayer.getPlayerId());
+
+            if (playerHand == null || playerHand.isEmpty()) {
+                throw new IllegalStateException("Player has no cards in hand");
+            }
+
+            // ellenőrizzük hogy biztosan-e a kartya az adott playerhez tartozik
+            Set<String> playerCardIds = playerHand.stream()
+                    .map(Card::getCardId)
+                    .collect(Collectors.toSet());
+
+            Set<String> requestedCardIds = new HashSet<>(reorderCardsRequest.getCardIds());
+
+
+            if (playerCardIds.size() != requestedCardIds.size()) {
+                throw new IllegalArgumentException("Number of cards in request doesn't match player's hand size");
+            }
+
+            if (!playerCardIds.equals(requestedCardIds)) {
+                throw new IllegalArgumentException("Cannot reorder cards that don't belong to you");
+            }
+
+
+            Map<String, Card> cardMap = playerHand.stream()
+                    .collect(Collectors.toMap(Card::getCardId, card -> card));
+
+
+            List<Card> reorderedHand = new ArrayList<>();
+            for (int i = 0; i < reorderCardsRequest.getCardIds().size(); i++) {
+                String cardId = reorderCardsRequest.getCardIds().get(i);
+                Card card = cardMap.get(cardId);
+
+                if (card == null) {
+                    throw new IllegalArgumentException("Card with ID " + cardId + " not found in player's hand");
+                }
+
+
+                card.setPosition(i);
+                reorderedHand.add(card);
+            }
+
+
+            current.getPlayerHands().put(currentPlayer.getPlayerId(), reorderedHand);
+
+            return current;
+        });
+
+
+        List<Card> reorderedCards = gameState.getPlayerHands().get(currentPlayer.getPlayerId());
+
+        if (!currentPlayer.getIsBot()) {
+            ReorderCardsResponse response = ReorderCardsResponse.builder()
+                    .playerId(currentPlayer.getPlayerId())
+                    .reorderedCards(reorderedCards)
+                    .message("Cards reordered successfully")
+                    .build();
+
+            simpMessagingTemplate.convertAndSendToUser(
+                    currentPlayer.getUser().getId().toString(),
+                    "/queue/game/reorder-cards",
+                    response
+            );
+        }
+
+        log.info("Player {} reordered their cards. New order: {}",
+                currentPlayer.getPlayerId(),
+                reorderedCards.stream().map(Card::getCardId).collect(Collectors.toList()));
+    }
     @Override
     //TODO:KELL IDE EGY TRYCATCH
     //todo: lehet ide kell majd a transacitonal, de aza problema hogy a nextturn nem kerul bele a transactionba ezért nem a legfrissebb gamestatet hasznalja.Kivettem innen a transactionalt, igy megy

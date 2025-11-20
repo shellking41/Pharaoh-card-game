@@ -50,6 +50,7 @@ function Home() {
   return (
     <>
       KELL MENÜ, A ROOM ELŐTT
+      A BOT AZ SZERINT IS DONTOSN HOGY MILYEN SZINRER VÁLT
       <button onClick={() => getAllRoom()} disabled={loading}>Refresh</button>
       {/*todo ezt a részt valószínűleg egy komponensbe kell tenni mert akkor jobban el lesz különítve a logika ha ide ebbe a boxba több mindent akarok tenni */}
       <Box>

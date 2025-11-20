@@ -15,6 +15,6 @@ public interface IGameSessionService {
 	 CurrentTurnResponse getCurrentTurnInfo();
 	void skipTurn(SkipTurnRequest skipTurnRequest);
 	void drawStackOfCards(DrawStackOfCardsRequest drawStackOfCardsRequest);
-
+	void reorderCards(ReorderCardsRequest reorderCardsRequest);
 	LeaveGameSessionResponse leaveGameSession(LeaveGameSessionRequest request, User user);
 }

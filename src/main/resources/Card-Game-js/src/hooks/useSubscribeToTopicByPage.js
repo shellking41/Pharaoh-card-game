@@ -146,6 +146,8 @@ const getPageSubscriptions = (contexts) => {
               setGameSession(prev => {
                 const prevOwn = (prev.playerHand?.ownCards ?? []).filter(Boolean);
                 const merged = message.newCard.length > 0 ? [...prevOwn, ...message.newCard] : prevOwn;
+                console.log(merged,prevOwn)
+
                 return {
                   ...prev,
                   gameData: message.gameData ?? prev.gameData,
@@ -184,6 +186,7 @@ const getPageSubscriptions = (contexts) => {
 
         },
       }, {
+
         destination: '/user/queue/game/play-cards',
         callback: (message) => {
           console.log(message);
@@ -200,6 +203,21 @@ const getPageSubscriptions = (contexts) => {
           setValidPlays(message.validPlays || []);
 
         },
+      },{
+        destination: '/user/queue/game/reorder-cards',
+        callback: (message) => {
+          console.log('Cards reordered:', message);
+
+          setGameSession(prev => ({
+            ...prev,
+            playerHand: {
+              ...prev.playerHand,
+              ownCards: message.reorderedCards
+            }
+          }));
+
+
+        }
       }, {
         destination: '/user/queue/game/end',
         callback: async (message) => {

@@ -1,4 +1,4 @@
-import React, { memo, useContext, useEffect, useMemo, useState } from 'react';
+import React, { memo, forwardRef, useContext, useEffect, useMemo, useRef, useState, useImperativeHandle } from 'react';
 import './Style/HungarianCard.css';
 import { GameSessionContext } from '../../Contexts/GameSessionContext.jsx';
 
@@ -90,26 +90,29 @@ export function getCardStyleForPosition(pos, cardIndex, cardsCount) {
 
 // Segédfüggvény a kártya kép elérési útjának generálásához
 function getCardImagePath(suit, rank) {
-
   const suitLower = suit.toLowerCase();
   const rankUpper = rank.toUpperCase();
 
   return `/src/assets/${suitLower}${rankUpper}.png`;
 }
 
-function HungarianCard({
-  cardData,
-  onClick,
-  isSelected,
-  top,
-  left,
-  bottom,
-  right,
-  rotate,
-  ownCard,
-}) {
+const HungarianCardInner = ({
+                              cardData,
+                              onClick,
+                              isSelected,
+                              top,
+                              left,
+                              bottom,
+                              right,
+                              rotate,
+                              ownCard,
+                            }, forwardedRef) => {
   const { validPlays, selectedCards } = useContext(GameSessionContext);
   const [isCardPlayable, setIsCardPlayable] = useState(false);
+
+  const rootRef = useRef(null);
+
+  useImperativeHandle(forwardedRef, () => rootRef.current, [rootRef.current]);
 
   useEffect(() => {
     if (ownCard && cardData) {
@@ -124,7 +127,7 @@ function HungarianCard({
 
       let relevantPlays = validPlays.filter(vp => {
         return selectedCards.every(selected =>
-          vp.some(card => card.cardId === selected.cardId),
+            vp.some(card => card.cardId === selected.cardId),
         );
       });
 
@@ -167,25 +170,30 @@ function HungarianCard({
   // Hátlap (amikor nincs cardData)
   if (!cardData) {
     return (
-      <div style={{
-        ...baseStyle,
-        backgroundColor: '#2c5f2d',
-        border: '2px solid #1a3a1b',
-        borderRadius: '8px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,.05) 10px, rgba(255,255,255,.05) 20px)',
-      }}>
-        <div style={{
-          color: '#fff',
-          fontSize: 10,
-          fontWeight: 'bold',
-          textShadow: '1px 1px 2px rgba(0,0,0,0.5)',
-        }}>
-          ?
+        <div
+            ref={rootRef}
+            style={{
+              ...baseStyle,
+              backgroundColor: '#2c5f2d',
+              border: '2px solid #1a3a1b',
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,.05) 10px, rgba(255,255,255,.05) 20px)',
+            }}
+        >
+          <div style={{
+            color: '#fff',
+            fontSize: 10,
+            fontWeight: 'bold',
+            textShadow: '1px 1px 2px rgba(0,0,0,0.5)',
+            pointerEvents: 'none',
+            textAlign: 'center',
+          }}>
+            ?
+          </div>
         </div>
-      </div>
     );
   }
 
@@ -193,38 +201,45 @@ function HungarianCard({
   const imagePath = getCardImagePath(cardData.suit, cardData.rank);
 
   return (
-    <button
-      onClick={onClick}
-      className={isCardPlayable ? 'selectable-card' : ownCard && 'not-selectable-card'}
-      disabled={ownCard && !isCardPlayable && !isAlreadySelected}
-      style={{
-        ...baseStyle,
-        border: isSelected ? '3px solid #ffd700' : 'none',
-        borderRadius: isSelected ? '8px' : '0',
-        boxShadow: isSelected
-          ? '0 0 15px rgba(255, 215, 0, 0.8)'
-          : '0 2px 4px rgba(0,0,0,0.2)',
-      }}
-    >
-      <img
-        src={imagePath}
-        alt={`${cardData.suit} ${cardData.rank}`}
-        style={{
-          width: '100%',
-          height: '100%',
-          objectFit: 'cover',
-          borderRadius: '6px',
-          pointerEvents: 'none',
-        }}
-        onError={(e) => {
-          console.error(`Failed to load card image: ${imagePath}`);
-          e.target.style.display = 'none';
-          e.target.parentElement.style.backgroundColor = '#333';
-          e.target.parentElement.innerHTML = `<div style="color: white; font-size: 10px; text-align: center;">${cardData.suit}<br/>${cardData.rank}</div>`;
-        }}
-      />
-    </button>
+      <button
+          ref={rootRef}
+          onClick={onClick}
+          className={isCardPlayable ? 'selectable-card' : ownCard && 'not-selectable-card'}
+          disabled={ownCard && !isCardPlayable && !isAlreadySelected}
+          style={{
+            ...baseStyle,
+            border: isSelected ? '3px solid #ffd700' : 'none',
+            borderRadius: isSelected ? '8px' : '0',
+            boxShadow: isSelected
+                ? '0 0 15px rgba(255, 215, 0, 0.8)'
+                : '0 2px 4px rgba(0,0,0,0.2)',
+          }}
+      >
+        <img
+            src={imagePath}
+            alt={`${cardData.suit} ${cardData.rank}`}
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              borderRadius: '6px',
+              pointerEvents: 'none',
+            }}
+            onError={(e) => {
+              console.error(`Failed to load card image: ${imagePath}`);
+              e.target.style.display = 'none';
+              // ha a kép nem tölt be akkor a szülő elembe írunk fallback tartalmat
+              const parent = e.target.parentElement;
+              if (parent) {
+                parent.style.backgroundColor = '#333';
+                parent.innerHTML = `<div style="color: white; font-size: 10px; text-align: center;">${cardData.suit}<br/>${cardData.rank}</div>`;
+              }
+            }}
+        />
+      </button>
   );
-}
+};
 
-export default memo(HungarianCard);
+// wrap forwardRef with memo for performance
+const HungarianCard = memo(forwardRef(HungarianCardInner));
+export default HungarianCard;

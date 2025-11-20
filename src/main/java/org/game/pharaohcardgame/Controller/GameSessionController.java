@@ -35,7 +35,10 @@ public class GameSessionController {
     public SuccessMessageResponse StartGame(@RequestBody GameStartRequest gameStartRequest) {
         return gameSessionService.startGame(gameStartRequest);
     }
-
+    @MessageMapping("/game/reorder-cards")
+    public void reorderCards(ReorderCardsRequest reorderCardsRequest) {
+        gameSessionService.reorderCards(reorderCardsRequest);
+    }
     @GetMapping("/state")
     public GameSessionResponse getGameSession() {
         return gameSessionService.getGameSession();
