@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.game.pharaohcardgame.Enum.GameStatus;
+import org.game.pharaohcardgame.Model.RedisModel.Card;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -17,14 +18,15 @@ import java.util.Map;
 @Data
 public class GameSessionResponse {
 
-	private PlayerHandResponse playerHand;
-	private Long gameSessionId;
-	private List<PlayedCardResponse> playedCards=new ArrayList<>();
-	private List<PlayerStatusResponse> players=new ArrayList<>();
-	@Enumerated(EnumType.STRING)
-	private GameStatus gameStatus;
-	private Integer deckSize;
-	private  Integer playedCardsSize;
-	private Map<String, Object> gameData; // további game-specifikus adatok
+    private PlayerHandResponse playerHand;
+    private Long gameSessionId;
+    List<List<Card>> validPlays;
+    private List<PlayedCardResponse> playedCards = new ArrayList<>();
+    private List<PlayerStatusResponse> players = new ArrayList<>();
+    @Enumerated(EnumType.STRING)
+    private GameStatus gameStatus;
+    private Integer deckSize;
+    private Integer playedCardsSize;
+    private Map<String, Object> gameData; // további game-specifikus adatok
 
 }

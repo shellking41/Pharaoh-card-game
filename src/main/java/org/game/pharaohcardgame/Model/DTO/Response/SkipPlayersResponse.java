@@ -13,5 +13,5 @@ import java.util.Set;
 @Builder
 @Data
 public class SkipPlayersResponse {
-	Set<Long> SkippedPlayersId ;
+    Set<Long> SkippedPlayersId;
 }

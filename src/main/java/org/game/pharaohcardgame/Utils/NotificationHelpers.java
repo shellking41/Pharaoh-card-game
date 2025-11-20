@@ -1,17 +1,12 @@
 package org.game.pharaohcardgame.Utils;
 
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-import org.game.pharaohcardgame.Enum.GameStatus;
 import org.game.pharaohcardgame.Model.DTO.Response.*;
 import org.game.pharaohcardgame.Model.DTO.ResponseMapper;
 import org.game.pharaohcardgame.Model.GameSession;
 import org.game.pharaohcardgame.Model.Player;
 import org.game.pharaohcardgame.Model.RedisModel.Card;
 import org.game.pharaohcardgame.Model.RedisModel.GameState;
-import org.game.pharaohcardgame.Model.Results.NextTurnResult;
-import org.game.pharaohcardgame.Model.Room;
-import org.game.pharaohcardgame.Model.User;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
 
@@ -28,7 +23,6 @@ public class NotificationHelpers {
     private final GameSessionUtils gameSessionUtils;
 
 
-
     public void sendPlayerLeftNotification(Player leavingPlayer, List<Player> players) {
 
         for (Player player : players) {
@@ -42,7 +36,8 @@ public class NotificationHelpers {
         }
 
     }
-    public void sendGameEnded(GameSession gameSession, String reason){
+
+    public void sendGameEnded(GameSession gameSession, String reason) {
         for (Player player : gameSession.getPlayers()) {
             if (!player.getIsBot()) {
                 // Update user's current room status - they stay in room but game ends
@@ -88,17 +83,15 @@ public class NotificationHelpers {
     }
 
 
-
-
-
-    public void sendNextTurnNotification(Player nextPlayer, List<Player> players,int nextSeatIndex){
+    //todo: itt van olyan baj hogy ha streakelunk akkor  a nextseatindex jó de a iscurrentplayer az falset ad
+    public void sendNextTurnNotification(Player nextPlayer, List<Player> players, int nextSeatIndex, List<List<Card>> validPlays) {
         for (Player player : players) {
             if (!player.getIsBot()) {
-                boolean isCurrentPlayer = player.equals(nextPlayer);
+                boolean isCurrentPlayer = player.getPlayerId().equals(nextPlayer.getPlayerId());
                 simpMessagingTemplate.convertAndSendToUser(
                         player.getUser().getId().toString(),
                         "/queue/game/turn",
-                        NextTurnResponse.builder().isYourTurn(isCurrentPlayer).currentSeat(nextSeatIndex).build()
+                        NextTurnResponse.builder().isYourTurn(isCurrentPlayer).currentSeat(nextSeatIndex).validPlays(validPlays).build()
                 );
             }
         }
@@ -119,23 +112,22 @@ public class NotificationHelpers {
         }
     }
 
-    public void sendPlayerHasToDrawStack(Player player,Map<Long,Integer> drawStack) {
-        if(!player.getIsBot()){
-            simpMessagingTemplate.convertAndSendToUser(player.getUser().getId().toString(),"/queue/game/draw-stack", DrawStackResponse.builder().drawStack(drawStack).build());
+    public void sendPlayerHasToDrawStack(Player player, Map<Long, Integer> drawStack) {
+        if (!player.getIsBot()) {
+            simpMessagingTemplate.convertAndSendToUser(player.getUser().getId().toString(), "/queue/game/draw-stack", DrawStackResponse.builder().drawStack(drawStack).build());
 
         }
     }
 
 
-
-    public void sendDrawCardNotification(List<Player> players, Player currentPlayer , List<Card> drawnCards, Integer deckSize, Integer playedCardsSize, GameState newGameState) {
+    public void sendDrawCardNotification(List<Player> players, Player currentPlayer, List<Card> drawnCards, Integer deckSize, Integer playedCardsSize, GameState newGameState) {
         for (Player player : players) {
             if (!player.getIsBot()) {
                 DrawCardResponse personalizedResponse;
-                if(player.getPlayerId().equals(currentPlayer.getPlayerId())){
-                    personalizedResponse = responseMapper.toDrawCardResponse(newGameState,drawnCards,player.getPlayerId(),deckSize,playedCardsSize);
-                }else {
-                    personalizedResponse = responseMapper.toDrawCardResponse(newGameState,null,player.getPlayerId(),deckSize,playedCardsSize);
+                if (player.getPlayerId().equals(currentPlayer.getPlayerId())) {
+                    personalizedResponse = responseMapper.toDrawCardResponse(newGameState, drawnCards, player.getPlayerId(), deckSize, playedCardsSize);
+                } else {
+                    personalizedResponse = responseMapper.toDrawCardResponse(newGameState, null, player.getPlayerId(), deckSize, playedCardsSize);
                 }
                 simpMessagingTemplate.convertAndSendToUser(
                         player.getUser().getId().toString(),
@@ -146,7 +138,7 @@ public class NotificationHelpers {
         }
     }
 
-    public void sendTurnSkipped(GameSession gameSession,Player currentPlayer,GameState gameState) {
+    public void sendTurnSkipped(GameSession gameSession, Player currentPlayer, GameState gameState) {
         for (Player player : gameSession.getPlayers()) {
             if (!player.getIsBot()) {
                 simpMessagingTemplate.convertAndSendToUser(

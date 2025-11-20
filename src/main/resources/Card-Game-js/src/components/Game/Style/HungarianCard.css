@@ -1,0 +1,10 @@
+.selectable-card {
+  transition: transform 0.2s ease-in-out; /* ide tesszük a transition-t */
+}
+
+.selectable-card:hover {
+  transform: translateY(-20px);
+}
+.not-selectable-card {
+  opacity: 0.5;
+}
