@@ -1,43 +1,6 @@
-/* Header stílusok */
-header {
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    background: #ffffff;
-}
-
-/* Tab stílusok testreszabása */
-.tabsContainer {
-    background: linear-gradient(90deg, #22C968 0%, #1ea352 100%);
-}
-
-/* Főtartalom stílusok */
-.mainContainer {
-    position: relative;
-    min-height: 100vh;
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(10px);
-    border-radius: 0 0 12px 12px;
-
-    overflow: hidden;
-}
-
-/* Kép stílusok */
-.imageContainer {
-    position: absolute;
-    right: -5%;
-    top: 60%;
-    transform: translateY(-40%) translateX(50%);
-    rotate: -30deg;
-    max-width: 400px;
-    opacity: 0.9;
-    transition: all 0.3s ease;
-}
-
-.imageContainer img {
-    width: 100%;
-    height: auto;
-    border-radius: 12px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+.mainContainer{
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-content: center;
 }

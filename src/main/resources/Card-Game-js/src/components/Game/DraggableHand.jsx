@@ -6,7 +6,6 @@ import { GameSessionContext } from '../../Contexts/GameSessionContext';
 const DraggableHand = forwardRef(({
                                     initialCards = [],
                                     selectedCards = [],
-                                    isCardsPlayable = [],
                                     handleCardClick = () => {},
                                     spacing = 40,
                                     onReorder,
@@ -14,6 +13,7 @@ const DraggableHand = forwardRef(({
   const [cards, setCards] = useState(initialCards);
   const [draggedIndex, setDraggedIndex] = useState(null);
   const [hasChanges, setHasChanges] = useState(false);
+
   const { sendMessage } = useWebsocket();
   const { playerSelf } = useContext(GameSessionContext);
 
@@ -89,6 +89,11 @@ const DraggableHand = forwardRef(({
     setHasChanges(true);
   };
 
+  // Helper függvény: ellenőrzi, hogy egy kártya ki van-e választva (cardId alapján)
+  const isCardSelected = (card) => {
+    return selectedCards.some(selected => selected.cardId === card.cardId);
+  };
+
   return (
       <>
         {cards.map((card, index, arr) => (
@@ -107,8 +112,8 @@ const DraggableHand = forwardRef(({
                 }}
                 style={{
                   position: 'absolute',
-                  left: `calc(50% - ${(Math.max(0, arr.length - 1) * spacing) / 2}px + ${index * spacing}px)`,
-                  bottom: '0',
+                  left: `calc(45% - ${(Math.max(0, arr.length - 1) * spacing) / 2}px + ${index * spacing}px)`,
+                  bottom: 'var(--card-height)',
                   transition: draggedIndex === index ? 'none' : 'left 0.2s ease-in-out',
                   transform: draggedIndex === index ? 'scale(1.05)' : 'scale(1)',
                   zIndex: draggedIndex === index ? 1000 : 1,
@@ -119,8 +124,7 @@ const DraggableHand = forwardRef(({
                   cardData={card}
                   ownCard={true}
                   onClick={() => handleCardClick(card)}
-                  isSelected={selectedCards.includes(card)}
-                  isPlayable={isCardsPlayable[index]}
+                  isSelected={isCardSelected(card)}
               />
             </div>
         ))}

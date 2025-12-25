@@ -1,10 +1,68 @@
 .selectable-card {
-  transition: transform 0.2s ease-in-out; /* ide tesszük a transition-t */
+    transition: transform 0.2s ease-in-out;
 }
 
 .selectable-card:hover {
-  transform: translateY(-20px);
+    transform: translateY(-20px);
 }
+
 .not-selectable-card {
-  opacity: 0.5;
+    opacity: 0.5;
+}
+
+.own-card {
+    border: 1px solid gray;
+}
+
+.mobile-card-hand {
+    width: 100%;
+    z-index: 999;
+    position: absolute;
+    bottom: 0;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    overflow-y: hidden;
+    overflow-x: auto;
+    justify-content: flex-start;
+    padding: 0 10px;
+    transform: translateY(100%);
+    transition: transform 0.3s ease-in-out;
+}
+
+.mobile-card-hand.open {
+    transform: translateY(0);
+}
+
+.mobile-card-container {
+    flex: 0 0 auto;
+    position: relative;
+    margin: 0 2px;
+}
+
+.mobile-card-container .selectable-card:hover {
+    transform: none;
+}
+
+.mobile-card-container .own-card {
+    position: static !important;
+}
+
+/* Scroll styling */
+.mobile-card-hand::-webkit-scrollbar {
+    height: 8px;
+}
+
+.mobile-card-hand::-webkit-scrollbar-track {
+    background: rgba(26, 58, 27, 0.5);
+    border-radius: 4px;
+}
+
+.mobile-card-hand::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+}
+
+.mobile-card-hand::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.5);
 }

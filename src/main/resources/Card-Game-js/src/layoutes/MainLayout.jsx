@@ -100,9 +100,9 @@ function MainLayout() {
         >
           <Box>
             {kikapcs && (
-              <Box>
+              <div className={style.mainContainer}>
                 <Outlet/>
-              </Box>
+              </div>
             )}
           </Box>
         </Container>

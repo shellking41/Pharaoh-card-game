@@ -11,7 +11,7 @@ public class CorsConfig implements WebMvcConfigurer {
     public void addCorsMappings(CorsRegistry registry) {
         // For HTTP requests
         registry.addMapping("/**")
-                .allowedOrigins("http://localhost:5173")
+                .allowedOrigins("http://localhost:5173","http://localhost:5175")
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
                 .allowCredentials(true)
@@ -19,7 +19,7 @@ public class CorsConfig implements WebMvcConfigurer {
 
         // Special configuration for SockJS endpoints
         registry.addMapping("/gs-guide-websocket/**")
-                .allowedOrigins("http://localhost:5173")
+                .allowedOrigins("http://localhost:5173","http://localhost:5175")
                 .allowedMethods("*")
                 .allowedHeaders("*")
                 .allowCredentials(true)

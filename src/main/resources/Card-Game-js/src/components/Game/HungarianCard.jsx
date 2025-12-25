@@ -2,87 +2,99 @@ import React, { memo, forwardRef, useContext, useEffect, useMemo, useRef, useSta
 import './Style/HungarianCard.css';
 import { GameSessionContext } from '../../Contexts/GameSessionContext.jsx';
 
-export const spacing = 40;
 
-export function getPlayerPositionBySeat(seatIndex, playersCount) {
-  if (playersCount === 2) {
-    if (seatIndex === 0) {
-      return 'bottom';
+
+
+export function getPlayerPositionBySeat(playerSeat, selfSeat, totalPlayers) {
+    // Saját játékos mindig bottom pozícióban van
+    if (playerSeat === selfSeat) {
+        return 'bottom';
     }
-    if (seatIndex === 1) {
-      return 'top';
+
+    // Relatív seat különbség kiszámítása (óramutató járása szerinti irányban)
+    let relativeSeat = (playerSeat - selfSeat + totalPlayers) % totalPlayers;
+
+    // Ha negatív lenne, korrigáljuk
+    if (relativeSeat < 0) {
+        relativeSeat += totalPlayers;
     }
-  }
-  if (playersCount === 3) {
-    if (seatIndex === 0) {
-      return 'bottom';
+
+    // 2 játékos esetén
+    if (totalPlayers === 2) {
+        // 0: bottom (self)
+        // 1: top (opponent)
+        return relativeSeat === 1 ? 'top' : 'bottom';
     }
-    if (seatIndex === 1) {
-      return 'left';
+
+    // 3 játékos esetén
+    if (totalPlayers === 3) {
+        // 0: bottom (self)
+        // 1: left (első ellenfél - óramutató járásával következő)
+        // 2: right (második ellenfél)
+        switch (relativeSeat) {
+            case 0: return 'bottom';
+            case 1: return 'left';
+            case 2: return 'right';
+            default: return 'bottom';
+        }
     }
-    if (seatIndex === 2) {
-      return 'right';
+
+    // 4 játékos esetén
+    if (totalPlayers === 4) {
+        // 0: bottom (self)
+        // 1: left (első ellenfél - óramutató járásával következő)
+        // 2: top (szemben ülő)
+        // 3: right (harmadik ellenfél)
+        switch (relativeSeat) {
+            case 0: return 'bottom';
+            case 1: return 'left';
+            case 2: return 'top';
+            case 3: return 'right';
+            default: return 'bottom';
+        }
     }
-  }
-  if (playersCount === 4) {
-    if (seatIndex === 0) {
-      return 'bottom';
-    }
-    if (seatIndex === 1) {
-      return 'left';
-    }
-    if (seatIndex === 2) {
-      return 'top';
-    }
-    if (seatIndex === 3) {
-      return 'right';
-    }
-  }
-  return 'bottom';
+
+    return 'bottom';
 }
 
+
 export function getCardStyleForPosition(pos, cardIndex, cardsCount) {
-  const halfRow = ((Math.max(0, cardsCount - 1)) * spacing) / 2;
+    const spacing = 40
+  const halfRow = ((Math.max(0, cardsCount - 1)) * spacing) /2;
 
   switch (pos) {
     case 'bottom':
       return {
         left: `calc(50% - ${halfRow}px + ${cardIndex * spacing}px)`,
-        bottom: '0px',
-        top: 'auto',
-        right: 'auto',
+        top: 'calc(100% - var(--card-height))',
         rotate: '0deg',
       };
+
     case 'top':
       return {
-        left: `calc(50% - ${halfRow}px + ${cardIndex * spacing}px)`,
+        left: `calc(45% - ${halfRow}px + ${cardIndex * spacing}px)`,
         top: '0px',
-        bottom: 'auto',
-        right: 'auto',
         rotate: '180deg',
       };
+
     case 'left':
       return {
+        left: 'calc(var(--card-width) / 4)',
         top: `calc(50% - ${halfRow}px + ${cardIndex * spacing}px)`,
-        left: '0px',
-        bottom: 'auto',
-        right: 'auto',
         rotate: '90deg',
       };
+
     case 'right':
       return {
+        left: 'calc(100% - var(--card-width))',
         top: `calc(50% - ${halfRow}px + ${cardIndex * spacing}px)`,
-        right: '0px',
-        bottom: 'auto',
-        left: 'auto',
         rotate: '270deg',
       };
+
     default:
       return {
         left: `calc(50% - ${halfRow}px + ${cardIndex * spacing}px)`,
-        bottom: '0px',
-        top: 'auto',
-        right: 'auto',
+        top: 'calc(100% - var(--card-height))',
         rotate: '0deg',
       };
   }
@@ -90,10 +102,12 @@ export function getCardStyleForPosition(pos, cardIndex, cardsCount) {
 
 // Segédfüggvény a kártya kép elérési útjának generálásához
 function getCardImagePath(suit, rank) {
-  const suitLower = suit.toLowerCase();
-  const rankUpper = rank.toUpperCase();
+  if(suit && rank) {
+    const suitLower = suit.toLowerCase();
+    const rankUpper = rank.toUpperCase();
 
   return `/src/assets/${suitLower}${rankUpper}.png`;
+  }
 }
 
 const HungarianCardInner = ({
@@ -144,7 +158,7 @@ const HungarianCardInner = ({
     }
   }, [validPlays, selectedCards, cardData, ownCard]);
 
-  const isAlreadySelected = useMemo(() => {
+    const isAlreadySelected = useMemo(() => {
     return selectedCards.some(c => c.cardId === cardData?.cardId);
   }, [selectedCards, cardData]);
 
@@ -166,9 +180,11 @@ const HungarianCardInner = ({
     border: 'none',
     background: 'transparent',
   };
+  // Kártya képpel
+  const imagePath = getCardImagePath(cardData?.suit, cardData?.rank);
 
   // Hátlap (amikor nincs cardData)
-  if (!cardData) {
+  if (!cardData ) {
     return (
         <div
             ref={rootRef}
@@ -181,6 +197,7 @@ const HungarianCardInner = ({
               alignItems: 'center',
               justifyContent: 'center',
               backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,.05) 10px, rgba(255,255,255,.05) 20px)',
+
             }}
         >
           <div style={{
@@ -197,22 +214,26 @@ const HungarianCardInner = ({
     );
   }
 
-  // Kártya képpel
-  const imagePath = getCardImagePath(cardData.suit, cardData.rank);
+
 
   return (
       <button
           ref={rootRef}
           onClick={onClick}
-          className={isCardPlayable ? 'selectable-card' : ownCard && 'not-selectable-card'}
+          className={`
+          base-card
+          ${isCardPlayable ? 'selectable-card' : ''}
+          ${ownCard ? 'own-card' : ''}
+          ${!isCardPlayable && ownCard ? 'not-selectable-card' : ''}
+        `}
           disabled={ownCard && !isCardPlayable && !isAlreadySelected}
           style={{
             ...baseStyle,
-            border: isSelected ? '3px solid #ffd700' : 'none',
-            borderRadius: isSelected ? '8px' : '0',
+            border: isSelected && '3px solid #ffd700',
+            borderRadius:  '8px',
             boxShadow: isSelected
-                ? '0 0 15px rgba(255, 215, 0, 0.8)'
-                : '0 2px 4px rgba(0,0,0,0.2)',
+                && '0 0 15px rgba(255, 215, 0, 0.8)'
+
           }}
       >
         <img
@@ -224,6 +245,7 @@ const HungarianCardInner = ({
               objectFit: 'cover',
               borderRadius: '6px',
               pointerEvents: 'none',
+
             }}
             onError={(e) => {
               console.error(`Failed to load card image: ${imagePath}`);

@@ -33,7 +33,7 @@ public class WebsocketConfig implements WebSocketMessageBrokerConfigurer  {
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/gs-guide-websocket")
-                .setAllowedOrigins("http://localhost:5173")
+                .setAllowedOrigins("http://localhost:5173","http://localhost:5175")
                 .addInterceptors(jwtInterceptor)
                 .setHandshakeHandler(jwtHandshakeHandler)
                 .withSockJS();

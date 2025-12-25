@@ -114,6 +114,15 @@ public class RoomService implements IRoomService {
                 );
                 return;
             }
+            if(!room.isActive()){
+                SuccessMessageResponse response = responseMapper.createSuccessResponse(
+                        false, "Room is not active anymore");
+                simpMessagingTemplate.convertAndSendToUser(
+                        userId,
+                        "/queue/join-response",
+                        response);
+            }
+
             if (!passwordEncoder.matches(joinRoomRequest.getRoomPassword(), room.getPassword())) {
                 throw new RuntimeException("Room password is not correct");
             }
@@ -121,6 +130,7 @@ public class RoomService implements IRoomService {
             if (gameMaster == null) {
                 throw new EntityNotFoundException("Game master not found");
             }
+
 
             if (simpUserRegistry.getUser(gameMaster.getId().toString()) != null) {
                 JoinRequestResponse joinRequest = responseMapper.toJoinRequestResponse(

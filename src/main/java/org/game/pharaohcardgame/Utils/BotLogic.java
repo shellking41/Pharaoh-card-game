@@ -34,6 +34,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Slf4j
 @Component
+//todo: ha hard bot van akkor kell olyat ellenorizni hogy ha leteszi a kartyat akkor ne azzal ki e lép valaki, ha kilép akkor választjon inkabb masik kartyat, vagy ha nincs masikartya akkor huzzon egyet
 public class BotLogic implements IBotLogic {
 
     private final ResponseMapper responseMapper;
@@ -179,9 +180,22 @@ public class BotLogic implements IBotLogic {
         List<PlayedCardResponse> playedCardResponses = responseMapper.toPlayedCardResponseListFromCards(current.getPlayedCards());
 
         //ez azt kuldi el hogy milyen kartyak vannak már letéve
-        notificationHelpers.sendPlayedCardsNotification(gameSession.getGameSessionId(), current, playedCardResponses);
+        notificationHelpers.sendPlayedCardsNotification(
+                gameSession.getGameSessionId(),
+                current,
+                playedCardResponses,
+                requestMapper.toCardRequestList(chosen),
+                botPlayer.getPlayerId()
+        );
 
-        //ez elkuldi a frissitett player handet hogy a játszo usernek a kezebol eltunnjon a kartya es mas playerek is lassak ezt
+        // Kis delay után küldjük a hand frissítést
+        try {
+            Thread.sleep(50); // 50ms delay
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        // UTÁNA a hand frissítés
         notificationHelpers.sendPlayCardsNotification(gameSession, current);
     }
 

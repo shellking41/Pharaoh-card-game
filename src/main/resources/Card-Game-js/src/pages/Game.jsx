@@ -1,23 +1,37 @@
-import React, {useContext, useEffect, useMemo, useRef, useState} from 'react';
+import React, {useContext, useEffect, useLayoutEffect, useMemo, useRef, useState} from 'react';
 import { GameSessionContext } from '../Contexts/GameSessionContext.jsx';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import useWebsocket from '../hooks/useWebsocket.js';
 import useSubscribeToTopicByPage from '../hooks/useSubscribeToTopicByPage.js';
-import HungarianCard, {
-  getPlayerPositionBySeat,
-  getCardStyleForPosition,
-} from '../components/Game/HungarianCard.jsx';
+import HungarianCard, { getPlayerPositionBySeat, getCardStyleForPosition } from '../components/Game/HungarianCard.jsx';
 import { useApiCallHook } from '../hooks/useApiCallHook.js';
 import { TokenContext } from '../Contexts/TokenContext.jsx';
 import { UserContext } from '../Contexts/UserContext.jsx';
-import useDetermineCardsPlayability
-  from '../components/Game/Hooks/useDetermineCardsPlayability.js';
 import PlayGround from '../components/Game/PlayGround.jsx';
 import DraggableHand from '../components/Game/DraggableHand.jsx';
 import useCalculatePlayAnimation from "../components/Game/Hooks/useCalculatePlayAnimation.js";
-import AnimatingCard from "../components/Game/AnimatingCard.jsx";
-
-//todo: ez kicsit keszekusza, kulon hookba kell tenni pár dolgot
+import AnimatingCard from '../components/Game/AnimatingCard.jsx';
+import styles from "./styles/Game.module.css";
+import useHandleOpponentsCardPlay from "../components/Game/Hooks/useHandleOpponentsCardPlay.js";
+import {handleAnimationComplete} from "../components/Game/Utils/handleAnimationComplete.js";
+import MobileSelfPlayerHand from "../components/Game/MobileSelfPlayerHand.jsx";
+import {useMediaQuery} from "@mui/material";
+import TabletSelfPlayerHand from "../components/Game/TabletSelfPlayerHand.jsx";
+// van egy hiba a selectcardsd nak hogy ha kivalasztok egy kartyat, de nem teszem lôe hanem huzok egy kartyat helyette akkor nem engedne maskartyatr letenni csak azt amit kivalasztottam az elozo korbe- kÉsz
+// valamiert a viewportol fugg hogy hova teszik le a kartyat a opponensek-kesz
+// ha mobil nÉzet van akkor legyen egy jobbrra balra görgethető mező amiben benne vannak a kartyak, fixen-kesz
+//todo: a mobil nezetbe is kell kartya letetel es draw animacio, ha levan csukva a taska akkor menjen a huzott kartya a nyilfele es kicsinyitodjon le
+//ha nem mi vagyunk a soron akkor addig csukodjon le a taska, majd vissza-kesz
+//a self kartyak letôtelônek az animacíoit megcsinalni,-kesz
+// todo: ha egy ellenfel leteszi a utolso kartyat akkor a kovetkezo korbe nem frissul a init played card
+//todo: a következő körre kellene jelzés, ha vége a körnek akkor kicsit várunk, és mehet a következő
+//todo: a kartyahuzas animaciot megcsinalni
+//todo: amikor leteszi az ellenfel a kartyat akkor legyen kis kartya megfordulas animacio
+//todo: a kartya letetel animacio nem onnan indul aahonnan kellene
+//todo: legyen jelzes hogy ki van soron, valami highlitinggal
+//todo: legyen animacio arrol hogy jelenleg nem mi vagyunk, mondjuk az egész pakli elszurkul, es kicsit ledontodik és ha mi vagyunk akkor meg feldontodik
+//todo: legyen a paklinak helye ahonnan felhuzzak a kartyakat
+//todo: ha leavelunk akkor a playernek refreshelnie kell ahhoz hogy lássa hogy tenyleg kilépett, gondolom nincs reshetelve a state
 function Game() {
   const { gameSession, playerSelf, turn, setTurn, setPlayerSelf, setGameSession, selectedCards, setSelectedCards, validPlays } = useContext(GameSessionContext);
   const { gameSessionId } = useParams();
@@ -26,360 +40,285 @@ function Game() {
   const { token } = useContext(TokenContext);
   const { get, post } = useApiCallHook();
   const { calculateAnimation } = useCalculatePlayAnimation();
-  const navigate = useNavigate();
+
 
   useSubscribeToTopicByPage({ page: 'game' });
 
   const [changeSuitTo, setChangeSuitTo] = useState('');
   const [animatingCards, setAnimatingCards] = useState([]);
+  const [animatingOwnCards,setAnimatingOwnCards]=useState([])
   const draggableHandRef = useRef(null);
   const opponentsCardRefs = useRef({});
-  const playedCardRef=useRef(null);
-  const animationTimingRef = useRef({
-    animations: null,   // az utoljára számolt animációk tömbje
-    totalDelay: 0,      // a teljes várakozási idő (max delay+duration)
-  });
-
-  // Előző kártyaszámok tárolása
+  const playedCardRef = useRef(null);
+  const animationTimingRef = useRef({ animations: null, totalDelay: 0 });
   const prevCardCountsRef = useRef({});
+  const queueRef = useRef([]);                  // mindig tartalmazza a legfrissebb playedCardsQueue-t
+  const animationLockRef = useRef(false);
+  const animatingQueueItemIdRef = useRef(null);
+  const [isAnimating, setIsAnimating] = useState(false);
+
+  const isMobile = useMediaQuery('(max-width: 768px)');
+  const isTablet = useMediaQuery('(max-height: 769px)');
+
+  const { attemptStartNextWithQueue } = useHandleOpponentsCardPlay(
+    animationLockRef,
+    setGameSession,
+    gameSession,
+    playerSelf,
+    playedCardRef,
+    animationTimingRef,
+    setAnimatingCards,
+    queueRef,
+    setIsAnimating,
+    animatingQueueItemIdRef,
+    calculateAnimation
+  );
 
   useEffect(() => {
-    console.log(selectedCards);
-
-  }, [selectedCards]);
-  useEffect(() => {
-
     const getCurrentTurn = async () => {
-
-      console.log('baj');
-      const turn = await get('http://localhost:8080/game/current-turn', token);
-      setTurn(turn);
-
+      const t = await get('http://localhost:8080/game/current-turn', token);
+      setTurn(t);
     };
     getCurrentTurn();
   }, []);
-  // Opponent kártyák változásának figyelése
-  //todo: ezzel van olyan baj hogy ez mar a modositot opponents cardot nezi azaz ha nem az adott idexu cartyat mozgassa amit kell
+
   useEffect(() => {
-    const currentCounts = gameSession?.playerHand?.otherPlayersCardCount || {};
-    const prevCounts = prevCardCountsRef.current;
+    // console.log(gameSession?.playedCardsQueue,animatingCards,gameSession?.playedCards,isAnimating,queueRef,animatingQueueItemIdRef,animationLockRef)
+    console.log(gameSession?.playedCardsQueue,animatingCards,gameSession?.playedCards,isAnimating)
+  }, [gameSession,animatingCards,isAnimating]);
 
-    // Megkeressük melyik játékos kártyaszáma csökkent
-    Object.keys(currentCounts).forEach(playerId => {
-      const currentCount = currentCounts[playerId];
-      const prevCount = prevCounts[playerId];
-
-      // Ha volt előző érték és csökkent
-      if (prevCount !== undefined && currentCount < prevCount) {
-        const diff = prevCount - currentCount;
-        console.log(`Player ${playerId} played ${diff} card(s)`);
-
-        //itt csinalunk egy dumy kartyat hogy kitudjuk szamolni a animaciot
-        const dummyCards = Array.from({ length: diff }, (_, i) => ({
-          refKey: `${playerId}-${i}`
-        }));
-        let goToRef;
-        const playedCardElement = playedCardRef.current;
-        if (playedCardElement) {
-          const rect = playedCardElement.getBoundingClientRect();
-          goToRef = {
-            left: rect.left,
-            top: rect.top,
-          };
-        }
-
-        // Animáció indítása
-        const animations = calculateAnimation(dummyCards, opponentsCardRefs.current, goToRef);
-        console.log(animations)
-        // Mentsük el a számolt animációkat és a totalDelay-t refbe
-        const totalDelay = animations.reduce((max, a) => {
-          const finish = (a.delay ?? 0) + (a.duration ?? 0);
-          return Math.max(max, finish);
-        }, 0);
-
-        animationTimingRef.current.animations = animations;
-        animationTimingRef.current.totalDelay = totalDelay;
-
-        //todo: nincs befejezve az hogy az opponentek animacioja latszodjon, de mar kivan szamolva merre kell menie
-
-
-      }
-    });
-
-    // Frissítjük az előző értékeket
-    prevCardCountsRef.current = { ...currentCounts };
-  }, [gameSession?.playerHand?.otherPlayersCardCount]);
-  //todo: ezt valahogy be kell implementalni hogy ha nem tud letenni kartyat es nem tud huzni akkor maradjon ki a korbol
-  //todo: MÁR MUKODITT AKKOR HA REFRESHELTEM AZ OLDALT DE NEM MUKODITT REALTIMEBA
-  const canPlayAnyCard = () => {
-    console.log(!(!validPlays || validPlays.length === 0));
-
-    return !(!validPlays || validPlays.length === 0);
-
-  };
-
-  const canDrawCard = () => {
-    return gameSession?.deckSize > 0;
-  };
-
-  const mustSkipTurn = () => {
-    return turn?.yourTurn &&
-      !canPlayAnyCard() &&
-      !canDrawCard() &&
-      gameSession?.playedCards?.length <= 1;
-  };
-
-  const drawCard = () => {
-    console.log(playerSelf);
-
-    sendMessage('/app/game/draw', { playerId: playerSelf.playerId });
-  };
+  const drawCard = () => sendMessage('/app/game/draw', { playerId: playerSelf.playerId });
 
   const handleCardClick = (card) => {
     console.log(card);
 
     setSelectedCards(prev => {
-      const exists = prev.find(c => c === card); // vagy c.id, ha van egyedi azonosító
+      // cardId alapján keresünk
+      const exists = prev.find(c => c.cardId === card.cardId);
+
       if (exists) {
-        //ha az a elso kartya volt amire rakantintunk akkor töröljük az egészet
-        if (prev[0] === prev.find(c => c === card && card.rank !== 'OVER')) {
+        // Ha OVER típusú kártya, akkor speciális logika
+        if (prev[0]?.cardId === card.cardId && card.rank !== 'OVER') {
           return [];
         }
-        // ha már benne van → eltávolítjuk
-        return prev.filter(c => c !== card);
+        // Eltávolítás cardId alapján
+        return prev.filter(c => c.cardId !== card.cardId);
       } else {
-        // ha nincs → hozzáadjuk
+        // Hozzáadás
         return [...prev, card];
       }
     });
-  };
+  }
+
   const playCards = () => {
-    console.log(selectedCards);
 
-    // Kártya referenciák lekérése
+
+    //HA van draggablehands és azokra kell animacio
     const cardRefs = draggableHandRef.current?.getCardRefs();
+    if (cardRefs){
 
-    if (!cardRefs) {
-      console.error('Card refs not available');
-      return;
-    }
 
-    const playedCardElement = playedCardRef.current;
 
-    let goToRef;
 
-    if (playedCardElement) {
-      const rect = playedCardElement.getBoundingClientRect();
-      goToRef = {
-        left: rect.left,
-        top: rect.top,
-      };
-    }
-
-    // Animációk kiszámítása a tényleges pozíciókból
-    const animations = calculateAnimation(selectedCards, cardRefs, goToRef);
-
-    // Mentsük el a számolt animációkat és a totalDelay-t refbe
-    const totalDelay = animations.reduce((max, a) => {
-      const finish = (a.delay ?? 0) + (a.duration ?? 0);
-      return Math.max(max, finish);
-    }, 0);
-
-    animationTimingRef.current.animations = animations;
-    animationTimingRef.current.totalDelay = totalDelay;
-
-    // eltüntetjük a kártyákat, mert már elindult az animáció
-    selectedCards.forEach(card => {
-      const cardElement = cardRefs[card.cardId];
-      if (cardElement) {
-        cardElement.style.display = 'none';
+      const playedCardElement = playedCardRef.current;
+      if (!playedCardElement) {
+        console.error('Played card element not found');
+        animationLockRef.current = false;
+        setIsAnimating(false);
+        animatingQueueItemIdRef.current = null;
+        return;
       }
-    });
+      console.log(playedCardElement.style.left)
 
-    setAnimatingCards(animations);
-    console.log('totalDelay', totalDelay);
+      const animations =   calculateAnimation(gameSession.playerHand.ownCards.length,selectedCards,playedCardElement.style,'0deg',playerSelf,gameSession.players,playerSelf.seat,gameSession.playerHand.ownCards)
 
-    // Kis késleltetés után küldjük el a backend-nek
-    setTimeout(() => {
-      const playCardsData = selectedCards.map(({ cardId, suit, rank, ownerId, position }) => ({
+      // const animations = calculateAnimation(
+      //     playerHandCount,
+      //     dummyCards,
+      //     playedCardElement.style,
+      //     "0deg",
+      //     lastPlayer,
+      //     gameSession.players.length,
+      //     playerSelf.seat
+      // );
+
+      const totalDelay = animations.reduce((max, a) => {
+        const finish = (a.delay ?? 0) + (a.duration ?? 0);
+        return Math.max(max, finish);
+      }, 0);
+
+
+      // eltüntetjük a kártyákat a kézből
+       selectedCards.forEach(card => {
+         const cardElement = cardRefs[card.cardId];
+
+        if (cardElement) cardElement.style.display = 'none';
+
+       });
+
+      setAnimatingOwnCards(prev => [...prev, ...animations]);
+
+
+
+      setTimeout(() => {
+        const playCardsData = selectedCards.map(({ cardId, suit, rank, ownerId, position }) => ({ cardId, suit, rank, ownerId, position }));
+        sendMessage('/app/game/play-cards', { playCards: playCardsData, playerId: playerSelf.playerId, ...(changeSuitTo ? { changeSuitTo } : {}) });
+        setSelectedCards([]);
+        setChangeSuitTo(null);
+      }, totalDelay);
+    };
+  };
+
+  const handleAnimationCompleteWrapper = (cardId,ownCards) => {
+    handleAnimationComplete(
         cardId,
-        suit,
-        rank,
-        ownerId,
-        position,
-      }));
-
-      console.log(playCardsData);
-      sendMessage('/app/game/play-cards', {
-        playCards: playCardsData,
-        playerId: playerSelf.playerId,
-        ...(changeSuitTo ? { changeSuitTo } : {}),
-      });
-
-      setSelectedCards([]);
-      setChangeSuitTo(null);
-    }, totalDelay);
+        setAnimatingCards,
+        setGameSession,
+        animatingQueueItemIdRef,
+        animationLockRef,
+        setIsAnimating,
+        animationTimingRef,
+        queueRef,
+        attemptStartNextWithQueue,
+        ownCards,
+        setAnimatingOwnCards,
+        animatingOwnCards
+    );
   };
 
-  const handleAnimationComplete = (cardId) => {
-    const totalDelay = animationTimingRef.current?.totalDelay ?? 0;
+  const initialCards = useMemo(() => gameSession?.playerHand?.ownCards || [], [gameSession?.playerHand?.ownCards]);
 
-
-    setTimeout(() => {
-      setAnimatingCards(prev => prev.filter(c => c.card.cardId !== cardId));
-      //  ha minden animáció véget ért, töröljük a refet
-      if (animationTimingRef.current?.animations) {
-        const remaining = animationTimingRef.current.animations.filter(a => a.card.cardId !== cardId);
-        animationTimingRef.current.animations = remaining;
-        if (remaining.length === 0) {
-          animationTimingRef.current.totalDelay = 0;
-          animationTimingRef.current.animations = null;
-        }
-      }
-    }, totalDelay);
-  };
-
-  //todo: ha leavelek (egyenlore a gamemasterrel probaltam) akkor kapok egy vegtelen cikust
-  const leaveGame = async () => {
-    console.log('asd');
-
-    const response = await post('http://localhost:8080/game/leave', { gameSessionId: gameSession.gameSessionId }, token);
-    console.log(response);
-
-  };
-  const drawStackOfCards = () => {
-    sendMessage('/app/game/draw-stack-of-cards', { playerId: playerSelf.playerId });
-    setPlayerSelf((prev) => ({ ...prev, drawStackNumber: null }));
-  };
-
-  const skipTurn = () => {
-    sendMessage('/app/game/skip', { playerId: playerSelf.playerId });
-  };
-  const initialCards = useMemo(
-    () => gameSession?.playerHand?.ownCards || [],
-    [gameSession?.playerHand?.ownCards],
-  );
   return (
-    <>
-      <PlayGround>
-        <DraggableHand initialCards={initialCards}
-                       ref={draggableHandRef}
-                       selectedCards={selectedCards}
-                       onReorder={(newOrder) => {
-                         console.log('Új sorrend:', newOrder);
-                         setGameSession(prev => ({
-                           ...prev,
-                           playerHand: {
-                             ...prev.playerHand,
-                             ownCards: newOrder,
-                           },
-                         }));
-                       }}
-                       handleCardClick={handleCardClick}
-        />
-        <HungarianCard   ref={playedCardRef}
-          cardData={gameSession.playedCards?.[gameSession.playedCards.length - 1]}
-          left={'50%'} top={'50%'}/>
-
-        {(() => {
-          const players = gameSession.players || [];
-          const selfIdx = players.findIndex(p => p.playerId === playerSelf.playerId);
-          const ordered = selfIdx >= 0 ? players.slice(selfIdx).concat(players.slice(0, selfIdx)) : players;
-          const totalPlayers = ordered.length;
-
-          return ordered.map((p, seatIndex) => {
-            if (p.playerId === playerSelf.playerId) {
-              return null;
-            }
-            const pos = getPlayerPositionBySeat(seatIndex, totalPlayers);
-            const count = gameSession.playerHand?.otherPlayersCardCount?.[String(p.playerId)] ?? 0;
-
-            return (
-              <div key={`player-${p.playerId}`}>
-
-
-                {/* A játékos kártyái a saját tengelye mentén középre igazítva */}
-                {Array.from({ length: count }).map((_, cardIndex) => {
-                  const style = getCardStyleForPosition(pos, cardIndex, count);
-                  const refKey = `${p.playerId}-${cardIndex}`;
-                  return (
-                    <HungarianCard
-                        ref={(el) => {
-                          if (el) {
-                            opponentsCardRefs.current[refKey] = el;
-                          }
-                        }}
-                      key={`p-${p.playerId}-c-${cardIndex}`}
-                      cardData={null} // vagy ha van back/card info: p.cards[cardIndex]
-                      left={style.left}
-                      right={style.right}
-                      top={style.top}
-                      bottom={style.bottom}
-                      rotate={style.rotate}
-                    />
-                  );
-                })}
-              </div>
-            );
-          });
-        })()}
-        {/* Animálódó kártyák */}
-        {animatingCards.map(anim => (
-            <AnimatingCard
-                key={anim.card.cardId}
-                card={anim.card}
-                from={anim.from}
-                to={anim.to}
-                duration={anim.duration}
-                delay={anim.delay}
-                onComplete={handleAnimationComplete}
+      <div className={styles.game}>
+        <div className={styles.playgroundBlock}>
+          <PlayGround>
+            {isMobile?
+                <MobileSelfPlayerHand
+                initialCards={initialCards}
+                selectedCards={selectedCards}
+                handleCardClick={handleCardClick}
+            /> :
+                isTablet ? <TabletSelfPlayerHand initialCards={initialCards}
+                                                 selectedCards={selectedCards}
+                                                 handleCardClick={handleCardClick}/> :
+                <DraggableHand
+                initialCards={initialCards}
+                ref={draggableHandRef}
+                selectedCards={selectedCards}
+                onReorder={(newOrder) => setGameSession(prev => ({
+                  ...prev,
+                  playerHand: {...prev.playerHand, ownCards: newOrder}
+                }))}
+                handleCardClick={handleCardClick}
             />
-        ))}
-      </PlayGround>
+            }
 
+          <HungarianCard
+              ref={playedCardRef}
+              cardData={gameSession.playedCards?.at(-1)}
+              left="45%"
+              top="50%"
+              styleOverride={{transform: 'translate(-50%, -50%)', zIndex: 500}}
+          />
 
-      {/* Deck size display */}
-      <div>Deck size: {gameSession?.deckSize ?? 0}</div>
-      <div>PlayedCards size: {gameSession?.playedCardsSize ?? 0}</div>
-      {/* Action buttons */}
-      {turn?.yourTurn && (
-        <>
-          {<button onClick={drawCard}>Draw Card</button>}
+            {(() => {
+              const players = gameSession.players || [];
+              const selfPlayer = players.find(p => p.playerId === playerSelf.playerId);
+              const selfSeat = selfPlayer?.seat || 0;
+              const totalPlayers = players.length;
 
-          {selectedCards.length !== 0 /*&& canPlayAnyCard()*/ && (
-            <button onClick={playCards}>Play Cards</button>
-          )}
+              return players.map((p) => {
+                if (p.playerId === playerSelf.playerId) return null;
 
-          {mustSkipTurn() && (
-            <button onClick={skipTurn} style={{ backgroundColor: 'orange' }}>
-              Skip Turn (Cannot Play or Draw)
-            </button>
-          )}
-        </>
-      )}
+                // Használd a player tényleges seat értékét
+                const pos = getPlayerPositionBySeat(p.seat, selfSeat, totalPlayers);
+                const count = gameSession.playerHand?.otherPlayersCardCount?.[String(p.playerId)] ?? 0;
 
-      {turn?.yourTurn && <div>Te vagy</div>}
-      {turn?.currentSeat && <div>Current seat: {turn.currentSeat}</div>}
-      {selectedCards[selectedCards.length - 1]?.rank === 'OVER' &&
-        <div>
-          <button onClick={() => setChangeSuitTo('HEARTS')}
-                  style={{ backgroundColor: 'red', width: '50px', height: '50px' }}></button>
-          <button onClick={() => setChangeSuitTo('ACORNS')}
-                  style={{ backgroundColor: 'orange', width: '50px', height: '50px' }}></button>
-          <button onClick={() => setChangeSuitTo('BELLS')}
-                  style={{ backgroundColor: 'brown', width: '50px', height: '50px' }}></button>
-          <button onClick={() => setChangeSuitTo('LEAVES')}
-                  style={{ backgroundColor: 'green', width: '50px', height: '50px' }}></button>
+                return (
+                    <div key={`player-${p.playerId}`}>
+                      {Array.from({ length: count }).map((_, cardIndex) => {
+                        const style = getCardStyleForPosition(pos, cardIndex, count);
+                        const refKey = `${p.playerId}-${cardIndex}`;
+                        return (
+                            <HungarianCard
+                                ref={(el) => {
+                                  if (el) {
+                                    opponentsCardRefs.current[refKey] = el;
+                                  }
+                                }}
+                                key={`p-${p.playerId}-c-${cardIndex}`}
+                                cardData={null}
+                                left={style.left}
+                                right={style.right}
+                                top={style.top}
+                                bottom={style.bottom}
+                                rotate={style.rotate}
+                                styleOverride={{ transform: style.transform }}
+                            />
+                        );
+                      })}
+                    </div>
+                );
+              });
+            })()}
+
+            {animatingCards.map(anim => (
+                <AnimatingCard
+                    key={anim.card.refKey}
+                    card={anim.card}
+                    from={anim.from}
+                    to={anim.to}
+                    duration={anim.duration}
+                    delay={anim.delay}
+                    startRotation={anim.startRotation}
+                    targetRotation={anim.targetRotation}
+                    onComplete={()=>handleAnimationCompleteWrapper(anim.card.cardId,false)}
+                />
+            ))}
+
+            {animatingOwnCards.map(anim => (
+                <AnimatingCard
+                    key={anim.card.refKey}
+                    card={anim.card}
+                    from={anim.from}
+                    to={anim.to}
+                    duration={anim.duration}
+                    delay={anim.delay}
+                    startRotation={anim.startRotation}
+                    targetRotation={anim.targetRotation}
+                    onComplete={()=>handleAnimationCompleteWrapper(anim.card.cardId,true)}
+                />
+            ))}
+
+          </PlayGround>
         </div>
-      }
-      {gameSession?.gameData?.drawStack?.[playerSelf.playerId] &&
-        <button onClick={drawStackOfCards}>have to draw
-          : {gameSession?.gameData?.drawStack[playerSelf.playerId]}</button>}
-      <button onClick={() => leaveGame()}>Leave</button>
-    </>
+
+        <div>Deck size: {gameSession?.deckSize ?? 0}</div>
+        <div>PlayedCards size: {gameSession?.playedCardsSize ?? 0}</div>
+
+        <button disabled={!turn?.yourTurn} onClick={drawCard}>Draw Card</button>
+        <button disabled={selectedCards.length === 0 || !turn?.yourTurn} onClick={playCards}>Play Cards</button>
+
+        {turn?.currentSeat && <div>Current seat: {turn.currentSeat}</div>}
+
+        {selectedCards[selectedCards.length - 1]?.rank === 'OVER' && (
+            <div>
+              <button onClick={() => setChangeSuitTo('HEARTS')} style={{ backgroundColor: 'red', width: '50px', height: '50px' }}></button>
+              <button onClick={() => setChangeSuitTo('ACORNS')} style={{ backgroundColor: 'orange', width: '50px', height: '50px' }}></button>
+              <button onClick={() => setChangeSuitTo('BELLS')} style={{ backgroundColor: 'brown', width: '50px', height: '50px' }}></button>
+              <button onClick={() => setChangeSuitTo('LEAVES')} style={{ backgroundColor: 'green', width: '50px', height: '50px' }}></button>
+            </div>
+        )}
+
+        {gameSession?.gameData?.drawStack?.[playerSelf.playerId] && (
+            <button onClick={() => { sendMessage('/app/game/draw-stack-of-cards', { playerId: playerSelf.playerId }); setPlayerSelf(prev => ({ ...prev, drawStackNumber: null })); }}>
+              have to draw: {gameSession?.gameData?.drawStack[playerSelf.playerId]}
+            </button>
+        )}
+
+        <button onClick={async () => { const response = await post('http://localhost:8080/game/leave', { gameSessionId: gameSession.gameSessionId }, token); console.log(response); }}>Leave</button>
+      </div>
   );
 }
 
 export default Game;
-
-const spacing = 40; // px, állítható: kártyák közötti távolság

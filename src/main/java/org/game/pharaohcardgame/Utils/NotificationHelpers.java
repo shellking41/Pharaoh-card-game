@@ -1,6 +1,7 @@
 package org.game.pharaohcardgame.Utils;
 
 import lombok.RequiredArgsConstructor;
+import org.game.pharaohcardgame.Model.DTO.Request.CardRequest;
 import org.game.pharaohcardgame.Model.DTO.Response.*;
 import org.game.pharaohcardgame.Model.DTO.ResponseMapper;
 import org.game.pharaohcardgame.Model.GameSession;
@@ -53,13 +54,15 @@ public class NotificationHelpers {
         }
     }
 
-    public void sendPlayedCardsNotification(Long gameSessionId, GameState gameState, List<PlayedCardResponse> playedCardResponses) {
+    public void sendPlayedCardsNotification(Long gameSessionId, GameState gameState, List<PlayedCardResponse> playedCardResponses,List<CardRequest> newPlayedCardsResponse,Long playerId) {
         int playedCardsSize = gameState.getPlayedCards().size();
 
 
         Map<String, Object> payload = new HashMap<>();
         payload.put("playedCards", playedCardResponses);
+        payload.put("newPlayedCards",newPlayedCardsResponse);
         payload.put("playedCardsSize", playedCardsSize);
+        payload.put("playedId",playerId);
 
         simpMessagingTemplate.convertAndSend(
                 "/topic/game/" + gameSessionId + "/played-cards",

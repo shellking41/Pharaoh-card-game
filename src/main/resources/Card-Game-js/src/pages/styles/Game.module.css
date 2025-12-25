@@ -1,0 +1,64 @@
+.game {
+    display: flex;
+    justify-content: center;
+    align-content: center;
+    flex-direction: column;
+    width: 100%;
+    padding: 1rem;
+    box-sizing: border-box;
+}
+
+main {
+    background-color: black;
+}
+
+.playgroundBlock {
+    position: relative;
+    background-color: white;
+    border-radius: 16px;
+    width: 100%;
+    max-width: 1600px;
+    margin: 0 auto;
+    padding: 1rem;
+    box-sizing: border-box;
+}
+
+/* Mobile optimalizáció */
+@media (max-width: 768px) {
+    .game {
+        padding: 0.5rem;
+    }
+    .MuiContainer-root{
+        padding: 0!important;
+    }
+    .playgroundBlock {
+        border-radius: 12px;
+        padding: 0;
+    }
+}
+
+/* Tablet optimalizáció */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .playgroundBlock {
+        max-width: 1200px;
+    }
+}
+
+.playgroundBlock::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 20px;
+    border-radius: 0 0 12px 12px;
+    background-color: rgba(44, 95, 45);
+    pointer-events: none;
+}
+
+/* Nagy képernyő optimalizáció */
+@media (min-width: 1920px) {
+    .playgroundBlock {
+        max-width: 1800px;
+    }
+}

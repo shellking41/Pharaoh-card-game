@@ -12,7 +12,7 @@ const getPageSubscriptions = (contexts) => {
 
   const {
     userCurrentStatus, setUserCurrentStatus,
-    gameSession, setGameSession,
+    gameSession, setGameSession,setSelectedCards,
     playerSelf, setPlayerSelf,
     setTurn,
     setJoinRequests,
@@ -136,6 +136,7 @@ const getPageSubscriptions = (contexts) => {
         destination: '/user/queue/game/draw',
         callback: (message) => {
 
+
           console.log(message);
           console.log(message.otherPlayersCardCount[message.playerId]);
           console.log(message.playerId === playerSelf.playerId && message.newCard != null);
@@ -160,6 +161,7 @@ const getPageSubscriptions = (contexts) => {
                   },
                 };
               });
+              setSelectedCards([])
             }
           } else {
             // Más húzott → csak az otherPlayersCardCount frissítése
@@ -181,10 +183,30 @@ const getPageSubscriptions = (contexts) => {
       }, {
         destination: '/topic/game/' + gameSession.gameSessionId + '/played-cards',
         callback: (message) => {
-          console.log(message);
-          setGameSession((prev) => ({ ...prev, playedCards: message.playedCards, playedCardsSize: message.playedCardsSize }));
+          console.log('[WS] played-cards incoming', message);
 
+          // Ha nincs tényleges kártya csomag, skip
+          const incoming = message?.newPlayedCards ?? [];
+          if (!incoming || incoming.length === 0) return;
+
+          setGameSession((prev) => {
+            const queue = Array.isArray(prev?.playedCardsQueue) ? prev.playedCardsQueue : [];
+
+            const entry = {
+              id: `${message.playedId}-${Date.now()}`, // egyedi id
+              playerId: message.playedId,
+              cards: incoming,
+              receivedAt: Date.now(),
+            };
+
+            return {
+              ...prev,
+              // hozzáfűzzük sor végére (érkezési sorrend)
+              playedCardsQueue: [...queue, entry],
+            };
+          });
         },
+
       }, {
 
         destination: '/user/queue/game/play-cards',
@@ -305,7 +327,7 @@ function UseSubscribeToTopicByPage({ page, currentRoomId }) {
 
   const { subscribe } = useWebsocket();
   const { userCurrentStatus, setUserCurrentStatus } = useContext(UserContext);
-  const { gameSession, setGameSession, playerSelf, setPlayerSelf, setTurn, setValidPlays } = useContext(GameSessionContext);
+  const { gameSession, setGameSession, playerSelf, setPlayerSelf, setTurn, setValidPlays,setSelectedCards } = useContext(GameSessionContext);
   const { setRooms, joinRequests, setJoinRequests } = useContext(RoomsDataContext);
   const { showNotification } = useContext(NotificationContext);
   const { token } = useContext(TokenContext);
@@ -321,7 +343,7 @@ function UseSubscribeToTopicByPage({ page, currentRoomId }) {
       showNotification,
       currentRoomId,
       gameSession,
-      setGameSession,
+      setGameSession,setSelectedCards,
       playerSelf,
       setPlayerSelf,
       setTurn,

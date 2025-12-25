@@ -414,7 +414,7 @@ public class GameSessionService implements IGameSessionService {
 
             gameEngine.playCards(playCardsRequest.getPlayCards(), currentPlayer, current, gameSession);
             //ha finished akkor ne menjen tovább a logika
-            if (handleIfGameFinished(current, gameSession, playedCardResponses.get())) {
+            if (handleIfGameFinished(current, gameSession, playedCardResponses.get(),playCardsRequest.getPlayCards(),playCardsRequest.getPlayerId())) {
                 return current;
             }
 
@@ -472,7 +472,7 @@ public class GameSessionService implements IGameSessionService {
 
 
         //ez azt kuldi el hogy milyen kartyak vannak már letéve
-        notificationHelpers.sendPlayedCardsNotification(gameSession.getGameSessionId(), gameState, playedCardResponses.get());
+        notificationHelpers.sendPlayedCardsNotification(gameSession.getGameSessionId(), gameState, playedCardResponses.get(),playCardsRequest.getPlayCards(),playCardsRequest.getPlayerId());
 
         //ez elkuldi a frissitett player handet hogy a játszo usernek a kezebol eltunnjon a kartya es mas playerek is lassak ezt
         notificationHelpers.sendPlayCardsNotification(gameSession, gameState);
@@ -647,12 +647,12 @@ public class GameSessionService implements IGameSessionService {
         }
     }
 
-    private boolean handleIfGameFinished(GameState current, GameSession gameSession, List<PlayedCardResponse> playedCardResponses) {
+    private boolean handleIfGameFinished(GameState current, GameSession gameSession, List<PlayedCardResponse> playedCardResponses,List<CardRequest> newPlayedCards,Long playerId) {
         if (current.getStatus().equals(GameStatus.FINISHED)) {
             // End the game session
             gameSession.setGameStatus(GameStatus.FINISHED);
             gameSessionRepository.save(gameSession);
-            notificationHelpers.sendPlayedCardsNotification(gameSession.getGameSessionId(), current, playedCardResponses);
+            notificationHelpers.sendPlayedCardsNotification(gameSession.getGameSessionId(), current, playedCardResponses,newPlayedCards,playerId);
             notificationHelpers.sendPlayCardsNotification(gameSession, current);
             // End game state in cache
             gameSessionUtils.deleteGameState(gameSession.getGameSessionId());

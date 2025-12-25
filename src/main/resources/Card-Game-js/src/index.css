@@ -3,3 +3,7 @@
     margin: 0;
     padding: 0;
 }
+:root {
+    --card-width: 80px;
+    --card-height: 120px;
+}
