@@ -62,7 +62,7 @@ public class NotificationHelpers {
         payload.put("playedCards", playedCardResponses);
         payload.put("newPlayedCards",newPlayedCardsResponse);
         payload.put("playedCardsSize", playedCardsSize);
-        payload.put("playedId",playerId);
+        payload.put("playerId",playerId);
 
         simpMessagingTemplate.convertAndSend(
                 "/topic/game/" + gameSessionId + "/played-cards",

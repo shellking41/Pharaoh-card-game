@@ -148,6 +148,23 @@ public class GameSessionService implements IGameSessionService {
                     );
                 }
             }
+            Map<String, Object> gameData = gameState.getGameData();
+            int currentRound = (int) gameData.getOrDefault("currentRound", 0);
+            currentRound++;
+            gameData.put("currentRound", currentRound);
+
+            @SuppressWarnings("unchecked")
+            Map<Integer, Boolean> isRoundFinished =
+                    (Map<Integer, Boolean>) gameData.get("isRoundFinished");
+
+            if (isRoundFinished == null) {
+                isRoundFinished = new HashMap<>();
+            }
+
+            // új kör még nem ért véget
+            isRoundFinished.put(currentRound, false);
+
+            gameData.put("isRoundFinished", isRoundFinished);
             return responseMapper.createSuccessResponse(true, "Game has been successfully started");
 
         } catch (AccessDeniedException e) {
@@ -427,13 +444,15 @@ public class GameSessionService implements IGameSessionService {
 
                 //ha a kartya lerakasakor olyan kartyat raktunk le ami skippeli a plajereket akkor az szerint kezdodik el a turn.
                 Set<Long> skippedPlayers = gameSessionUtils.getSpecificGameDataTypeSet("skippedPlayers", current);
-                //ha a player égetett akkor ujra jojjon o
-                //todo: ha streakelunk akkor a currentseat1 lesz de valamiert a yourturn false
                 Long streakPlayerId = gameSessionUtils.getSpecificGameData("streakPlayerId", current, null);
                 NextTurnResult nextTurnResult;
 
                 if (streakPlayerId != currentPlayer.getPlayerId()) {
-                    nextTurnResult = gameEngine.nextTurn(currentPlayer, gameSession, current, skippedPlayers.size());
+                    if(!skippedPlayers.isEmpty()){
+                        nextTurnResult=gameEngine.nextTurn(currentPlayer, gameSession, current,playCardsRequest.getPlayCards().size());
+                    }else{
+                        nextTurnResult = gameEngine.nextTurn(currentPlayer, gameSession, current,0);
+                    }
                 } else {
                     //ha egetett a player akkor o kovetkezzen ujra
                     nextTurnResult = new NextTurnResult(currentPlayer, currentPlayer.getSeat());
@@ -443,12 +462,19 @@ public class GameSessionService implements IGameSessionService {
 
                 // Mentjük a referenciába, hogy a lambda végén kívül is elérjük
                 nextTurnRef.set(nextTurnResult);
+
             } else {
+                // ÚJ KÖR KEZDŐDIK - determináljuk ki kezdi
                 NextTurnResult nextTurnResult = gameEngine.determineWhoWillStartTheRound(gameSession, current);
                 nextTurnRef.set(nextTurnResult);
                 current.setCurrentPlayerId(nextTurnResult.nextPlayer().getPlayerId());
                 //ezt itt töröljük mert a start new round methodot a playcards method inditja el
                 current.getGameData().remove("roundEnded");
+
+                //  Jelöljük meg, hogy új kör kezdődött és bot-ot kell várni
+                if (nextTurnResult.nextPlayer().getIsBot()) {
+                    current.getGameData().put("newRoundBotWaiting", true);
+                }
             }
             //itt kell setelni a playedCards-t ha akarjuk elkerulnia a race conditiont
             playedCardResponses.set(responseMapper.toPlayedCardResponseListFromCards(current.getPlayedCards()));
@@ -481,8 +507,21 @@ public class GameSessionService implements IGameSessionService {
         notificationHelpers.sendSkippedPlayersNotification(skippedPlayers, gameSession.getPlayers());
 
         notificationHelpers.sendNextTurnNotification(next.nextPlayer(), gameSession.getPlayers(), next.nextSeatIndex(), gameSessionUtils.calculateValidPlays(gameState, next.nextPlayer()));
+        //Ha új kör kezdődött és a következő player bot, akkor késleltetéssel indítsuk
+        Boolean newRoundBotWaiting = (Boolean) gameState.getGameData().getOrDefault("newRoundBotWaiting", false);
+        if (newRoundBotWaiting) {
+            // Töröljük a flag-et
+            gameSessionUtils.updateGameState(gameSession.getGameSessionId(), current -> {
+                current.getGameData().remove("newRoundBotWaiting");
+                return current;
+            });
 
-        botLogic.handleIfNextPlayerIsBot(next, gameSession);
+            // Késleltetett bot indítás (3-5 másodperc)
+            botLogic.scheduleNewRoundStartForBot(next, gameSession);
+        } else {
+            // Normál bot logika (azonnal)
+            botLogic.handleIfNextPlayerIsBot(next, gameSession);
+        }
 
     }
 

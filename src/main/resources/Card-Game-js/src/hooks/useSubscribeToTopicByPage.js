@@ -183,6 +183,7 @@ const getPageSubscriptions = (contexts) => {
       }, {
         destination: '/topic/game/' + gameSession.gameSessionId + '/played-cards',
         callback: (message) => {
+
           console.log('[WS] played-cards incoming', message);
 
           // Ha nincs tényleges kártya csomag, skip
@@ -193,8 +194,8 @@ const getPageSubscriptions = (contexts) => {
             const queue = Array.isArray(prev?.playedCardsQueue) ? prev.playedCardsQueue : [];
 
             const entry = {
-              id: `${message.playedId}-${Date.now()}`, // egyedi id
-              playerId: message.playedId,
+              id: `${message.playerId}-${Date.now()}`, // egyedi id
+              playerId: message.playerId,
               cards: incoming,
               receivedAt: Date.now(),
             };
@@ -211,8 +212,17 @@ const getPageSubscriptions = (contexts) => {
 
         destination: '/user/queue/game/play-cards',
         callback: (message) => {
-          console.log(message);
-          setGameSession((prev) => ({ ...prev, playerHand: message.playerHand, gameData: message.gameData }));
+          console.log("PLAY-CARD-XD",message);
+          const newRound = message.gameData?.currentRound;
+          setGameSession((prev) => ({ ...prev, playerHand: message.playerHand, ...(newRound !== undefined && { newRound }) ,gameData: {
+              ...prev.gameData,
+              drawStack:message.gameData.drawStack,
+              finishedPlayers:message.gameData.finishedPlayers,
+              isRoundFinished:message.gameData.isRoundFinished,
+              lossCount:message.gameData.lossCount,
+              lostPlayers:message.gameData.lostPlayers,
+              skippedPlayers:message.gameData.skippedPlayers,
+            } }));
         },
       }, {
         destination: '/user/queue/game/turn',

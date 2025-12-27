@@ -120,7 +120,9 @@ const HungarianCardInner = ({
                               right,
                               rotate,
                               ownCard,
+    isAnimating
                             }, forwardedRef) => {
+
   const { validPlays, selectedCards } = useContext(GameSessionContext);
   const [isCardPlayable, setIsCardPlayable] = useState(false);
 
@@ -179,6 +181,8 @@ const HungarianCardInner = ({
     cursor: isCardPlayable === false ? 'not-allowed' : 'pointer',
     border: 'none',
     background: 'transparent',
+      transformStyle: 'preserve-3d',
+      backfaceVisibility: "hidden"
   };
   // Kártya képpel
   const imagePath = getCardImagePath(cardData?.suit, cardData?.rank);
@@ -188,6 +192,7 @@ const HungarianCardInner = ({
     return (
         <div
             ref={rootRef}
+            className={"base-card"}
             style={{
               ...baseStyle,
               backgroundColor: '#2c5f2d',
@@ -222,11 +227,11 @@ const HungarianCardInner = ({
           onClick={onClick}
           className={`
           base-card
-          ${isCardPlayable ? 'selectable-card' : ''}
+          ${isCardPlayable || !isAnimating ? 'selectable-card' : ''}
           ${ownCard ? 'own-card' : ''}
-          ${!isCardPlayable && ownCard ? 'not-selectable-card' : ''}
+          ${(!isCardPlayable && ownCard) || isAnimating ? 'not-selectable-card' : ''}
         `}
-          disabled={ownCard && !isCardPlayable && !isAlreadySelected}
+          disabled={(ownCard && !isCardPlayable && !isAlreadySelected) || isAnimating}
           style={{
             ...baseStyle,
             border: isSelected && '3px solid #ffd700',

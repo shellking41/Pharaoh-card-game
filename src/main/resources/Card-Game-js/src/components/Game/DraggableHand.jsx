@@ -8,6 +8,7 @@ const DraggableHand = forwardRef(({
                                     selectedCards = [],
                                     handleCardClick = () => {},
                                     spacing = 40,
+                                    isAnimating,
                                     onReorder,
                                   }, ref) => {
   const [cards, setCards] = useState(initialCards);
@@ -17,10 +18,10 @@ const DraggableHand = forwardRef(({
   const { sendMessage } = useWebsocket();
   const { playerSelf } = useContext(GameSessionContext);
 
-  // Referenciák tárolása minden kártyához
+  // ReferenciÃ¡k tÃ¡rolÃ¡sa minden kÃ¡rtyÃ¡hoz
   const cardRefs = useRef({});
 
-  // Ref API exponálása a parent komponensnek
+  // Ref API exponÃ¡lÃ¡sa a parent komponensnek
   useImperativeHandle(ref, () => ({
     getCardRefs: () => cardRefs.current
   }));
@@ -89,7 +90,7 @@ const DraggableHand = forwardRef(({
     setHasChanges(true);
   };
 
-  // Helper függvény: ellenőrzi, hogy egy kártya ki van-e választva (cardId alapján)
+  // Helper fÃ¼ggvÃ©ny: ellenÅ‘rzi, hogy egy kÃ¡rtya ki van-e vÃ¡lasztva (cardId alapjÃ¡n)
   const isCardSelected = (card) => {
     return selectedCards.some(selected => selected.cardId === card.cardId);
   };
@@ -124,6 +125,7 @@ const DraggableHand = forwardRef(({
                   cardData={card}
                   ownCard={true}
                   onClick={() => handleCardClick(card)}
+                  isAnimating={isAnimating}
                   isSelected={isCardSelected(card)}
               />
             </div>

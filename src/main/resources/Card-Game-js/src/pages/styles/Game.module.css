@@ -21,6 +21,7 @@ main {
     margin: 0 auto;
     padding: 1rem;
     box-sizing: border-box;
+    perspective: 800px;
 }
 
 /* Mobile optimalizáció */
@@ -38,9 +39,16 @@ main {
 }
 
 /* Tablet optimalizáció */
-@media (min-width: 769px) and (max-width: 1024px) {
+@media (max-height: 769px) {
     .playgroundBlock {
         max-width: 1200px;
+    }
+    .MuiContainer-root{
+        padding: 0!important;
+    }
+    .playgroundBlock {
+        border-radius: 12px;
+        padding: 0;
     }
 }
 

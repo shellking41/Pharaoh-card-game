@@ -20,15 +20,6 @@ function UseHandleOpponentsCardPlay(animationLockRef,setGameSession,gameSession,
 
         // ha mi tettük le, azonnal feldolgozzuk (nem animálunk)
         if (next.playerId === playerSelf.playerId) {
-            setGameSession(prev => {
-                const [first, ...rest] = prev.playedCardsQueue || [];
-                return {
-                    ...prev,
-                    playedCards: [...(prev.playedCards || []), ...(first?.cards || [])],
-                    playedCardsSize: (prev.playedCardsSize ?? 0) + (first?.cards?.length ?? 0),
-                    playedCardsQueue: rest,
-                };
-            });
             return;
         }
 
@@ -87,6 +78,8 @@ function UseHandleOpponentsCardPlay(animationLockRef,setGameSession,gameSession,
     useLayoutEffect(() => {
         const q = gameSession?.playedCardsQueue ?? [];
         queueRef.current = q;
+        console.log(q)
+
         // próbáljuk elindítani rögtön (ha nincs lock)
         if (!animationLockRef.current) attemptStartNextWithQueue(q);
     }, [gameSession?.playedCardsQueue]);

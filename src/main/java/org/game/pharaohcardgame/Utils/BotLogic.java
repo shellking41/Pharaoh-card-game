@@ -158,7 +158,11 @@ public class BotLogic implements IBotLogic {
         NextTurnResult nextTurnResult;
 
         if (streakPlayerId != botPlayer.getPlayerId()) {
-            nextTurnResult = gameEngine.nextTurn(botPlayer, gameSession, current, skippedPlayers.size());
+            if(!skippedPlayers.isEmpty()){
+                nextTurnResult=gameEngine.nextTurn(botPlayer, gameSession, current,chosen.size());}
+            else{
+                nextTurnResult = gameEngine.nextTurn(botPlayer, gameSession, current, 0);
+            }
         } else {
             //ha egetett a player akkor o kovetkezzen ujra
             nextTurnResult = new NextTurnResult(botPlayer, botPlayer.getSeat());
@@ -608,10 +612,10 @@ public class BotLogic implements IBotLogic {
                     nextTurnResult = botPlays(gameState, gameSession, currentPlayer);
                 }
 
-
                 // új gameState után
                 gameState = gameSessionUtils.getGameState(gameSession.getGameSessionId());
-                //ha vége a jateknak akkor toroljuk a gamestatust es ertesitjuk a playereket
+
+                // ha vége a játéknak
                 if (gameState.getStatus().equals(GameStatus.FINISHED)) {
                     gameSession.setGameStatus(GameStatus.FINISHED);
                     gameSessionRepository.save(gameSession);
@@ -619,9 +623,9 @@ public class BotLogic implements IBotLogic {
                     notificationHelpers.sendGameEnded(gameSession, "Game is finished");
                     return;
                 }
+
                 Boolean roundEnded = (Boolean) gameState.getGameData().getOrDefault("roundEnded", false);
                 if (roundEnded) {
-
                     log.info("Bot {} finished the round, starting new round", currentPlayer.getPlayerId());
 
                     AtomicReference<NextTurnResult> newRoundStartRef = new AtomicReference<>();
@@ -633,6 +637,13 @@ public class BotLogic implements IBotLogic {
                         return current;
                     });
                     nextTurnResult = newRoundStartRef.get();
+
+                    // ÚJ KÖR INDÍTÁSA - csak akkor késleltetünk, ha a következő játékos bot
+                    if (nextTurnResult.nextPlayer().getIsBot()) {
+                        scheduleNewRoundStart(nextTurnResult, gameSession);
+                        return; // Kilépünk, mert a scheduleNewRoundStart majd folytatja
+                    }
+                    // Ha a következő játékos NEM bot, akkor normálisan folytatjuk
                 }
 
             } else {
@@ -658,15 +669,78 @@ public class BotLogic implements IBotLogic {
             Set<Long> skippedPlayers = gameSessionUtils.getSpecificGameDataTypeSet("skippedPlayers", newState);
             notificationHelpers.sendSkippedPlayersNotification(skippedPlayers, gameSession.getPlayers());
 
-            // Ha a következő is bot, schedule-oljuk újra 2-3s késleltetéssel
+            // Ha a következő is bot, schedule-oljuk újra
             if (nextPlayer.getIsBot()) {
-                long delay = BOT_THINK_TIME_Ms + ThreadLocalRandom.current().nextLong(1000); // 1000-1999 ms emberibb effekt
+                long delay = BOT_THINK_TIME_Ms + ThreadLocalRandom.current().nextLong(1000);
                 scheduleBotIteration(nextTurnResult, gameSession, delay);
             }
 
         } catch (Exception e) {
             log.error("Error processing bot iteration for game " + gameSession.getGameSessionId(), e);
-            // hiba esetén érdemes dönteni: újrapróbál, leállít vagy jelzi a játékot
+        }
+    }
+    public void scheduleNewRoundStartForBot(NextTurnResult next, GameSession gameSession) {
+        if (next.nextPlayer().getIsBot()) {
+            scheduleNewRoundStart(next, gameSession);
+        }
+    }
+    //  Külön kezelés az új kör indításához késleltetéssel
+    private void scheduleNewRoundStart(NextTurnResult nextTurnResult, GameSession gameSession) {
+        // 3-5 másodperc késleltetés az új kör indítása előtt
+        long newRoundDelay = 3000 + ThreadLocalRandom.current().nextLong(2000); // 3000-4999 ms
+        Instant runAt = Instant.now().plusMillis(newRoundDelay);
+
+        log.info("New round will start in {}ms for game {}", newRoundDelay, gameSession.getGameSessionId());
+
+        try {
+            taskScheduler.schedule(() -> {
+                try {
+                    continueAfterNewRound(nextTurnResult, gameSession);
+                } catch (Exception e) {
+                    log.error("Error starting new round for game {}", gameSession.getGameSessionId(), e);
+                    botDrawCardAndSkipTurn(nextTurnResult.nextPlayer(), gameSession);
+                }
+            }, runAt);
+
+        } catch (RejectedExecutionException e) {
+            log.error("Scheduler rejected new round for game {}", gameSession.getGameSessionId());
+            botDrawCardAndSkipTurn(nextTurnResult.nextPlayer(), gameSession);
+        }
+    }
+
+    //  Az új kör késleltetés után folytatódik
+    private void continueAfterNewRound(NextTurnResult nextTurnResult, GameSession gameSession) {
+        try {
+            // Friss gameState lekérése
+            GameState gameState = gameSessionUtils.getGameState(gameSession.getGameSessionId());
+
+            // Értesítések küldése az új körről
+            notificationHelpers.sendNextTurnNotification(
+                    nextTurnResult.nextPlayer(),
+                    gameSession.getPlayers(),
+                    nextTurnResult.nextSeatIndex(),
+                    gameSessionUtils.calculateValidPlays(gameState, nextTurnResult.nextPlayer())
+            );
+
+            Player nextPlayer = nextTurnResult.nextPlayer();
+
+            // DrawStack ellenőrzés
+            Map<Long, Integer> drawStack = gameSessionUtils.getSpecificGameDataTypeMap("drawStack", gameState);
+            if (gameEngine.playerHaveToDrawStack(nextPlayer, gameState)) {
+                notificationHelpers.sendPlayerHasToDrawStack(nextPlayer, drawStack);
+            }
+
+            Set<Long> skippedPlayers = gameSessionUtils.getSpecificGameDataTypeSet("skippedPlayers", gameState);
+            notificationHelpers.sendSkippedPlayersNotification(skippedPlayers, gameSession.getPlayers());
+
+            // Ha a következő játékos bot, folytatjuk a bot logikát
+            if (nextPlayer.getIsBot()) {
+                long delay = BOT_THINK_TIME_Ms + ThreadLocalRandom.current().nextLong(1000);
+                scheduleBotIteration(nextTurnResult, gameSession, delay);
+            }
+
+        } catch (Exception e) {
+            log.error("Error continuing after new round for game {}", gameSession.getGameSessionId(), e);
         }
     }
 

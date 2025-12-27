@@ -1,9 +1,10 @@
-import { useState, useCallback } from 'react';
+import {useState, useCallback, useContext} from 'react';
 import {getCardStyleForPosition, getPlayerPositionBySeat} from "../HungarianCard.jsx";
+import {GameSessionContext} from "../../../Contexts/GameSessionContext.jsx";
 
 function useCalculatePlayAnimation(spacing = 40) {
     const [animations, setAnimations] = useState([]);
-
+    const {playerSelf}=useContext(GameSessionContext)
     function normalizeCoord(val) {
         if (val == null) return undefined;
         if (typeof val === 'number') return `${val}px`;
@@ -47,18 +48,11 @@ function useCalculatePlayAnimation(spacing = 40) {
 
             const cardsInitPositionStyle = cards.map((card, i) => {
                 let cardIndexForLayout;
-                console.log(playerPosition,allCardsInHand)
 
-                // Ha saját kártyákat játszunk és van hivatkozásunk a teljes kézre
                 if (playerPosition === 'bottom' && allCardsInHand) {
-                    // Keressük meg a kártya eredeti indexét a teljes kézben
                     cardIndexForLayout = allCardsInHand.findIndex(c => c.cardId === card.cardId);
-                    cardIndexForLayout=cardIndexForLayout-cards.length>-1?cardIndexForLayout-cards.length:-1
-                    console.log(cardIndexForLayout)
-
-
+                    cardIndexForLayout = cardIndexForLayout - cards.length > -1 ? cardIndexForLayout - cards.length : -1;
                 } else {
-                    // Ellenfelek kártyáinál: középre igazított elrendezés
                     const startIndex = Math.max(0, Math.floor((handCount - playCount) / 2));
                     cardIndexForLayout = startIndex + i;
                 }
@@ -67,22 +61,31 @@ function useCalculatePlayAnimation(spacing = 40) {
             });
 
             return cardsInitPositionStyle.map((style, index) => {
+                // Offset értékek számítása (0 és 1 között egyenlően elosztva)
                 return {
-                    to: {
-                        left: target.left,
-                        top: target.top,
-                    },
-                    from: {
-                        left: normalizeCoord(style.left),
-                        right: normalizeCoord(style.right),
-                        top: normalizeCoord(style.top && `${style.top}`),
-                        bottom: normalizeCoord(style.bottom),
-                    },
-                    duration: 500,
-                    delay: index * 150,
-                    startRotation: style.rotate,
-                    targetRotation,
                     card: cards[index],
+                    waypoints: [
+                        {
+                            left: normalizeCoord(style.left),
+                            top: normalizeCoord(style.top && `${style.top}`),
+                            rotate: style.rotate || '0deg',
+                            scale: 1,
+                            transform:   playerSelf.playerId!==lastPlayer.playerId && 'rotateY(180deg)',
+
+                            offset: 0,
+                        },
+                        {
+                            left: target.left,
+                            top: target.top,
+                            rotate: targetRotation,
+                            scale: 1,
+                            transform: playerSelf.playerId!==lastPlayer.playerId && 'rotateY(0deg)',
+
+                            offset: 1,
+                        }
+                    ],
+                    delay: index * 150,
+                    duration: 600,
                 };
             });
         },
@@ -91,4 +94,5 @@ function useCalculatePlayAnimation(spacing = 40) {
 
     return { calculateAnimation, animations, setAnimations };
 }
+
 export default useCalculatePlayAnimation;

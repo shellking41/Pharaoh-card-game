@@ -6,7 +6,8 @@ import {GameSessionContext} from "../../Contexts/GameSessionContext.jsx";
 export  default function MobileSelfPlayerHand({
                                   initialCards = [],
                                   selectedCards = [],
-                                  handleCardClick = () => {}
+                                  handleCardClick = () => {},
+                                                  isAnimating
                               }) {
     const [cards, setCards] = useState(initialCards);
     const [isOpen, setIsOpen] = useState(false);
@@ -74,6 +75,7 @@ export  default function MobileSelfPlayerHand({
                         <HungarianCard
                             cardData={card}
                             ownCard={true}
+                            isAnimating={isAnimating}
                             onClick={() => handleCardClick(card)}
                             isSelected={selectedCards.includes(card)}
                         />

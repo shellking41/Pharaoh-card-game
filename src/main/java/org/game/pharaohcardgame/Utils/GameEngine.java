@@ -389,7 +389,9 @@ public class GameEngine implements IGameEngine {
             handlePlayerEmptyhand(gameState, currentPlayer, gameSession);
         }
         //ha a player éget akkor ezt mentjuk el. csak akkor égethet ha nem heteseket tesz le VAGY  ace-t
-        if (playCards.size() == 4 && (!playCards.getFirst().getRank().equals(CardRank.VII) || !playCards.getFirst().getRank().equals(CardRank.ACE))) {
+        if (    playCards.size() == 4 &&
+                !playCards.getFirst().getRank().equals(CardRank.VII) &&
+                !playCards.getFirst().getRank().equals(CardRank.ACE)) {
             gameState.getGameData().put("streakPlayerId", currentPlayer.getPlayerId());
             log.info("Player {} streaked! They will play again.", currentPlayer.getPlayerId());
         }
@@ -420,6 +422,21 @@ public class GameEngine implements IGameEngine {
             Player lastPlayer = activePlayers.get(0);
             handleRoundEnd(gameState, lastPlayer);
             if (!isGameEnded(gameState, gameSession)) {
+
+                Map<String, Object> gameData = gameState.getGameData();
+
+                int currentRound = (int) gameData.getOrDefault("currentRound", 0);
+                @SuppressWarnings("unchecked")
+                Map<Integer, Boolean> isRoundFinished =
+                        (Map<Integer, Boolean>) gameData.get("isRoundFinished");
+
+                if (isRoundFinished == null) {
+                    isRoundFinished = new HashMap<>();
+                }
+                isRoundFinished.put(currentRound, true);
+
+                gameData.put("isRoundFinished", isRoundFinished);
+
                 // Új kör indítása
                 startNewRound(gameState, gameSession);
             } else {
@@ -565,6 +582,24 @@ public class GameEngine implements IGameEngine {
         gameState.getGameData().remove("skippedPlayers");      // ACE kártya skip állapot törlése
         gameState.getGameData().remove("drawStack");           // 7-es kártya húzási kötelezettség törlése
         gameState.getGameData().remove("finishedPlayers");
+
+        Map<String, Object> gameData = gameState.getGameData();
+        int currentRound = (int) gameData.getOrDefault("currentRound", 0);
+        currentRound++;
+        gameData.put("currentRound", currentRound);
+
+        @SuppressWarnings("unchecked")
+        Map<Integer, Boolean> isRoundFinished =
+                (Map<Integer, Boolean>) gameData.get("isRoundFinished");
+
+        if (isRoundFinished == null) {
+            isRoundFinished = new HashMap<>();
+        }
+
+        // új kör még nem ért véget
+        isRoundFinished.put(currentRound, false);
+
+        gameData.put("isRoundFinished", isRoundFinished);
     }
 
     @Override
