@@ -23,6 +23,6 @@ public class DrawCardResponse {
 	private Integer deckSize;
 	private Integer playedCardsSize;
 	private Map<String, Object> gameData; // további game-specifikus adatok
-
+	int drawCardsLength;
 
 }

@@ -2,7 +2,6 @@ import { createContext, useContext, useState } from 'react';
 
 export const GameSessionContext = createContext();
 
-// Provider komponens
 export const GameSessionContextProvider = ({ children }) => {
   const [gameSession, setGameSession] = useState({
     gameSessionId: null,
@@ -16,17 +15,20 @@ export const GameSessionContextProvider = ({ children }) => {
   });
   const [selectedCards, setSelectedCards] = useState([]);
   const [validPlays, setValidPlays] = useState([]);
+  const [isNewRound, setIsNewRound] = useState(false);
+  const [animatingDrawCards, setAnimatingDrawCards] = useState([]);
+
   const [playerSelf, setPlayerSelf] = useState({
     playerId: null,
     seat: null,
     userId: null,
-
   });
 
   const [turn, setTurn] = useState({
     currentSeat: null,
     yourTurn: false,
   });
+
   const contextValue = {
     gameSession,
     setGameSession,
@@ -38,8 +40,11 @@ export const GameSessionContextProvider = ({ children }) => {
     setValidPlays,
     selectedCards,
     setSelectedCards,
+    isNewRound,
+    setIsNewRound,
+    animatingDrawCards,
+    setAnimatingDrawCards,
   };
 
-  return <GameSessionContext.Provider
-    value={contextValue}>{children}</GameSessionContext.Provider>;
+  return <GameSessionContext.Provider value={contextValue}>{children}</GameSessionContext.Provider>;
 };

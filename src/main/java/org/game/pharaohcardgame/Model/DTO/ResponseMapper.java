@@ -265,7 +265,7 @@ public class ResponseMapper {
 
     }
 
-    public DrawCardResponse toDrawCardResponse(GameState gameState, List<Card> drawnCards, Long playerId, Integer deckSize, Integer playedCardsSize) {
+    public DrawCardResponse toDrawCardResponse(GameState gameState, List<Card> drawnCards, Long ownPlayerId, Integer deckSize, Integer playedCardsSize,int drawCardsLength,Long playerId) {
 
         Map<Long, Integer> otherPlayersCardCount = gameState.getPlayerHands().entrySet()
                 .stream()
@@ -278,12 +278,13 @@ public class ResponseMapper {
 
         return DrawCardResponse.builder()
                 .newCard(cardInHandResponses)
-                .playerId(playerId)
+                .playerId(ownPlayerId)
                 .gameSessionId(gameState.getGameSessionId())
                 .otherPlayersCardCount(otherPlayersCardCount)
                 .deckSize(deckSize)
                 .gameData(gameState.getGameData())
                 .playedCardsSize(playedCardsSize)
+                .drawCardsLength(drawCardsLength)
                 .build();
     }
 

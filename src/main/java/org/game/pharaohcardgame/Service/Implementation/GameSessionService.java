@@ -367,7 +367,7 @@ public class GameSessionService implements IGameSessionService {
         });
 
         //itt ha huzunk egy kartyat akkor a kartyahuzo user lassa a kartyat mások nem kapjak meg a tartalmát
-        notificationHelpers.sendDrawCardNotification(players, currentPlayer, Collections.singletonList(drawnCardRef.get()), deckSizeRef.get(), newGameState.getPlayedCards().size(), newGameState);
+        notificationHelpers.sendDrawCardNotification(players, currentPlayer, Collections.singletonList(drawnCardRef.get()), deckSizeRef.get(), newGameState.getPlayedCards().size(), newGameState,Collections.singletonList(drawnCardRef.get()).size());
 
         //kikuldjuk a kovetkezo kor notifkációit
         NextTurnResult next = nextTurnRef.get();
@@ -494,7 +494,6 @@ public class GameSessionService implements IGameSessionService {
             //ha kell huznia akkor elkuldjuk mennyit.
             notificationHelpers.sendPlayerHasToDrawStack(next.nextPlayer(), drawStack);
         }
-        //todo: ne csomószor kuldünk el keves adatot hanem egyszerre kuldjunk mindent mondjuk a getgamesesionbe
 
 
         //ez azt kuldi el hogy milyen kartyak vannak már letéve
@@ -623,7 +622,7 @@ public class GameSessionService implements IGameSessionService {
         NextTurnResult nextTurnResult = nextTurnRef.get();
 
         //itt ha huzunk egy kartyat akkor a kartyahuzo user lassa a kartyat mások nem kapjak meg a tartalmát
-        notificationHelpers.sendDrawCardNotification(players, currentPlayer, drawnCardsRef.get(), deckSizeRef.get(), newGameState.getPlayedCards().size(), newGameState);
+        notificationHelpers.sendDrawCardNotification(players, currentPlayer, drawnCardsRef.get(), deckSizeRef.get(), newGameState.getPlayedCards().size(), newGameState,drawnCardsRef.get().size());
 
         notificationHelpers.sendNextTurnNotification(nextTurnResult.nextPlayer(), gameSession.getPlayers(), nextTurnResult.nextSeatIndex(), gameSessionUtils.calculateValidPlays(newGameState, nextTurnResult.nextPlayer()));
         botLogic.handleIfNextPlayerIsBot(nextTurnResult, gameSession);

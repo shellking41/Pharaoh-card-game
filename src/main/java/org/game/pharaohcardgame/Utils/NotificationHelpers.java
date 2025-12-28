@@ -123,14 +123,14 @@ public class NotificationHelpers {
     }
 
 
-    public void sendDrawCardNotification(List<Player> players, Player currentPlayer, List<Card> drawnCards, Integer deckSize, Integer playedCardsSize, GameState newGameState) {
+    public void sendDrawCardNotification(List<Player> players, Player currentPlayer, List<Card> drawnCards, Integer deckSize, Integer playedCardsSize, GameState newGameState,int drawCardsLength) {
         for (Player player : players) {
             if (!player.getIsBot()) {
                 DrawCardResponse personalizedResponse;
                 if (player.getPlayerId().equals(currentPlayer.getPlayerId())) {
-                    personalizedResponse = responseMapper.toDrawCardResponse(newGameState, drawnCards, player.getPlayerId(), deckSize, playedCardsSize);
+                    personalizedResponse = responseMapper.toDrawCardResponse(newGameState, drawnCards, currentPlayer.getPlayerId(), deckSize, playedCardsSize,drawCardsLength,player.getPlayerId());
                 } else {
-                    personalizedResponse = responseMapper.toDrawCardResponse(newGameState, null, player.getPlayerId(), deckSize, playedCardsSize);
+                    personalizedResponse = responseMapper.toDrawCardResponse(newGameState, null, currentPlayer.getPlayerId(), deckSize, playedCardsSize,drawCardsLength,player.getPlayerId());
                 }
                 simpMessagingTemplate.convertAndSendToUser(
                         player.getUser().getId().toString(),

@@ -28,13 +28,13 @@ export const handleAnimationComplete = (cardId,setAnimatingCards,setGameSession,
                     setIsAnimating(false);
                     animationTimingRef.current = { animations: null, totalDelay: 0 };
 
-                    // HÃ­vjuk meg a nextet a kalkulÃ¡lt newQueue-val (azonnal)
+                    //
                     setTimeout(() => {
                         queueRef.current = newQueue;
                         attemptStartNextWithQueue(newQueue);
                     }, 0);
 
-                    // vÃ©gÃ¼l tÃ©rjÃ¼nk vissza a frissÃ­tett state-tel
+
                     console.log(addedPlayedCards,"addedpalyedCards")
 
                     return {
@@ -55,19 +55,22 @@ export const handleAnimationComplete = (cardId,setAnimatingCards,setGameSession,
         }, 0);
         console.log(totalDelay)
 
+
         setTimeout(() => {
             setGameSession(prev => {
                 const [first, ...rest] = prev.playedCardsQueue || [];
                 console.log("first?.cards",first?.cards)
-
+                queueRef.current =rest
                 return {
                     ...prev,
                     playedCards: [...(prev.playedCards || []), ...(first?.cards || [])],
                     playedCardsSize: (prev.playedCardsSize ?? 0) + (first?.cards?.length ?? 0),
                     playedCardsQueue: rest,
                 };
+
             });
-            setAnimationOwnCards([])
+
+                setAnimationOwnCards([])
 
         }, totalDelay+50);
     }

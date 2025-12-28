@@ -18,10 +18,9 @@ const DraggableHand = forwardRef(({
   const { sendMessage } = useWebsocket();
   const { playerSelf } = useContext(GameSessionContext);
 
-  // ReferenciÃ¡k tÃ¡rolÃ¡sa minden kÃ¡rtyÃ¡hoz
   const cardRefs = useRef({});
 
-  // Ref API exponÃ¡lÃ¡sa a parent komponensnek
+
   useImperativeHandle(ref, () => ({
     getCardRefs: () => cardRefs.current
   }));
@@ -99,7 +98,7 @@ const DraggableHand = forwardRef(({
       <>
         {cards.map((card, index, arr) => (
             <div
-                key={card.cardId ?? index}
+                key={`fallback-${card.cardId}-${index}`}
                 ref={(el) => {
                   if (el) {
                     cardRefs.current[card.cardId] = el;

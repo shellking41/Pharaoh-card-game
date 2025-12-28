@@ -2,9 +2,8 @@ import React, {useContext, useEffect, useState} from 'react'
 import {GameSessionContext} from "../../../Contexts/GameSessionContext.jsx";
 
 export default function useCheckIsNewRound() {
-    const {gameSession, setGameSession} = useContext(GameSessionContext)
+    const {gameSession, setGameSession,setIsNewRound,isNewRound} = useContext(GameSessionContext)
 
-    const [isNewRound, setIsNewRound] = useState(false)
     const [shouldShowNotification, setShouldShowNotification] = useState(false)
 
     useEffect(() => {
@@ -46,13 +45,13 @@ export default function useCheckIsNewRound() {
         }
     }, [isNewRound]);
 
-    const handleAnimationComplete = () => {
+    const handleNextRoundAnimationComplete = () => {
         setShouldShowNotification(false);
     };
 
     return {
         isNewRound,
         shouldShowNotification,
-        handleAnimationComplete
+        handleNextRoundAnimationComplete
     }
 }

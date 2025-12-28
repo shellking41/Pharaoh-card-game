@@ -12,7 +12,7 @@ function NewRoundNotification({ isVisible, onAnimationComplete }) {
 
     const handleAnimationEnd = () => {
         if (isVisible) {
-            // 2 mÃ¡sodperc utÃ¡n eltÅ±nik
+
             setTimeout(() => {
                 setShouldRender(false);
                 onAnimationComplete?.();
