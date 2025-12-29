@@ -15,4 +15,5 @@ import java.util.Map;
 public class PlayCardResponse {
 	private Map<String,Object> gameData;
 	private PlayerHandResponse playerHand;
+	private int deckSize;
 }

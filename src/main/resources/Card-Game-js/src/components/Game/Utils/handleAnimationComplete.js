@@ -72,6 +72,6 @@ export const handleAnimationComplete = (cardId,setAnimatingCards,setGameSession,
 
                 setAnimationOwnCards([])
 
-        }, totalDelay+50);
+        }, totalDelay+150);
     }
 };

@@ -1,14 +1,10 @@
 import React, {useState} from 'react'
 import {useMediaQuery} from "@mui/material";
 
-function DeckCard({index}) {
+function DeckCard({index,rotation}) {
 
-    const [rotation, setRotation] = useState(() => Math.random() * 20 - 10);
+    console.log("rotation",rotation)
 
-    // Majd valahol egy shuffle fÃ¼ggvÃ©nyben:
-    const shuffleDeck = () => {
-        setRotation(Math.random() * 20 - 10);
-    };
     const baseStyle = {
         position: 'absolute',
         width: '60px',
@@ -29,7 +25,7 @@ function DeckCard({index}) {
                 position: 'absolute',
                 top: `calc(${index*1.2}px + 49%)`,
                 left: isMobile?"75%":"55%",
-                transform: `rotateY(180deg) rotateZ(${rotation}deg)`,
+                transform: `rotateY(180deg) rotateZ(${rotation})`,
                 backgroundColor: '#2c5f2d',
                 border: '1px solid #1a3a1b',
                 borderRadius: '8px',

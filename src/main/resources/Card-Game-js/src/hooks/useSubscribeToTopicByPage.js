@@ -1,43 +1,67 @@
-import React, { useContext, useEffect, useState } from 'react';
-import UseWebsocket from './useWebsocket.js';
+import React, {useContext, useEffect, useRef} from 'react';
+import useWebsocket from './useWebsocket.js';
 import { UserContext } from '../Contexts/UserContext.jsx';
 import { NotificationContext } from '../Contexts/NotificationContext.jsx';
-import useWebsocket from './useWebsocket.js';
 import { RoomsDataContext } from '../Contexts/RoomsDataContext.jsx';
 import { GameSessionContext } from '../Contexts/GameSessionContext.jsx';
+import useCalculateReshuffleAnimation from '../components/Game/Hooks/useCalcucateReshuffleAnimation.js';
 import { useApiCallHook } from './useApiCallHook.js';
 import { TokenContext } from '../Contexts/TokenContext.jsx';
 import useCalculateDrawAnimation from '../components/Game/Hooks/useCalculateDrawAnimation.js';
 import { useMediaQuery } from '@mui/material';
 import { getPlayerPositionBySeat } from '../components/Game/HungarianCard.jsx';
 
-const getPageSubscriptions = (contexts) => {
-  const {
-    userCurrentStatus,
-    setUserCurrentStatus,
-    gameSession,
+function handleReshuffle(
+    cardsToReshuffle,
+    deckPosition,
+    calculateReshuffleAnimation,
+    setAnimatingReshuffle,
     setGameSession,
-    setSelectedCards,
-    playerSelf,
-    setPlayerSelf,
-    setTurn,
-    setJoinRequests,
-    showNotification,
-    currentRoomId,
-    setValidPlays,
-    post,
-    token,
-    calculateDrawAnimation,
-    setAnimatingDrawCards,
-    isMobile,
-  } = contexts;
+    newDeckSize
+) {
+  // 500ms várakozás, hogy látszódjon az üres deck
+  setTimeout(() => {
+    const playedCardElement = document.querySelector('[data-played-card]');
+    const playedCardPosition = playedCardElement
+        ? {
+          left: '45%',
+          top: '50%',
+        }
+        : { left: '50%', top: '50%' };
 
+    console.log('[RESHUFFLE ANIMATION] Starting animation after delay', {
+      playedCardPosition,
+      deckPosition,
+      cardsToReshuffle,
+      newDeckSize,
+    });
+
+    const reshuffleAnimations = calculateReshuffleAnimation(
+        playedCardPosition,
+        deckPosition,
+        cardsToReshuffle
+    );
+
+    console.log('[RESHUFFLE ANIMATION] Generated animations:', reshuffleAnimations.length);
+
+    setAnimatingReshuffle((prev) => [...prev, ...reshuffleAnimations]);
+
+    // Ideiglenesen beállítjuk a newDeckSize-t
+    setGameSession((prev) => ({
+      ...prev,
+      newDeckSize: newDeckSize,
+    }));
+  }, 500); // 500ms várakozás
+}
+
+const getPageSubscriptions = (getCtx) => {
   return {
     home: [
       {
         destination: '/user/queue/room-creation-response',
         callback: (message) => {
-          if (message.status.success) {
+          const { setUserCurrentStatus } = getCtx();
+          if (message.status?.success) {
             setUserCurrentStatus((prev) => ({
               ...prev,
               currentRoom: message.currentRoom,
@@ -49,6 +73,7 @@ const getPageSubscriptions = (contexts) => {
       {
         destination: '/user/queue/join-response',
         callback: (message) => {
+          const { showNotification, setUserCurrentStatus } = getCtx();
           if (message.confirmed === true) {
             showNotification(message.message, 'success');
             setUserCurrentStatus((prev) => ({ ...prev, currentRoom: message.currentRoom }));
@@ -70,27 +95,32 @@ const getPageSubscriptions = (contexts) => {
 
     room: [
       {
-        condition: () => userCurrentStatus.managedRoom?.roomId == currentRoomId,
+        condition: () => getCtx().userCurrentStatus.managedRoom?.roomId == getCtx().currentRoomId,
         destination: '/user/queue/join-requests',
         callback: (message) => {
+          const { setJoinRequests } = getCtx();
           setJoinRequests((prev) => [...prev, message]);
         },
       },
       {
-        destination: `/topic/room/${currentRoomId}/end`,
+        destination: `/topic/room/${getCtx().currentRoomId}/end`,
         callback: (message) => {
+          const { showNotification } = getCtx();
           showNotification(message, 'warning');
         },
       },
       {
         destination: '/user/queue/user-status',
         callback: (message) => {
+          const { setUserCurrentStatus } = getCtx();
           setUserCurrentStatus(message);
         },
       },
       {
-        destination: `/topic/room/${currentRoomId}/participant-update`,
+        destination: `/topic/room/${getCtx().currentRoomId}/participant-update`,
         callback: (message) => {
+          const { userCurrentStatus, setUserCurrentStatus, showNotification } = getCtx();
+
           const oldParticipants = userCurrentStatus.currentRoom?.participants || [];
           const newParticipants = message?.participants || [];
 
@@ -100,16 +130,21 @@ const getPageSubscriptions = (contexts) => {
                       (newParticipant) => newParticipant.userId === oldParticipant.userId
                   )
           );
+
           setUserCurrentStatus((prev) => ({ ...prev, currentRoom: message }));
-          if (removedParticipants.username) {
-            showNotification(`${removedParticipants.username} has left`, 'warning');
-          }
+
+          // If there are removed participants, show a notification for each (safely)
+          removedParticipants.forEach(rp => {
+            if (rp?.username) {
+              showNotification(`${rp.username} has left`, 'warning');
+            }
+          });
         },
       },
       {
         destination: `/user/queue/game/start`,
         callback: (message) => {
-          console.log(message);
+          const { userCurrentStatus, setPlayerSelf, setGameSession, setValidPlays } = getCtx();
 
           // Saját játékos beállítása
           const self = message.players.find(
@@ -139,35 +174,62 @@ const getPageSubscriptions = (contexts) => {
     ],
 
     game: [
+
       {
         destination: '/user/queue/game/draw',
         callback: (message) => {
+          const ctx = getCtx();
+          const {
+            gameSession,
+            playerSelf,
+            setAnimatingDrawCards,
+            calculateDrawAnimation,
+            setGameSession,
+            setSelectedCards,
+            isMobile,
+            calculateReshuffleAnimation,
+            setAnimatingReshuffle,
+          } = ctx;
+
           console.log('[DRAW] Message received:', message);
-          console.log('[DRAW] Player card count:', message.otherPlayersCardCount?.[message.playerId]);
-          console.log('[DRAW] Is self and has new card:', message.playerId === playerSelf.playerId && message.newCard != null);
+          console.log('[DRAW] Reshuffled flag:', message.reshuffled);
 
-          if (message.playerId === playerSelf.playerId && message.newCard != null) {
-            // SAJÁT JÁTÉKOS HÚZOTT KÁRTYÁT - ANIMÁCIÓ INDÍTÁSA
+          const deckElement = document.querySelector('.deck');
+          const deckPosition = deckElement
+              ? {
+                left: isMobile ? '75%' : '55%',
+                top: '49%',
+              }
+              : { left: '50%', top: '50%' };
 
-            // Pakli pozíció lekérése
-            const deckElement = document.querySelector('.deck');
-            const deckPosition = deckElement
-                ? {
-                  left: isMobile ? '75%' : '55%',
-                  top: '49%',
-                }
-                : { left: '50%', top: '50%' };
+          //RESHUFFLE HANDLING - BACKEND ÁLTAL JELZETT
+          const currentDeckSize = gameSession?.deckSize || 0;
+          const willReshuffle = message.reshuffled === true;
 
-            // Jelenlegi kéz mérete
+          console.log('[DRAW] Deck status:', {
+            currentDeckSize,
+            newDeckSize: message.deckSize,
+            willReshuffle
+          });
+
+          // Ha reshuffle lesz, először csökkentjük a deckSize-t 0-ra
+          if (willReshuffle && currentDeckSize > 0) {
+            setGameSession((prev) => ({
+              ...prev,
+              deckSize: 0, // Mutatjuk, hogy elfogyott a deck
+            }));
+          }
+
+          // SELF PLAYER DRAW
+          if (message.playerId === playerSelf?.playerId && message.newCard != null) {
             const currentHandCount = (gameSession?.playerHand?.ownCards ?? []).length;
 
-            console.log('[DRAW ANIMATION] Starting animation', {
+            console.log('[DRAW ANIMATION] Starting self animation', {
               deckPosition,
               currentHandCount,
               newCards: message.newCard.length,
             });
 
-            // Húzás animáció kiszámítása
             const drawAnimations = calculateDrawAnimation(
                 message.newCard,
                 deckPosition,
@@ -176,28 +238,18 @@ const getPageSubscriptions = (contexts) => {
                 true
             );
 
-            // Animáló kártyák beállítása
             setAnimatingDrawCards((prev) => [...prev, ...drawAnimations]);
 
-            // Teljes animációs idő kiszámítása
-            const totalDelay = drawAnimations.reduce((max, a) => {
+            const drawTotalDelay = drawAnimations.reduce((max, a) => {
               const finish = (a.delay ?? 0) + (a.duration ?? 0);
               return Math.max(max, finish);
             }, 0);
 
-            console.log('[DRAW ANIMATION] Total animation time:', totalDelay);
-            setGameSession((prev) => ({
-              ...prev,
-              deckSize: message.deckSize ?? prev.deckSize,
-            }))
-            // Animáció befejezése után frissítjük a game session-t
             setTimeout(() => {
               setGameSession((prev) => {
                 const prevOwn = (prev.playerHand?.ownCards ?? []).filter(Boolean);
                 const merged =
                     message.newCard.length > 0 ? [...prevOwn, ...message.newCard] : prevOwn;
-
-                console.log('[DRAW ANIMATION] Updating hand:', { prevOwn, merged });
 
                 return {
                   ...prev,
@@ -214,44 +266,49 @@ const getPageSubscriptions = (contexts) => {
 
               setSelectedCards([]);
               setAnimatingDrawCards([]);
-              console.log('[DRAW ANIMATION] Animation complete, cards added to hand');
-            }, totalDelay + 100);
-          } else {
+              console.log('[DRAW ANIMATION] Self animation complete');
 
-            // MÁS JÁTÉKOS HÚZOTT - ANIMÁCIÓ INDÍTÁSA ELLENFÉLNEK
-            console.log('[DRAW] Other player drew, starting opponent animation',message);
+              //
+              if (willReshuffle) {
+                const cardsToReshuffle = message.deckSize; // Az új deck mérete
+                handleReshuffle(
+                    cardsToReshuffle,
+                    deckPosition,
+                    calculateReshuffleAnimation,
+                    setAnimatingReshuffle,
+                    setGameSession,
+                    message.deckSize
+                );
+              } else {
+                // Normál deckSize frissítés
+                setGameSession((prev) => ({
+                  ...prev,
+                  deckSize: message.deckSize,
+                }));
+              }
+            }, drawTotalDelay + 100);
+          }
+          // OPPONENT DRAW
+          else {
+            // ... opponent draw logic (hasonlóan)
+            console.log('[DRAW] Other player drew, starting opponent animation', message);
 
-            // Megkeressük a húzó játékost
             const drawingPlayer = gameSession?.players?.find(p => p.playerId === message.playerId);
             if (!drawingPlayer) {
               console.error('[DRAW] Drawing player not found');
               return;
             }
 
-            // Pakli pozíció lekérése
-            const deckElement = document.querySelector('.deck');
-            const deckPosition = deckElement
-                ? {
-                  left: isMobile ? '75%' : '55%',
-                  top: '49%',
-                }
-                : { left: '50%', top: '50%' };
-
-            // Ellenfél pozíciójának meghatározása
-            const selfPlayer = gameSession?.players?.find(p => p.playerId === playerSelf.playerId);
+            const selfPlayer = gameSession?.players?.find(p => p.playerId === playerSelf?.playerId);
             const totalPlayers = gameSession?.players?.length || 2;
             const opponentPosition = getPlayerPositionBySeat(
                 drawingPlayer.seat,
                 selfPlayer?.seat || 0,
                 totalPlayers
             );
-            console.log("drawingPlayer",drawingPlayer)
 
-            console.log("opponentPosition",opponentPosition)
-
-            // Jelenlegi kártyák száma az ellenfélnél (az új húzás előtt)
             const currentCardCount = message.otherPlayersCardCount?.[String(message.playerId)] || 0;
-            const cardsDrawn = message.drawCardsLength;
+            const cardsDrawn = message.drawCardsLength || (message.newCard ? message.newCard.length : 0);
 
             console.log('[DRAW ANIMATION] Starting opponent animation', {
               opponentPosition,
@@ -259,68 +316,83 @@ const getPageSubscriptions = (contexts) => {
               cardsDrawn,
             });
 
-            // Dummy kártyák létrehozása az animációhoz (hátlap)
             const dummyCards = Array.from({ length: cardsDrawn }).map((_, i) => ({
               refKey: `opponent-draw-${message.playerId}-${Date.now()}-${i}`,
-              suit: null, // Hátlap
-              rank: null, // Hátlap
-              cardId: `temp-${message.playerId}-${Date.now()}-${i}`,
             }));
 
-            // Húzás animáció kiszámítása ellenfélnek
             const drawAnimations = calculateDrawAnimation(
                 dummyCards,
                 deckPosition,
-                currentCardCount - cardsDrawn, // Mínusz az új kártyák, mert a backend már frissítette
+                Math.max(0, currentCardCount - cardsDrawn),
                 opponentPosition,
-                false // Nem saját játékos
+                false
             );
 
-            // Animáló kártyák beállítása
             setAnimatingDrawCards((prev) => [...prev, ...drawAnimations]);
 
-            // Teljes animációs idő kiszámítása
             const totalDelay = drawAnimations.reduce((max, a) => {
               const finish = (a.delay ?? 0) + (a.duration ?? 0);
               return Math.max(max, finish);
             }, 0);
 
             console.log('[DRAW ANIMATION] Opponent animation time:', totalDelay);
-            setGameSession((prev) => ({
-              ...prev,
-              deckSize: message.deckSize ?? prev.deckSize,
-            }))
-            // Animáció befejezése után frissítjük a game session-t
+
             setTimeout(() => {
               setGameSession((prev) => ({
                 ...prev,
                 gameData: message.gameData ?? prev.gameData,
+
                 playedCardsSize: message.playedCardsSize ?? prev.playedCardsSize,
                 playerHand: {
                   ...prev.playerHand,
+
                   otherPlayersCardCount: message.otherPlayersCardCount,
                   ownCards: prev.playerHand?.ownCards?.filter(Boolean) || [],
                 },
               }));
               setAnimatingDrawCards([]);
               console.log('[DRAW ANIMATION] Opponent animation complete');
+
+
+              //  OPPONENTNÉL IS
+              if (willReshuffle) {
+                const cardsToReshuffle = message.deckSize;
+
+                handleReshuffle(
+                    cardsToReshuffle,
+                    deckPosition,
+                    calculateReshuffleAnimation,
+                    setAnimatingReshuffle,
+                    setGameSession,
+                    message.deckSize
+                );
+              } else {
+                // Normál deckSize frissítés
+                setGameSession((prev) => ({
+                  ...prev,
+                  deckSize: message.deckSize,
+                }));
+              }
             }, totalDelay + 100);
           }
         },
       },
+
+
+
+
       {
-        destination: '/topic/game/' + gameSession.gameSessionId + '/played-cards',
+        destination: '/topic/game/' + getCtx().gameSession?.gameSessionId + '/played-cards',
         callback: (message) => {
           console.log('[WS] played-cards incoming', message);
 
-          // Ha nincs tényleges kártya csomag, skip
           const incoming = message?.newPlayedCards ?? [];
           if (!incoming || incoming.length === 0) return;
 
+          const { setGameSession } = getCtx();
+
           setGameSession((prev) => {
-            const queue = Array.isArray(prev?.playedCardsQueue)
-                ? prev.playedCardsQueue
-                : [];
+            const queue = Array.isArray(prev?.playedCardsQueue) ? prev.playedCardsQueue : [];
 
             const entry = {
               id: `${message.playerId}-${Date.now()}`,
@@ -336,9 +408,11 @@ const getPageSubscriptions = (contexts) => {
           });
         },
       },
+
       {
         destination: '/user/queue/game/play-cards',
         callback: (message) => {
+          const { setGameSession } = getCtx();
           console.log('PLAY-CARD-XD', message);
           const newRound = message.gameData?.currentRound;
           setGameSession((prev) => ({
@@ -353,13 +427,16 @@ const getPageSubscriptions = (contexts) => {
               lossCount: message.gameData.lossCount,
               lostPlayers: message.gameData.lostPlayers,
               skippedPlayers: message.gameData.skippedPlayers,
+              noMoreCardsNextDraw:message.gameData.noMoreCardsNextDraw,
             },
           }));
         },
       },
+
       {
         destination: '/user/queue/game/turn',
         callback: (message) => {
+          const { setTurn, setValidPlays } = getCtx();
           console.log(message, '!!!!!!!!!!!!!!!!!!!');
           setTurn({
             currentSeat: message.currentSeat,
@@ -368,9 +445,11 @@ const getPageSubscriptions = (contexts) => {
           setValidPlays(message.validPlays || []);
         },
       },
+
       {
         destination: '/user/queue/game/reorder-cards',
         callback: (message) => {
+          const { setGameSession } = getCtx();
           console.log('Cards reordered:', message);
 
           setGameSession((prev) => ({
@@ -382,9 +461,11 @@ const getPageSubscriptions = (contexts) => {
           }));
         },
       },
+
       {
         destination: '/user/queue/game/end',
         callback: async (message) => {
+          const { setGameSession, setValidPlays, setPlayerSelf, setTurn, post, token, setUserCurrentStatus } = getCtx();
           console.log(message);
 
           setGameSession({
@@ -409,7 +490,8 @@ const getPageSubscriptions = (contexts) => {
             yourTurn: false,
           });
 
-          // Ha kilép a gamemaster vagy vége a játéknak
+          const userCurrentStatus = getCtx().userCurrentStatus;
+
           const currentAndManagedRoom = await post(
               'http://localhost:8080/room/current-and-managed-room',
               {
@@ -418,7 +500,6 @@ const getPageSubscriptions = (contexts) => {
               },
               token
           );
-          console.log(currentAndManagedRoom);
 
           const userStatusWRooms = {
             userInfo: userCurrentStatus?.userInfo,
@@ -430,6 +511,7 @@ const getPageSubscriptions = (contexts) => {
           setUserCurrentStatus(userStatusWRooms);
         },
       },
+
       {
         destination: '/user/queue/game/skip',
         callback: (message) => {
@@ -451,6 +533,7 @@ const getPageSubscriptions = (contexts) => {
       {
         destination: '/user/queue/game/draw-stack',
         callback: (message) => {
+          const { setGameSession } = getCtx();
           console.log(message);
           setGameSession((prev) => ({
             ...prev,
@@ -485,18 +568,46 @@ function UseSubscribeToTopicByPage({ page, currentRoomId }) {
     setSelectedCards,
     isNewRound,
     setAnimatingDrawCards,
+    setAnimatingReshuffle,
   } = useContext(GameSessionContext);
   const { setRooms, joinRequests, setJoinRequests } = useContext(RoomsDataContext);
   const { showNotification } = useContext(NotificationContext);
   const { token } = useContext(TokenContext);
   const { post } = useApiCallHook();
   const { calculateDrawAnimation } = useCalculateDrawAnimation(40);
+  const { calculateReshuffleAnimation } = useCalculateReshuffleAnimation();
   const isMobile = useMediaQuery('(max-width: 768px)');
 
-  useEffect(() => {
-    const newUnsubscribeFunctions = [];
+  // keep a ref with the latest context used by callbacks at runtime
+  const contextRef = useRef({
+    userCurrentStatus,
+    setUserCurrentStatus,
+    setJoinRequests,
+    showNotification,
+    currentRoomId,
+    gameSession,
+    setGameSession,
+    setSelectedCards,
+    playerSelf,
+    setPlayerSelf,
+    setTurn,
+    setValidPlays,
+    post,
+    token,
+    isNewRound,
+    calculateDrawAnimation,
+    calculateReshuffleAnimation,
+    setAnimatingDrawCards,
+    isMobile,
+    setAnimatingReshuffle,
+    setRooms,
+    joinRequests,
+  });
 
-    const context = {
+  // keep ref.current up to date when important pieces change
+  useEffect(() => {
+    contextRef.current = {
+      ...contextRef.current,
       userCurrentStatus,
       setUserCurrentStatus,
       setJoinRequests,
@@ -513,20 +624,58 @@ function UseSubscribeToTopicByPage({ page, currentRoomId }) {
       token,
       isNewRound,
       calculateDrawAnimation,
+      calculateReshuffleAnimation,
       setAnimatingDrawCards,
       isMobile,
+      setAnimatingReshuffle,
+      setRooms,
+      joinRequests,
     };
+  }, [
+    userCurrentStatus,
+    setUserCurrentStatus,
+    setJoinRequests,
+    showNotification,
+    currentRoomId,
+    gameSession,
+    setGameSession,
+    setSelectedCards,
+    playerSelf,
+    setPlayerSelf,
+    setTurn,
+    setValidPlays,
+    post,
+    token,
+    isNewRound,
+    calculateDrawAnimation,
+    calculateReshuffleAnimation,
+    setAnimatingDrawCards,
+    isMobile,
+    setAnimatingReshuffle,
+    setRooms,
+    joinRequests,
+  ]);
 
-    const pageSubscriptions = getPageSubscriptions(context);
-    const subscriptionsForPage = pageSubscriptions[page];
+  useEffect(() => {
+    const newUnsubscribeFunctions = [];
+
+    // getCtx returns latest context for callbacks to read at runtime
+    const getCtx = () => contextRef.current;
+
+    const pageSubscriptions = getPageSubscriptions(getCtx);
+    const subscriptionsForPage = pageSubscriptions[page] || [];
 
     subscriptionsForPage.forEach((sub) => {
-      if (sub.condition && typeof sub.condition === 'function' && !sub.condition()) {
-        console.log(`[PAGE-SUBSCRIPTION] Condition not met for topic: ${sub.destination}`);
-        return;
+      try {
+        if (sub.condition && typeof sub.condition === 'function' && !sub.condition()) {
+          console.log(`[PAGE-SUBSCRIPTION] Condition not met for topic: ${sub.destination}`);
+          return;
+        }
+        const unsubscribe = subscribe(sub.destination, sub.callback);
+        newUnsubscribeFunctions.push(unsubscribe);
+      } catch (err) {
+        console.error('[PAGE-SUBSCRIPTION] Failed to subscribe to', sub.destination, err);
       }
-      const subscription = subscribe(sub.destination, sub.callback);
-      newUnsubscribeFunctions.push(subscription);
     });
 
     return () => {
@@ -542,12 +691,9 @@ function UseSubscribeToTopicByPage({ page, currentRoomId }) {
   }, [
     page,
     currentRoomId,
-    userCurrentStatus.authenticated,
-    gameSession?.gameSessionId,
-    playerSelf?.playerId,
+    userCurrentStatus?.authenticated,
+
     subscribe,
-    calculateDrawAnimation,
-    isMobile,
   ]);
 }
 

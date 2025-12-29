@@ -109,7 +109,7 @@ public class NotificationHelpers {
                 simpMessagingTemplate.convertAndSendToUser(
                         player.getUser().getId().toString(),
                         "/queue/game/play-cards",
-                        PlayCardResponse.builder().playerHand(playerHand).gameData(gameState.getGameData()).build()
+                        PlayCardResponse.builder().playerHand(playerHand).gameData(gameState.getGameData()).deckSize(gameState.getDeck().size()).build()
                 );
             }
         }
@@ -122,15 +122,14 @@ public class NotificationHelpers {
         }
     }
 
-
-    public void sendDrawCardNotification(List<Player> players, Player currentPlayer, List<Card> drawnCards, Integer deckSize, Integer playedCardsSize, GameState newGameState,int drawCardsLength) {
+    public void sendDrawCardNotification(List<Player> players, Player currentPlayer, List<Card> drawnCards, Integer deckSize, Integer playedCardsSize, GameState newGameState, int drawCardsLength) {
         for (Player player : players) {
             if (!player.getIsBot()) {
                 DrawCardResponse personalizedResponse;
                 if (player.getPlayerId().equals(currentPlayer.getPlayerId())) {
-                    personalizedResponse = responseMapper.toDrawCardResponse(newGameState, drawnCards, currentPlayer.getPlayerId(), deckSize, playedCardsSize,drawCardsLength,player.getPlayerId());
+                    personalizedResponse = responseMapper.toDrawCardResponse(newGameState, drawnCards, currentPlayer.getPlayerId(), deckSize, playedCardsSize, drawCardsLength, player.getPlayerId());
                 } else {
-                    personalizedResponse = responseMapper.toDrawCardResponse(newGameState, null, currentPlayer.getPlayerId(), deckSize, playedCardsSize,drawCardsLength,player.getPlayerId());
+                    personalizedResponse = responseMapper.toDrawCardResponse(newGameState, null, currentPlayer.getPlayerId(), deckSize, playedCardsSize, drawCardsLength, player.getPlayerId());
                 }
                 simpMessagingTemplate.convertAndSendToUser(
                         player.getUser().getId().toString(),
@@ -139,7 +138,13 @@ public class NotificationHelpers {
                 );
             }
         }
+
+        // ✨ RESHUFFLE FLAG TÖRLÉSE MIUTÁN ELKÜLDTÜK
+        // A flag már benne van a response-ban, most törölhetjük
+
+        newGameState.getGameData().remove("reshuffled");
     }
+
 
     public void sendTurnSkipped(GameSession gameSession, Player currentPlayer, GameState gameState) {
         for (Player player : gameSession.getPlayers()) {

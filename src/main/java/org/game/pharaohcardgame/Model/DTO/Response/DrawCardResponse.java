@@ -11,18 +11,16 @@ import java.util.Map;
 
 @Data
 @Builder
-@NoArgsConstructor
 @AllArgsConstructor
+@NoArgsConstructor
 public class DrawCardResponse {
-
-
 	private Long gameSessionId;
 	private Long playerId;
-	private List<CardInHandResponse> newCard; // saját kártya
-	private Map<Long, Integer> otherPlayersCardCount; // más játékosok kártyaszámai
+	private List<CardInHandResponse> newCard;
+	private Map<Long, Integer> otherPlayersCardCount;
 	private Integer deckSize;
 	private Integer playedCardsSize;
-	private Map<String, Object> gameData; // további game-specifikus adatok
-	int drawCardsLength;
-
+	private Map<String, Object> gameData;
+	private int drawCardsLength;
+	private Boolean reshuffled; // ✨ ÚJ MEZŐ
 }

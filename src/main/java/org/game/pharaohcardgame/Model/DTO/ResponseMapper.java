@@ -264,8 +264,7 @@ public class ResponseMapper {
                 .toList();
 
     }
-
-    public DrawCardResponse toDrawCardResponse(GameState gameState, List<Card> drawnCards, Long ownPlayerId, Integer deckSize, Integer playedCardsSize,int drawCardsLength,Long playerId) {
+    public DrawCardResponse toDrawCardResponse(GameState gameState, List<Card> drawnCards, Long ownPlayerId, Integer deckSize, Integer playedCardsSize, int drawCardsLength, Long playerId) {
 
         Map<Long, Integer> otherPlayersCardCount = gameState.getPlayerHands().entrySet()
                 .stream()
@@ -276,6 +275,9 @@ public class ResponseMapper {
                 ));
         List<CardInHandResponse> cardInHandResponses = drawnCards != null ? toCardInHandResponseList(drawnCards) : null;
 
+        // ✨ RESHUFFLE FLAG LEKÉRÉSE
+        Boolean reshuffled = (Boolean) gameState.getGameData().getOrDefault("reshuffled", false);
+
         return DrawCardResponse.builder()
                 .newCard(cardInHandResponses)
                 .playerId(ownPlayerId)
@@ -285,6 +287,7 @@ public class ResponseMapper {
                 .gameData(gameState.getGameData())
                 .playedCardsSize(playedCardsSize)
                 .drawCardsLength(drawCardsLength)
+                .reshuffled(reshuffled) 
                 .build();
     }
 

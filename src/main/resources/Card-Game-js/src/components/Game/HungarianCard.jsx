@@ -242,6 +242,7 @@ const HungarianCardInner = ({
           }}
       >
         <img
+            data-played-card
             src={imagePath}
             alt={`${cardData.suit} ${cardData.rank}`}
             style={{

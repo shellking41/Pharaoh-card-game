@@ -478,6 +478,7 @@ public class GameSessionService implements IGameSessionService {
             }
             //itt kell setelni a playedCards-t ha akarjuk elkerulnia a race conditiont
             playedCardResponses.set(responseMapper.toPlayedCardResponseListFromCards(current.getPlayedCards()));
+
             return current;
         });
 
@@ -508,6 +509,7 @@ public class GameSessionService implements IGameSessionService {
         notificationHelpers.sendNextTurnNotification(next.nextPlayer(), gameSession.getPlayers(), next.nextSeatIndex(), gameSessionUtils.calculateValidPlays(gameState, next.nextPlayer()));
         //Ha új kör kezdődött és a következő player bot, akkor késleltetéssel indítsuk
         Boolean newRoundBotWaiting = (Boolean) gameState.getGameData().getOrDefault("newRoundBotWaiting", false);
+
         if (newRoundBotWaiting) {
             // Töröljük a flag-et
             gameSessionUtils.updateGameState(gameSession.getGameSessionId(), current -> {

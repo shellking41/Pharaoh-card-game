@@ -17,6 +17,9 @@ export const GameSessionContextProvider = ({ children }) => {
   const [validPlays, setValidPlays] = useState([]);
   const [isNewRound, setIsNewRound] = useState(false);
   const [animatingDrawCards, setAnimatingDrawCards] = useState([]);
+  const [ animatingReshuffle, setAnimatingReshuffle] = useState([]);
+  const [deckRotations,setDeckRotations]=useState([])
+
 
   const [playerSelf, setPlayerSelf] = useState({
     playerId: null,
@@ -44,6 +47,8 @@ export const GameSessionContextProvider = ({ children }) => {
     setIsNewRound,
     animatingDrawCards,
     setAnimatingDrawCards,
+    animatingReshuffle,
+    setAnimatingReshuffle,deckRotations,setDeckRotations
   };
 
   return <GameSessionContext.Provider value={contextValue}>{children}</GameSessionContext.Provider>;

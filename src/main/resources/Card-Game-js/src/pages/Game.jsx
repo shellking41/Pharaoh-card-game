@@ -22,9 +22,13 @@ import TabletSelfPlayerHand from "../components/Game/TabletSelfPlayerHand.jsx";
 import DeckCard from "../components/Game/DeckCard.jsx";
 import useCheckIsNewRound from "../components/Game/Hooks/useCheckIsNewRound.js";
 import NewRoundNotification from "../components/Game/NewRoundNotification.jsx";
+import { handleReshuffleAnimationComplete } from "../components/Game/Utils/handleReshuffleAnimationComplete.js";
+
 // van egy hiba a selectcardsd nak hogy ha kivalasztok egy kartyat, de nem teszem lÃƒÂ´e hanem huzok egy kartyat helyette akkor nem engedne maskartyatr letenni csak azt amit kivalasztottam az elozo korbe- kÃƒâ€°sz
 // valamiert a viewportol fugg hogy hova teszik le a kartyat a opponensek-kesz
 // ha mobil nÃƒâ€°zet van akkor legyen egy jobbrra balra gÃƒÂ¶rgethetÃ…â€˜ mezÃ…â€˜ amiben benne vannak a kartyak, fixen-kesz
+//todo: ha negy kartyat teszek le en akkor nem meg vegig az animacio
+//todo: tudok huzni kartyat mikozben a enemie kartya huzas animacioja van es az beszakitja az animaciot
 //todo: jelenleg rossz helyre mennek a huzott kartyak opponens es selfplayernek is
 //todo: ha uj kor van akkor kesleltetve frissuljelen a playerhandek
 //todo: a mobil nezetbe is kell kartya letetel es draw animacio, ha levan csukva a taska akkor menjen a huzott kartya a nyilfele es kicsinyitodjon le
@@ -51,7 +55,8 @@ import NewRoundNotification from "../components/Game/NewRoundNotification.jsx";
 //todo: ha leavelunk akkor a playernek refreshelnie kell ahhoz hogy lÃƒÂ¡ssa hogy tenyleg kilÃƒÂ©pett, gondolom nincs reshetelve a state
 //todo: ha a vÃƒÂ©ge a jateknak akkor az animacio elosszor menjen vÃƒÂ©gbe,
 function Game() {
-  const { gameSession, playerSelf, turn, setTurn, setPlayerSelf, setGameSession, selectedCards, setSelectedCards, validPlays,animatingDrawCards,setAnimatingDrawCards } = useContext(GameSessionContext);
+  const { gameSession, playerSelf, turn, setTurn, setPlayerSelf, setGameSession, selectedCards, setSelectedCards, validPlays,animatingDrawCards,setAnimatingDrawCards,animatingReshuffle,
+    setAnimatingReshuffle,setDeckRotations ,deckRotations } = useContext(GameSessionContext);
   const { gameSessionId } = useParams();
   const { sendMessage } = useWebsocket();
   const { userCurrentStatus } = useContext(UserContext);
@@ -219,10 +224,20 @@ function Game() {
     );
   }, []);
 
+  const handleReshuffleAnimationCompleteWrapper = useCallback((index, totalCards) => {
+    handleReshuffleAnimationComplete(
+        index,
+        setAnimatingReshuffle,
+        setGameSession,
+        setDeckRotations,
+        totalCards
+    );
+  }, []);
+
   console.log(queueRef.current);
 
   useEffect(() => {
-    console.log("gameSession",gameSession.playerHand)
+    console.log("gameSession",gameSession)
 
   }, [gameSession]);
 
@@ -231,6 +246,8 @@ function Game() {
   const memoizedAnimatingCards = useMemo(() => animatingCards, [animatingCards]);
   const memoizedAnimatingOwnCards = useMemo(() => animatingOwnCards, [animatingOwnCards]);
   const memoizedAnimatingDrawCards = useMemo(() => animatingDrawCards, [animatingDrawCards]);
+  const memoizedAnimatingReshuffle = useMemo(() => animatingReshuffle, [animatingReshuffle]);
+
 
   return (
       <div className={styles.game}>
@@ -263,6 +280,7 @@ function Game() {
             }
 
             <HungarianCard
+                data-played-card={"data-played-card"}
                 ref={playedCardRef}
                 cardData={gameSession.playedCards?.at(-1)}
                 left="45%"
@@ -348,11 +366,22 @@ function Game() {
                     onComplete={() => handleDrawAnimationCompleteWrapper(anim.card.cardId)}
                 />
             ))}
+            {memoizedAnimatingReshuffle.map((anim, _, arr) => (
+                <AnimatingCard
+                    key={anim.card.index}
+                    card={anim.card}
+                    waypoints={anim.waypoints}
+                    duration={anim.duration}
+                    zIndex={anim.zIndex}
+                    delay={anim.delay}
+                    onComplete={() => handleReshuffleAnimationCompleteWrapper(anim.card.index, arr.length)}
+                />
+            ))}
 
             <div className={"deck"} ref={deckRef}>
-              {Array.from({ length: Number(gameSession?.deckSize) || 0 }).map((_, index) => (
+              {Array.from({ length: Number(gameSession?.deckSize) || (gameSession.gameData?.noMoreCardsNextDraw?0:1) }).map((_, index) => (
                   <div key={index}>
-                    <DeckCard index={index}/>
+                    <DeckCard index={index} rotation={deckRotations && deckRotations[index] }/>
                   </div>
               ))}
             </div>

@@ -8,6 +8,7 @@ const AnimatingCard = memo(function AnimatingCard({
                                                       duration,
                                                       delay = 0,
                                                       onComplete,
+                                                      zIndex
                                                   }) {
     const cardRef = useRef(null);
     const animationStartedRef = useRef(false);
@@ -110,7 +111,7 @@ const AnimatingCard = memo(function AnimatingCard({
                 width: '60px',
                 height: '90px',
                 transform: initialTransforms.length > 0 ? initialTransforms.join(' ') : 'none',
-                zIndex: 9999,
+                zIndex: zIndex?zIndex: 99 ,
                 pointerEvents: 'none',
                 transformStyle: 'preserve-3d',
                 transformOrigin: 'center center',

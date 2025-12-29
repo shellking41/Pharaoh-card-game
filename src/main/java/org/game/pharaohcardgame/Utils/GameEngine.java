@@ -119,16 +119,27 @@ public class GameEngine implements IGameEngine {
 
             hand.add(card);
 
-            //a deckből kiszuedjük a felso kartyat
+            //a deckből kiszedjük a felso kartyat
             gameState.setDeck(new ArrayList<>(deck.subList(1, deck.size())));
 
             List<Card> newHand = gameState.getPlayerHands().get(currentPlayer.getPlayerId());
 
+
+            int remainingCards = gameState.getDeck().size();
+            int playedCardsAvailable = Math.max(0, gameState.getPlayedCards().size() - 1);
+
+
+            if (remainingCards == 0 && playedCardsAvailable == 0) {
+                gameState.getGameData().put("noMoreCardsNextDraw", true);
+                log.warn("Next draw will fail - no cards available for game session {}", gameState.getGameSessionId());
+            } else {
+                // Remove flag if it exists and we have cards
+                gameState.getGameData().remove("noMoreCardsNextDraw");
+            }
+
             //ha a kartya huzas után nincs a deckben kartya akkor is újra keverjuka a played cardal
             if (checkNotDrawnCardsNumber(gameState) == 0) {
-
                 reShuffleCards(gameState);
-
             }
 
             return newHand.getLast();
@@ -160,24 +171,27 @@ public class GameEngine implements IGameEngine {
             } else {
                 break;
             }
-
         }
 
         if (drawnCards.size() == CardToBeDrawn) {
             drawStack.remove(currentPlayerId);
         } else {
-            //ha nem tudtuk felhuzni ugyan anyi akrtyat amenyit muszály lett volna akkor csak simmán kivonyjuk a drawStackbol majd a kovetkezo körve felhuzza ha tudja
-			/*int remaining = CardToBeDrawn - drawnCards.size();
-			drawStack.put(currentPlayerId, remaining);*/
-
             //egyenlore simán engedjuk továbbb a usert
             drawStack.remove(currentPlayerId);
         }
 
+        int remainingCards = gameState.getDeck().size();
+        int playedCardsAvailable = Math.max(0, gameState.getPlayedCards().size() - 1);
+
+        if (remainingCards == 0 && playedCardsAvailable == 0) {
+            gameState.getGameData().put("noMoreCardsNextDraw", true);
+            log.warn("Next draw will fail after stack draw - no cards available for game session {}", gameState.getGameSessionId());
+        } else {
+            gameState.getGameData().remove("noMoreCardsNextDraw");
+        }
 
         return drawnCards;
     }
-
     @Override
     public void suitChangedTo(CardSuit changeSuitTo, GameState gameState) {
         //ez állitolag elég hogy beállítjuk a gamedataban a színváltást
@@ -216,6 +230,7 @@ public class GameEngine implements IGameEngine {
         playedCards.clear();
         playedCards.add(topCard);
 
+        gameState.getGameData().put("reshuffled", true);
 
         log.info("Reshuffled {} cards into deck for game session {}",
                 cardsToShuffle.size(), gameState.getGameSessionId());
@@ -398,7 +413,7 @@ public class GameEngine implements IGameEngine {
         //ha volt changetto akkor az most már nem kell mert már a player letette a kartyait
         CardSuit suitChangedTo = gameSessionUtils.getSpecificGameData("suitChangedTo", gameState, null);
         if (suitChangedTo != null) gameState.getGameData().remove("suitChangedTo");
-
+        gameState.getGameData().remove("noMoreCardsNextDraw");
         return;
     }
 

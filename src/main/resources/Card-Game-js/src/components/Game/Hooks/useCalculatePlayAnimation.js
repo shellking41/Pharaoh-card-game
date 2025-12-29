@@ -84,7 +84,7 @@ function useCalculatePlayAnimation(spacing = 40) {
                             offset: 1,
                         }
                     ],
-                    delay: index * 150,
+                    delay: index * 100,
                     duration: 600,
                 };
             });
