@@ -33,6 +33,7 @@ function useCalculateDrawAnimation(spacing = 40) {
 
                 const finalStyle = getCardStyleForPosition(playerPosition, cardIndexInHand, finalHandCount);
 
+
                 return {
                     card: {
                         ...card,

@@ -25,12 +25,10 @@ export default function useCheckIsNewRound() {
         }
     }, [gameSession.newRound]);
 
-    useEffect(() => {
-        console.log("valtozott", gameSession.gameData?.currentRound, gameSession.newRound)
-    }, [gameSession.gameData?.currentRound, gameSession.newRound]);
+
 
     useEffect(() => {
-        console.log("valtozott", isNewRound)
+
         if (isNewRound) {
             // Várunk, amíg az összes animáció befejeződik
             // Ez az idő a leghosszabb kártyaletétel animáció ideje + buffer

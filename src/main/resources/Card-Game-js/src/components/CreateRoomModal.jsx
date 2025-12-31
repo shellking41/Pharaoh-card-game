@@ -27,7 +27,6 @@ function CreateRoomModal({setOpenModal, openModal}) {
         //     }
         // })
         sendMessage("/app/create", {username: userCurrentStatus.username, roomName, roomPassword})
-        console.log(rooms)
 
     }
 

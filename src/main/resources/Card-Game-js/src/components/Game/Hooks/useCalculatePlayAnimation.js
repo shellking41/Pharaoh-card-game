@@ -57,7 +57,7 @@ function useCalculatePlayAnimation(spacing = 40) {
                     cardIndexForLayout = startIndex + i;
                 }
 
-                return getCardStyleForPosition(playerPosition, cardIndexForLayout, handCount);
+                return getCardStyleForPosition(playerPosition, cardIndexForLayout+1, handCount);
             });
 
             return cardsInitPositionStyle.map((style, index) => {
@@ -84,7 +84,7 @@ function useCalculatePlayAnimation(spacing = 40) {
                             offset: 1,
                         }
                     ],
-                    delay: index * 100,
+                    delay: index * 50,
                     duration: 600,
                 };
             });

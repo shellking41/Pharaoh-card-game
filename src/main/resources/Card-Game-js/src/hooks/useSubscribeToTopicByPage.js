@@ -9,7 +9,7 @@ import { useApiCallHook } from './useApiCallHook.js';
 import { TokenContext } from '../Contexts/TokenContext.jsx';
 import useCalculateDrawAnimation from '../components/Game/Hooks/useCalculateDrawAnimation.js';
 import { useMediaQuery } from '@mui/material';
-import { getPlayerPositionBySeat } from '../components/Game/HungarianCard.jsx';
+import {getCardStyleForPosition, getPlayerPositionBySeat} from '../components/Game/HungarianCard.jsx';
 
 function handleReshuffle(
     cardsToReshuffle,
@@ -144,6 +144,8 @@ const getPageSubscriptions = (getCtx) => {
       {
         destination: `/user/queue/game/start`,
         callback: (message) => {
+          console.log("startmessage",message)
+
           const { userCurrentStatus, setPlayerSelf, setGameSession, setValidPlays } = getCtx();
 
           // Saját játékos beállítása
@@ -202,7 +204,7 @@ const getPageSubscriptions = (getCtx) => {
               }
               : { left: '50%', top: '50%' };
 
-          //RESHUFFLE HANDLING - BACKEND ÁLTAL JELZETT
+          //RESHUFFLE HANDLING
           const currentDeckSize = gameSession?.deckSize || 0;
           const willReshuffle = message.reshuffled === true;
 
@@ -221,6 +223,7 @@ const getPageSubscriptions = (getCtx) => {
           }
 
           // SELF PLAYER DRAW
+          // SELF PLAYER DRAW
           if (message.playerId === playerSelf?.playerId && message.newCard != null) {
             const currentHandCount = (gameSession?.playerHand?.ownCards ?? []).length;
 
@@ -230,14 +233,36 @@ const getPageSubscriptions = (getCtx) => {
               newCards: message.newCard.length,
             });
 
+            // calculateDrawAnimation visszaadja az animációkat (delay, duration, stb.) minden kártyához
             const drawAnimations = calculateDrawAnimation(
                 message.newCard,
                 deckPosition,
-                currentHandCount,
+                currentHandCount ,
                 'bottom',
                 true
             );
 
+            //ideiglenesen elokjuk a kartyakat
+            const cardElements=document.querySelectorAll(".own-card-container");
+            console.log(cardElements,"cardElements-own")
+
+            cardElements.forEach((el,index)=>{
+              console.log("cardElements-own",index,cardElements.length+message.newCard.length)
+              console.log("cardElements-own",
+                  "card",
+                  index,
+                  "left:",
+                  el.style.left,
+                  "top:",
+                  el.style.top
+              );
+              let style =getCardStyleForPosition("bottom",index+1,cardElements.length+message.newCard.length)
+              console.log(style,"cardElements-own")
+
+              el.style.left=style.left
+            })
+
+            // Megjelenítjük az animációkat (összeset egyszerre)
             setAnimatingDrawCards((prev) => [...prev, ...drawAnimations]);
 
             const drawTotalDelay = drawAnimations.reduce((max, a) => {
@@ -249,7 +274,9 @@ const getPageSubscriptions = (getCtx) => {
               setGameSession((prev) => {
                 const prevOwn = (prev.playerHand?.ownCards ?? []).filter(Boolean);
                 const merged =
-                    message.newCard.length > 0 ? [...prevOwn, ...message.newCard] : prevOwn;
+                    message.newCard.length > 0
+                        ? [...prevOwn, ...message.newCard]
+                        : prevOwn;
 
                 return {
                   ...prev,
@@ -259,7 +286,8 @@ const getPageSubscriptions = (getCtx) => {
                     ...prev.playerHand,
                     ownCards: merged,
                     otherPlayersCardCount:
-                        message.otherPlayersCardCount ?? prev.playerHand.otherPlayersCardCount,
+                        message.otherPlayersCardCount ??
+                        prev.playerHand.otherPlayersCardCount,
                   },
                 };
               });
@@ -268,25 +296,24 @@ const getPageSubscriptions = (getCtx) => {
               setAnimatingDrawCards([]);
               console.log('[DRAW ANIMATION] Self animation complete');
 
-              //
               if (willReshuffle) {
-                const cardsToReshuffle = message.deckSize; // Az új deck mérete
-                handleReshuffle(
-                    cardsToReshuffle,
-                    deckPosition,
-                    calculateReshuffleAnimation,
-                    setAnimatingReshuffle,
-                    setGameSession,
-                    message.deckSize
-                );
-              } else {
-                // Normál deckSize frissítés
-                setGameSession((prev) => ({
-                  ...prev,
-                  deckSize: message.deckSize,
-                }));
-              }
-            }, drawTotalDelay + 100);
+              const cardsToReshuffle = message.deckSize; // Az új deck mérete
+              handleReshuffle(
+                  cardsToReshuffle,
+                  deckPosition,
+                  calculateReshuffleAnimation,
+                  setAnimatingReshuffle,
+                  setGameSession,
+                  message.deckSize
+              );
+               } else {
+                 // Normál deckSize frissítés
+                 setGameSession((prev) => ({
+                   ...prev,
+                   deckSize: message.deckSize,
+                 }));
+               }
+            }, drawTotalDelay+100);
           }
           // OPPONENT DRAW
           else {
@@ -327,6 +354,35 @@ const getPageSubscriptions = (getCtx) => {
                 opponentPosition,
                 false
             );
+
+            //ideiglenesen elokjuk a kartyakat
+            const cardElements=document.querySelectorAll(".player-"+message.playerId+"-card");
+
+            cardElements.forEach((el,index)=>{
+              const posClass = [...el.classList].find(c => c.startsWith('pos-'));
+              const pos = posClass?.replace('pos-', '');
+              let style
+              console.log("pos",pos)
+
+              switch (pos){
+                case "top":
+                  style=getCardStyleForPosition(pos,index,cardElements.length+cardsDrawn)
+                  el.style.left=style.left
+                  break
+                case "left":
+                  style=getCardStyleForPosition(pos,index,cardElements.length+cardsDrawn)
+                  el.style.top=style.top
+                  break
+                case "right":
+                  style=getCardStyleForPosition(pos,index,cardElements.length+cardsDrawn)
+                  el.style.top=style.top
+                  break
+              }
+
+            })
+
+
+
 
             setAnimatingDrawCards((prev) => [...prev, ...drawAnimations]);
 
@@ -421,6 +477,7 @@ const getPageSubscriptions = (getCtx) => {
             ...(newRound !== undefined && { newRound }),
             gameData: {
               ...prev.gameData,
+              noMoreCards:message.gameData.noMoreCards,
               drawStack: message.gameData.drawStack,
               finishedPlayers: message.gameData.finishedPlayers,
               isRoundFinished: message.gameData.isRoundFinished,
@@ -465,30 +522,31 @@ const getPageSubscriptions = (getCtx) => {
       {
         destination: '/user/queue/game/end',
         callback: async (message) => {
-          const { setGameSession, setValidPlays, setPlayerSelf, setTurn, post, token, setUserCurrentStatus } = getCtx();
-          console.log(message);
+          const { setGameSession, setValidPlays, setPlayerSelf, setTurn, post, token, setUserCurrentStatus,setSelectedCards,setAnimatingCards,setAnimatingOwnCards,
+            setAnimatingDrawCards,setAnimatingReshuffle,setIsNewRound,setDeckRotations,animatingReshuffle} = getCtx();
+          console.log("gameEND",message,animatingReshuffle,setAnimatingReshuffle);
 
           setGameSession({
-            gameSessionId: null,
-            players: [],
-            playerHand: [],
-            playedCards: [],
-            gameStatus: '',
-            gameData: {},
+
           });
           setValidPlays([]);
 
           setPlayerSelf({
-            playerId: null,
-            seat: null,
-            userId: null,
-            drawStackNumber: null,
+
           });
 
           setTurn({
-            currentSeat: null,
-            yourTurn: false,
+
           });
+
+          setSelectedCards([]);
+          setAnimatingCards([])
+          setAnimatingOwnCards([])
+          setAnimatingDrawCards([])
+          setAnimatingReshuffle([])
+          setGameSession({})
+          setIsNewRound(false)
+          setDeckRotations([])
 
           const userCurrentStatus = getCtx().userCurrentStatus;
 
@@ -563,12 +621,17 @@ function UseSubscribeToTopicByPage({ page, currentRoomId }) {
     setGameSession,
     playerSelf,
     setPlayerSelf,
+    setAnimatingOwnCards,
     setTurn,
     setValidPlays,
     setSelectedCards,
     isNewRound,
     setAnimatingDrawCards,
     setAnimatingReshuffle,
+    setIsNewRound,
+    setDeckRotations,
+    setAnimatingCards,
+    animatingReshuffle
   } = useContext(GameSessionContext);
   const { setRooms, joinRequests, setJoinRequests } = useContext(RoomsDataContext);
   const { showNotification } = useContext(NotificationContext);
@@ -602,6 +665,11 @@ function UseSubscribeToTopicByPage({ page, currentRoomId }) {
     setAnimatingReshuffle,
     setRooms,
     joinRequests,
+    setAnimatingOwnCards,
+    setIsNewRound,
+    setDeckRotations,
+    setAnimatingCards,
+    animatingReshuffle
   });
 
   // keep ref.current up to date when important pieces change
@@ -630,6 +698,11 @@ function UseSubscribeToTopicByPage({ page, currentRoomId }) {
       setAnimatingReshuffle,
       setRooms,
       joinRequests,
+      setAnimatingOwnCards,
+      setIsNewRound,
+      setDeckRotations,
+      setAnimatingCards,
+      animatingReshuffle
     };
   }, [
     userCurrentStatus,
@@ -654,6 +727,11 @@ function UseSubscribeToTopicByPage({ page, currentRoomId }) {
     setAnimatingReshuffle,
     setRooms,
     joinRequests,
+    setAnimatingOwnCards,
+    setIsNewRound,
+    setDeckRotations,
+    setAnimatingCards,
+    animatingReshuffle
   ]);
 
   useEffect(() => {

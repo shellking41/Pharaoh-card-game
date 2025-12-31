@@ -38,10 +38,15 @@ function useCalculateReshuffleAnimation(spacing = 40) {
                 deckPos
             });
 
+            // Egyedi timestamp minden reshuffle batch-hez
+            const batchId = Date.now();
+
             const animations = Array.from({ length: deckCardNumber }).map((_, index) => {
                 return {
                     card: {
-                        index:index
+                        index: index,
+                        // Egyedi refKey minden kártyához
+                        refKey: `reshuffle-${batchId}-${index}`
                     },
                     waypoints: [
                         {
@@ -61,7 +66,7 @@ function useCalculateReshuffleAnimation(spacing = 40) {
                     ],
                     delay: index * 50,
                     duration: 500,
-                    zIndex:index*100
+                    zIndex: index * 100
                 };
             });
 
@@ -73,6 +78,5 @@ function useCalculateReshuffleAnimation(spacing = 40) {
 
     return { calculateReshuffleAnimation, animations, setAnimations };
 }
-
 
 export default useCalculateReshuffleAnimation;

@@ -126,7 +126,34 @@ public class GameSessionService implements IGameSessionService {
 
             gameSessionRepository.save(gameSession);
             GameState gameState = gameEngine.initGame(gameSession.getGameSessionId(), players);
+            Map<String, Object> gameData = gameState.getGameData();
+            int currentRound = (int) gameData.getOrDefault("currentRound", 0);
+            currentRound++;
+            gameData.put("currentRound", currentRound);
 
+            @SuppressWarnings("unchecked")
+            Map<Integer, Boolean> isRoundFinished =
+                    (Map<Integer, Boolean>) gameData.get("isRoundFinished");
+
+            if (isRoundFinished == null) {
+                isRoundFinished = new HashMap<>();
+            }
+
+            // új kör még nem ért véget
+            isRoundFinished.put(currentRound, false);
+
+            int remainingCards = gameState.getDeck().size();
+            int playedCardsAvailable = Math.max(0, gameState.getPlayedCards().size() - 1);
+
+            // Ha MOST nincs több kártya ÉS nem lehet reshufflezni
+            if (remainingCards == 0 && playedCardsAvailable == 0) {
+                gameState.getGameData().put("noMoreCards", true);
+                log.warn("No more cards available for game session {}", gameState.getGameSessionId());
+            } else {
+                gameState.getGameData().remove("noMoreCards");
+            }
+
+            gameData.put("isRoundFinished", isRoundFinished);
 
             for (Player player : players) {
                 if (!player.getIsBot()) {
@@ -148,23 +175,7 @@ public class GameSessionService implements IGameSessionService {
                     );
                 }
             }
-            Map<String, Object> gameData = gameState.getGameData();
-            int currentRound = (int) gameData.getOrDefault("currentRound", 0);
-            currentRound++;
-            gameData.put("currentRound", currentRound);
 
-            @SuppressWarnings("unchecked")
-            Map<Integer, Boolean> isRoundFinished =
-                    (Map<Integer, Boolean>) gameData.get("isRoundFinished");
-
-            if (isRoundFinished == null) {
-                isRoundFinished = new HashMap<>();
-            }
-
-            // új kör még nem ért véget
-            isRoundFinished.put(currentRound, false);
-
-            gameData.put("isRoundFinished", isRoundFinished);
             return responseMapper.createSuccessResponse(true, "Game has been successfully started");
 
         } catch (AccessDeniedException e) {
@@ -217,6 +228,18 @@ public class GameSessionService implements IGameSessionService {
         GameState gameState = gameSessionUtils.getGameState(gameSession.getGameSessionId());
         List<Card> playedCards = gameState.getPlayedCards();
         List<PlayedCardResponse> playedCardResponses = responseMapper.toPlayedCardResponseListFromCards(playedCards);
+
+        int remainingCards = gameState.getDeck().size();
+        int playedCardsAvailable = Math.max(0, gameState.getPlayedCards().size() - 1);
+
+        // Ha MOST nincs több kártya ÉS nem lehet reshufflezni
+        if (remainingCards == 0 && playedCardsAvailable == 0) {
+            gameState.getGameData().put("noMoreCards", true);
+            log.warn("No more cards available for game session {}", gameState.getGameSessionId());
+        } else {
+            gameState.getGameData().remove("noMoreCards");
+        }
+
 
         //todo: itt elkell kuldeni a valid playst is
         GameSessionResponse response = responseMapper.toGameSessionResponse(gameSession,
@@ -363,6 +386,17 @@ public class GameSessionService implements IGameSessionService {
             NextTurnResult nextTurnResult = gameEngine.nextTurn(currentPlayer, gameSession, current, 0);
             nextTurnRef.set(nextTurnResult);
 
+            int remainingCards = current.getDeck().size();
+            int playedCardsAvailable = Math.max(0, current.getPlayedCards().size() - 1);
+
+            // Ha MOST nincs több kártya ÉS nem lehet reshufflezni
+            if (remainingCards == 0 && playedCardsAvailable == 0) {
+                current.getGameData().put("noMoreCards", true);
+                log.warn("No more cards available for game session {}", current.getGameSessionId());
+            } else {
+                current.getGameData().remove("noMoreCards");
+            }
+
             return current;
         });
 
@@ -479,6 +513,17 @@ public class GameSessionService implements IGameSessionService {
             //itt kell setelni a playedCards-t ha akarjuk elkerulnia a race conditiont
             playedCardResponses.set(responseMapper.toPlayedCardResponseListFromCards(current.getPlayedCards()));
 
+            int remainingCards = current.getDeck().size();
+            int playedCardsAvailable = Math.max(0, current.getPlayedCards().size() - 1);
+
+            // Ha MOST nincs több kártya ÉS nem lehet reshufflezni
+            if (remainingCards == 0 && playedCardsAvailable == 0) {
+                current.getGameData().put("noMoreCards", true);
+                log.warn("No more cards available for game session {}", current.getGameSessionId());
+            } else {
+                current.getGameData().remove("noMoreCards");
+            }
+
             return current;
         });
 
@@ -550,7 +595,7 @@ public class GameSessionService implements IGameSessionService {
                 throw new IllegalStateException("This is not your turn");
             }
 
-            //ha kell huznia kartyat akkor nem engedjuk hogy rakjon le kartyat
+            //ha kell huznia kartyat
             if (gameEngine.playerHaveToDrawStack(currentPlayer, current)) {
                 throw new IllegalStateException("You have to draw stack of cards");
             }

@@ -3,7 +3,7 @@ import {useMediaQuery} from "@mui/material";
 
 function DeckCard({index,rotation}) {
 
-    console.log("rotation",rotation)
+
 
     const baseStyle = {
         position: 'absolute',
@@ -23,8 +23,8 @@ function DeckCard({index,rotation}) {
             style={{
                 ...baseStyle,
                 position: 'absolute',
-                top: `calc(${index*1.2}px + 49%)`,
-                left: isMobile?"75%":"55%",
+                top: isMobile?`calc(${index*1.2}px + 30%)`:`calc(${index*1.2}px + 49%)`,
+                left: isMobile?"45%":"55%",
                 transform: `rotateY(180deg) rotateZ(${rotation})`,
                 backgroundColor: '#2c5f2d',
                 border: '1px solid #1a3a1b',

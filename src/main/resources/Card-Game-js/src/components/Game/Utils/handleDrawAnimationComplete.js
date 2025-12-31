@@ -1,14 +1,36 @@
+export const handleDrawAnimationComplete = (
+    cardId,
+    setAnimatingDrawCards
+) => {
+    console.log('[DRAW COMPLETE] Card finished:', cardId);
 
-export const handleDrawAnimationComplete = (cardId, setAnimatingDrawCards, setGameSession) => {
     setAnimatingDrawCards(prev => {
-        const filtered = prev.filter(c => (c.card.cardId || c.card.refKey) !== cardId);
+        // Megszámoljuk, hány animáció maradna EZ UTÁN
+        const remainingCount = prev.filter(anim => {
+            const animId = anim.card.cardId || anim.card.refKey;
+            return animId !== cardId;
+        }).length;
+
+        const totalCards = prev.length;
+
+        console.log(
+            '[DRAW COMPLETE] Completed:',
+            totalCards - remainingCount,
+            'of',
+            totalCards
+        );
 
 
-        if (filtered.length === 0) {
-
-            console.log("All draw animations completed");
+        if (remainingCount === 0) {
+            console.log('[DRAW COMPLETE] All draw animations completed – clearing all');
+            return [];
         }
 
-        return filtered;
+
+        console.log(
+            '[DRAW COMPLETE] Still animating, keeping all. Remaining:',
+            remainingCount
+        );
+        return prev;
     });
 };

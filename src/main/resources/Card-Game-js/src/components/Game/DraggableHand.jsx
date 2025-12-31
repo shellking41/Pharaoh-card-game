@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useState, useRef, forwardRef, useImperativeHandle } from 'react';
-import HungarianCard from './HungarianCard';
+import HungarianCard, {getCardStyleForPosition} from './HungarianCard';
 import useWebsocket from '../../hooks/useWebsocket';
 import { GameSessionContext } from '../../Contexts/GameSessionContext';
 
@@ -61,10 +61,7 @@ const DraggableHand = forwardRef(({
 
     const cardIds = reorderedCards.map(card => card.cardId);
 
-    console.log('Sending reorder request:', {
-      playerId: playerSelf.playerId,
-      cardIds: cardIds
-    });
+
 
     sendMessage('/app/game/reorder-cards', {
       playerId: playerSelf.playerId,
@@ -104,20 +101,25 @@ const DraggableHand = forwardRef(({
                     cardRefs.current[card.cardId] = el;
                   }
                 }}
-                draggable
-                onDragStart={() => handleDragStart(index)}
+                className={"own-card-container"}
+                draggable={!isAnimating}
+                onDragStart={() => !isAnimating && handleDragStart(index)}
                 onDragOver={(e) => {
                   e.preventDefault();
-                  handleDragOver(index);
+                  if (!isAnimating) handleDragOver(index);
                 }}
                 style={{
                   position: 'absolute',
-                  left: `calc(45% - ${(Math.max(0, arr.length - 1) * spacing) / 2}px + ${index * spacing}px)`,
+                  left: getCardStyleForPosition("bottom", index, cards.length).left,
                   bottom: 'var(--card-height)',
-                  transition: draggedIndex === index ? 'none' : 'left 0.2s ease-in-out',
+                  transition: `
+                            left 0.35s ease,
+                            top 0.35s ease,
+                            transform 0.35s ease
+                        `,
                   transform: draggedIndex === index ? 'scale(1.05)' : 'scale(1)',
                   zIndex: draggedIndex === index ? 1000 : 1,
-                  cursor: 'grab',
+                  cursor: isAnimating ? 'not-allowed' : 'grab',
                 }}
             >
               <HungarianCard

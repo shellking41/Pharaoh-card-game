@@ -14,7 +14,7 @@ export  default function MobileSelfPlayerHand({
     const {turn}=useContext(GameSessionContext)
 
    useEffect(() => {
-        console.log(initialCards);
+
         setCards(initialCards);
     }, [initialCards]);
     useEffect(() => {

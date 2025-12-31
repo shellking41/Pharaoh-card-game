@@ -27,10 +27,7 @@ function MainLayout() {
 
   const navigate = useNavigate();
 
-  useEffect(() => {
-    console.log(userCurrentStatus);
 
-  }, [userCurrentStatus]);
 
   const handleChange = (event, newValue) => {
     navRef.current = newValue;
@@ -65,7 +62,7 @@ function MainLayout() {
       const roomId = userCurrentStatus.currentRoom?.roomId ? userCurrentStatus.currentRoom.roomId : userCurrentStatus.currentRoomId;
       if (roomId) {
         navigate('/room/' + roomId);
-        console.log('!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
+
 
         return;
       }

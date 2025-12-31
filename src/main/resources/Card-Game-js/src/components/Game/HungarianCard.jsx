@@ -120,6 +120,7 @@ const HungarianCardInner = ({
                               right,
                               rotate,
                               ownCard,
+                                player,
     isAnimating
                             }, forwardedRef) => {
 
@@ -129,6 +130,8 @@ const HungarianCardInner = ({
   const rootRef = useRef(null);
 
   useImperativeHandle(forwardedRef, () => rootRef.current, [rootRef.current]);
+
+
 
   useEffect(() => {
     if (ownCard && cardData) {
@@ -166,33 +169,41 @@ const HungarianCardInner = ({
 
   const transformRotate = rotate ? `rotate(${rotate})` : undefined;
 
-  const baseStyle = {
-    position: 'absolute',
-    width: '60px',
-    height: '90px',
-    left: left ?? undefined,
-    right: right ?? undefined,
-    top: top ?? undefined,
-    bottom: bottom ?? undefined,
-    transform: transformRotate ?? undefined,
-    transformOrigin: 'center center',
-    padding: 0,
-    boxSizing: 'border-box',
-    cursor: isCardPlayable === false ? 'not-allowed' : 'pointer',
-    border: 'none',
-    background: 'transparent',
-      transformStyle: 'preserve-3d',
-      backfaceVisibility: "hidden"
-  };
+    const baseStyle = {
+        position: 'absolute',
+        width: '60px',
+        height: '90px',
+        left: left ?? undefined,
+        right: right ?? undefined,
+        top: top ?? undefined,
+        bottom: bottom ?? undefined,
+
+        transform: transformRotate ?? undefined,
+        transformOrigin: 'center center',
+
+        transition: `
+    left 0.35s ease,
+    top 0.35s ease,
+    transform 0.35s ease
+  `,
+
+        padding: 0,
+        boxSizing: 'border-box',
+        cursor: isCardPlayable === false ? 'not-allowed' : 'pointer',
+        border: 'none',
+        background: 'transparent',
+        transformStyle: 'preserve-3d',
+        backfaceVisibility: 'hidden',
+    };
   // Kártya képpel
   const imagePath = getCardImagePath(cardData?.suit, cardData?.rank);
 
   // Hátlap (amikor nincs cardData)
-  if (!cardData ) {
+  if (!cardData?.suit && !cardData?.rank ) {
     return (
         <div
             ref={rootRef}
-            className={"base-card"}
+            className={"base-card" + player? " player-"+ player?.playerId +"-card pos-"+player?.pos:""}
             style={{
               ...baseStyle,
               backgroundColor: '#2c5f2d',
@@ -227,7 +238,7 @@ const HungarianCardInner = ({
           onClick={onClick}
           className={`
           base-card
-          ${isCardPlayable || !isAnimating ? 'selectable-card' : ''}
+          ${ownCard && (isCardPlayable || !isAnimating) ? 'selectable-card' : ''}
           ${ownCard ? 'own-card' : ''}
           ${(!isCardPlayable && ownCard) || isAnimating ? 'not-selectable-card' : ''}
         `}

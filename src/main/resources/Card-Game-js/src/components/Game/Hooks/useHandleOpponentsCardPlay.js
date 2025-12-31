@@ -78,7 +78,7 @@ function UseHandleOpponentsCardPlay(animationLockRef,setGameSession,gameSession,
     useLayoutEffect(() => {
         const q = gameSession?.playedCardsQueue ?? [];
         queueRef.current = q;
-        console.log(q)
+
 
         // próbáljuk elindítani rögtön (ha nincs lock)
         if (!animationLockRef.current) attemptStartNextWithQueue(q);

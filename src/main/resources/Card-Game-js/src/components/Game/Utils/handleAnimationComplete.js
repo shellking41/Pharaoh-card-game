@@ -1,5 +1,20 @@
-export const handleAnimationComplete = (cardId,setAnimatingCards,setGameSession,animatingQueueItemIdRef,animationLockRef,setIsAnimating,animationTimingRef,queueRef,attemptStartNextWithQueue,ownCards,setAnimationOwnCards,animationOwnCards) => {
-    if(!ownCards){
+export const handleAnimationComplete = (
+    cardId,
+    setAnimatingCards,
+    setGameSession,
+    animatingQueueItemIdRef,
+    animationLockRef,
+    setIsAnimating,
+    animationTimingRef,
+    queueRef,
+    attemptStartNextWithQueue,
+    ownCards,
+    setAnimationOwnCards,
+    animationOwnCards,
+    gameSession
+) => {
+    if (!ownCards) {
+        // Opponent card animation
         setAnimatingCards(prev => {
             const filtered = prev.filter(c => (c.card.cardId || c.card.refKey) !== cardId);
 
@@ -28,14 +43,10 @@ export const handleAnimationComplete = (cardId,setAnimatingCards,setGameSession,
                     setIsAnimating(false);
                     animationTimingRef.current = { animations: null, totalDelay: 0 };
 
-                    //
                     setTimeout(() => {
                         queueRef.current = newQueue;
                         attemptStartNextWithQueue(newQueue);
                     }, 0);
-
-
-                    console.log(addedPlayedCards,"addedpalyedCards")
 
                     return {
                         ...prev,
@@ -47,31 +58,48 @@ export const handleAnimationComplete = (cardId,setAnimatingCards,setGameSession,
             }
 
             return filtered;
-        });}
-    else{
-        const totalDelay = animationOwnCards.reduce((max, a) => {
-            const finish = (a.delay ?? 0) + (a.duration ?? 0);
-            return Math.max(max, finish);
-        }, 0);
-        console.log(totalDelay)
+        });
+    } else {
+        // Own card animation
+        setAnimationOwnCards(prev => {
+            const filtered = prev.filter(c => (c.card.cardId || c.card.refKey) !== cardId);
 
-
-        setTimeout(() => {
-            setGameSession(prev => {
-                const [first, ...rest] = prev.playedCardsQueue || [];
-                console.log("first?.cards",first?.cards)
-                queueRef.current =rest
-                return {
-                    ...prev,
-                    playedCards: [...(prev.playedCards || []), ...(first?.cards || [])],
-                    playedCardsSize: (prev.playedCardsSize ?? 0) + (first?.cards?.length ?? 0),
-                    playedCardsQueue: rest,
-                };
-
+            console.log('[OWN CARD COMPLETE]', {
+                completedCardId: cardId,
+                remaining: filtered.length,
+                total: prev.length
             });
 
-                setAnimationOwnCards([])
+            if (filtered.length === 0) {
+                console.log('[OWN CARD COMPLETE] All animations finished, updating game state');
 
-        }, totalDelay+150);
+                // Frissítjük a game state-et
+                setGameSession(prev => {
+                    const [first, ...rest] = prev.playedCardsQueue || [];
+
+                    setTimeout(() => {
+                        queueRef.current = rest;
+
+                        // Reset animation state
+                        animationLockRef.current = false;
+                        animatingQueueItemIdRef.current = null;
+                        animationTimingRef.current = { animations: null, totalDelay: 0 };
+                        setIsAnimating(false);
+
+                        // Próbáljuk meg feldolgozni a következő queue elemet
+                        attemptStartNextWithQueue(rest);
+                    }, 0);
+
+                    return {
+                        ...prev,
+                        playedCards: [...(prev.playedCards || []), ...(first?.cards || [])],
+                        playedCardsSize: (prev.playedCardsSize ?? 0) + (first?.cards?.length ?? 0),
+                        playedCardsQueue: rest,
+                    };
+                });
+            }
+
+            return filtered;
+        });
     }
 };
