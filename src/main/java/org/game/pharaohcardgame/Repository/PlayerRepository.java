@@ -15,6 +15,7 @@ public interface PlayerRepository  extends JpaRepository<Player, Long> {
 	@Query("SELECT p FROM Player p " +
 			"WHERE p.user.id = :userId " +
 			"AND p.gameSession.room.roomId = p.user.currentRoom.roomId " +
-			"AND p.gameSession.room.active = true")
+			"AND p.gameSession.room.active = true " +
+			"AND p.gameSession.gameStatus = 'IN_PROGRESS'")
 	Player findPlayerByUserInActiveCurrentRoom(@Param("userId") Long userId);
 }

@@ -70,13 +70,12 @@ public class WebsocketSessionEventListener {
 		sessionRegistry.unregisterSession(sessionId);
 
 		int remaining = sessionRegistry.getSessionCount(userId);
-		log.info("User {} disconnected session {} — remaining sessions: {}", userId, sessionId, remaining);
+		log.info("User {} disconnected session {} – remaining sessions: {}", userId, sessionId, remaining);
 
 		if (remaining > 0) {
 			// több tab / másik active session van → semmi sem történik
 			return;
 		}
-
 
 		disconnectCoordinator.scheduleDisconnect(userId, () -> {
 			transactionTemplate.execute(status -> {
@@ -90,16 +89,32 @@ public class WebsocketSessionEventListener {
 					}
 					User user = maybeUser.get();
 
-					// GAMESESSION leave (ha van aktív player)
+					// ✅ KRITIKUS: ELŐSZÖR a game session-t kezeljük
 					try {
 						Player player = playerRepository.findPlayerByUserInActiveCurrentRoom(userId);
 						if (player != null && player.getGameSession() != null) {
+							GameSession gameSession = player.getGameSession();
+
+							// ✅ Ellenőrizzük, hogy gamemaster-e
+							boolean isGamemaster = gameSession.getRoom().getGamemaster() != null &&
+									gameSession.getRoom().getGamemaster().getId().equals(userId);
+
 							LeaveGameSessionRequest lg = LeaveGameSessionRequest.builder()
-									.gameSessionId(player.getGameSession().getGameSessionId())
+									.gameSessionId(gameSession.getGameSessionId())
 									.build();
+
+							// ✅ Ez a metódus küldi a notification-öket!
 							gameSessionService.leaveGameSession(lg, user);
-							log.info("User {} left game session {}", userId, player.getGameSession().getGameSessionId());
-							return null;
+
+							log.info("User {} left game session {} (isGamemaster: {})",
+									userId, gameSession.getGameSessionId(), isGamemaster);
+
+							// ✅ Ha gamemaster volt, NE folytassuk a room leave-vel
+							// mert a leaveGameSession már lezárta a szobát
+							if (isGamemaster) {
+								log.info("Gamemaster {} disconnect handled, skipping room leave", userId);
+								return null;
+							}
 						}
 					} catch (Exception ex) {
 						log.error("Error in scheduled gameSession leave for user {}: {}", userId, ex.getMessage(), ex);
@@ -107,7 +122,7 @@ public class WebsocketSessionEventListener {
 
 					log.info("Completed scheduled disconnect handling for user {}", userId);
 
-					// ROOM leave
+					// ✅ ROOM leave csak akkor, ha NEM volt gamemaster egy aktív játékban
 					if (user.getCurrentRoom() != null) {
 						try {
 							LeaveRequest lr = LeaveRequest.builder()
@@ -120,7 +135,6 @@ public class WebsocketSessionEventListener {
 							log.error("Error in scheduled room leave for user {}: {}", userId, ex.getMessage(), ex);
 						}
 					}
-
 
 				} catch (Throwable t) {
 					log.error("Unhandled exception in scheduled disconnect for user {}: {}", userId, t.getMessage(), t);

@@ -18,7 +18,7 @@ function useCalculatePlayAnimation(spacing = 40) {
     }
 
     const calculateAnimation = useCallback(
-        (playerHandCount, cards, goToRef, targetRotation = '0deg', lastPlayer, playersCount, selfSeat, allCardsInHand = null) => {
+        (playerHandCount, cards, goToRef, targetRotation = '0deg', lastPlayer, playersCount, selfSeat, allCardsInHand = null,isMobile=false) => {
 
             let targetLeft = undefined;
             let targetTop = undefined;
@@ -34,14 +34,31 @@ function useCalculatePlayAnimation(spacing = 40) {
                 targetTop = goToRef.top;
             }
 
+            // Mobil kártya méret (kisebb kezdőméret)
+            const mobileCardSize = {
+                width: 40,  // Kisebb szélesség mobilon
+                height: 60  // Kisebb magasság mobilon
+            };
+
+            // Normál kártya méret
+            const normalCardSize = {
+                width: 60,
+                height: 90
+            };
+
+
+            const scaleX = mobileCardSize.width / normalCardSize.width;  // 40/60 = 0.667
+            const scaleY = mobileCardSize.height / normalCardSize.height; // 60/90 = 0.667
+
             const target = {
                 left: normalizeCoord(targetLeft),
                 top: normalizeCoord(targetTop),
                 width: goToRef?.width,
                 height: goToRef?.height,
             };
-
+            const shouldScale = isMobile;
             const playerPosition = getPlayerPositionBySeat(lastPlayer.seat, selfSeat, playersCount);
+            console.log("shouldScale",shouldScale)
 
             const playCount = cards.length;
             const handCount = Math.max(1, Number(playerHandCount) || playCount);
@@ -69,7 +86,8 @@ function useCalculatePlayAnimation(spacing = 40) {
                             left: normalizeCoord(style.left),
                             top: normalizeCoord(style.top && `${style.top}`),
                             rotate: style.rotate || '0deg',
-                            scale: 1,
+                            scale: shouldScale ? scaleX : 1,
+
                             transform:   playerSelf.playerId!==lastPlayer.playerId && 'rotateY(180deg)',
 
                             offset: 0,
@@ -86,6 +104,7 @@ function useCalculatePlayAnimation(spacing = 40) {
                     ],
                     delay: index * 50,
                     duration: 600,
+                    isMobileScaling: shouldScale,
                 };
             });
         },

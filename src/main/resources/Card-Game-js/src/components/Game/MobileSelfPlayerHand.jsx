@@ -7,6 +7,7 @@ export  default function MobileSelfPlayerHand({
                                   initialCards = [],
                                   selectedCards = [],
                                   handleCardClick = () => {},
+                                                  selectedCardsOrder = [],
                                                   isAnimating
                               }) {
     const [cards, setCards] = useState(initialCards);
@@ -70,17 +71,29 @@ export  default function MobileSelfPlayerHand({
                     paddingBottom: '10px'
                 }}
             >
-                {cards.map((card, index) => (
-                    <div key={card.cardId || index} className="mobile-card-container">
-                        <HungarianCard
-                            cardData={card}
-                            ownCard={true}
-                            isAnimating={isAnimating}
-                            onClick={() => handleCardClick(card)}
-                            isSelected={selectedCards.includes(card)}
-                        />
-                    </div>
-                ))}
+                {cards.map((card, index) => {
+                    // Keressük meg a kártya sorszámát a selectedCardsOrder tömbben
+                    const orderIndex = selectedCardsOrder.findIndex(c => c.cardId === card.cardId);
+                    const orderNumber = orderIndex >= 0 ? orderIndex + 1 : null;
+                    console.log("orderNumber",orderNumber)
+
+                    return (
+                        <div key={card.cardId || index} className="mobile-card-container">
+                            <div style={{ position: 'relative' }}>
+                                <HungarianCard
+                                    cardData={card}
+                                    ownCard={true}
+                                    isAnimating={isAnimating}
+                                    onClick={() => handleCardClick(card)}
+                                    isSelected={selectedCards.includes(card)}
+                                    // Adjuk át a sorszámot prop-ként
+                                    selectedOrderNumber={orderNumber}
+                                />
+                            </div>
+                        </div>
+                    );
+                })}
+
             </div>
         </>
     );

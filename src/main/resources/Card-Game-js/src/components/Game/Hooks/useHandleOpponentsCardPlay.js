@@ -1,8 +1,11 @@
 import React, {useEffect, useLayoutEffect} from 'react'
 import useCalculatePlayAnimation from "./useCalculatePlayAnimation.js";
+import {useMediaQuery} from "@mui/material";
 
 function UseHandleOpponentsCardPlay(animationLockRef,setGameSession,gameSession,playerSelf,playedCardRef,animationTimingRef,setAnimatingCards,queueRef,setIsAnimating,animatingQueueItemIdRef) {
     const { calculateAnimation } = useCalculatePlayAnimation();
+
+    const isMobile = useMediaQuery('(max-width: 768px)');
 
     const attemptStartNextWithQueue = (queue) => {
         if (!queue?.length) return;
@@ -61,7 +64,9 @@ function UseHandleOpponentsCardPlay(animationLockRef,setGameSession,gameSession,
             "0deg",
             lastPlayer,
             gameSession.players.length,
-            playerSelf.seat
+            playerSelf.seat,
+            null,
+            isMobile
         );
 
         animationTimingRef.current = {

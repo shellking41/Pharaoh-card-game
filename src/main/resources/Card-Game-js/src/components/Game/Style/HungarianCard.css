@@ -6,12 +6,19 @@
     transform: translateY(-20px);
 }
 
+/* Tiltsd le a hover effektet drag közben */
+.dragging .selectable-card:hover {
+    transform: none;
+}
+
 .not-selectable-card {
     opacity: 0.5;
 }
-.base-card{
+
+.base-card {
     transform-style: preserve-3d;
 }
+
 .own-card {
     border: 1px solid gray;
 }

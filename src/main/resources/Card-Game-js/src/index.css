@@ -9,3 +9,10 @@
     --main-color: 44, 95, 45;
     --warning-color: 235, 125, 52;
 }
+
+@media (max-width: 768px) {
+    :root {
+        --card-width: 60px;
+        --card-height: 90px;
+    }
+}

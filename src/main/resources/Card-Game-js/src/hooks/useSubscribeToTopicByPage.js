@@ -294,9 +294,10 @@ const getPageSubscriptions = (getCtx) => {
             const drawAnimations = calculateDrawAnimation(
                 message.newCard,
                 deckPosition,
-                currentHandCount ,
+                currentHandCount,
                 'bottom',
-                true
+                true,
+                isMobile
             );
 
             //ideiglenesen elokjuk a kartyakat
@@ -313,7 +314,7 @@ const getPageSubscriptions = (getCtx) => {
                   "top:",
                   el.style.top
               );
-              let style =getCardStyleForPosition("bottom",index+1,cardElements.length+message.newCard.length)
+              let style =getCardStyleForPosition("bottom",index,cardElements.length+message.newCard.length)
               console.log(style,"cardElements-own")
 
               el.style.left=style.left
@@ -409,7 +410,8 @@ const getPageSubscriptions = (getCtx) => {
                 deckPosition,
                 Math.max(0, currentCardCount - cardsDrawn),
                 opponentPosition,
-                false
+                false,
+                isMobile,
             );
 
             //ideiglenesen elokjuk a kartyakat
@@ -437,9 +439,6 @@ const getPageSubscriptions = (getCtx) => {
               }
 
             })
-
-
-
 
             setAnimatingDrawCards((prev) => [...prev, ...drawAnimations]);
 

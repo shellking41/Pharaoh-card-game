@@ -35,16 +35,18 @@ import PlayerNameBox from "../components/Game/PlayerNameBox.jsx";
 // ha ujra enkovetkezek akkor nem tudok lepni (amikor streakelek)-kesz
 //todo: amikor jon az uj kor akkor frissditeni kell azt a statet hogy ki fog jonni
 //todo: egyet villan a kép amikor leteszunk tobb mint egy kartyat
-//todo: amikor tobb kartyat huz fel az ellenfel akkor ugranak egyet az animacio utan a kartyai
-//todo: kell egy szamlalot kitenni hogy most milyen sorrendben fognak kimenni a kivvalasztott kartyak
+//amikor tobb kartyat huz fel az ellenfel akkor ugranak egyet az animacio utan a kartyai-kesz
+//kell egy szamlalot kitenni hogy most milyen sorrendben fognak kimenni a kivvalasztott kartyak-kesz
+//todo: a refresh notification, csak afooldal, room es a game oldalon jelenjen meg
 //ha skippel valaki akkor kell jelezni azt valamilyen szinnel a nameboxban-kesz
 //valamiert nem fut le a opponens kartya letetelenek az animacioja--kesz
 //todo: ha uj kor van akkor kesleltetve frissuljelen a playerhandek
 //todo: ha telefon nezet van akkor legyenek kissebbek a kartyak
 //todo: a mobil nezetbe is kell kartya letetel es draw animacio, ha levan csukva a taska akkor menjen a huzott kartya a nyilfele es kicsinyitodjon le
-//todo: kell a last card shuffle animaciojat megcsinalni,
+//kell a last card shuffle animaciojat megcsinalni,-kesz
 //a blokkolas animaciot meg kell csinaln-kezs
 //todo: a szinvaltas animaciot megkell csinalni
+//todo: valamiert nem tudok huizni kartyat neha amikor mobilnezetbe vagyok
 //blokolast es azt hogy kivan koron animaciot ugy meglehetne csinalni hogy lesznek szoveg buborekok  a card handek felett es azokba  aplayerek nevei bennelesznek, majd arra kell egy "X" es egy mas szinnel mejeloles animacio
 //ha nem mi vagyunk a soron akkor addig csukodjon le a taska, majd vissza-kesz
 //a self kartyak letÃƒÂ´telÃƒÂ´nek az animacÃƒÂ­oit megcsinalni,-kesz
@@ -97,6 +99,9 @@ function Game() {
   const [isAnimating, setIsAnimating] = useState(false);
   const [lastDeckCardAnimated, setLastDeckCardAnimated] = useState(false);
   const lastDeckKeyRef = useRef(null);
+  const [playerLosses, setPlayerLosses] = useState(0);
+  const [lossIncreased, setLossIncreased] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   const isMobile = useMediaQuery('(max-width: 768px)');
   const isTablet = useMediaQuery('(max-height: 769px)');
@@ -116,6 +121,41 @@ function Game() {
   );
 
   const { isNewRound, shouldShowNotification, handleNextRoundAnimationComplete,setIsNewRound } = useCheckIsNewRound();
+
+
+
+
+  useEffect(() => {
+    // Reset initial load flag after first render
+    if (isInitialLoad) {
+      setIsInitialLoad(false);
+      return;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!gameSession?.gameData?.lossCount || !playerSelf?.playerId) {
+      return;
+    }
+
+    const currentLossCount = gameSession.gameData.lossCount[playerSelf.playerId] || 0;
+
+    // Kezdeti betöltéskor csak beállítjuk az értéket, de nem triggereljük a növekedést
+    if (isInitialLoad) {
+      setPlayerLosses(currentLossCount);
+      return;
+    }
+
+    // Csak akkor jelzünk növekedést, ha nem kezdeti betöltés és tényleg nőtt
+    if (currentLossCount > playerLosses) {
+      console.log(`[LOSS INCREASE] Player ${playerSelf.playerId} losses increased from ${playerLosses} to ${currentLossCount}`);
+      setLossIncreased(true);
+
+    }
+
+    // Mindig frissítjük a playerLosses state-et
+    setPlayerLosses(currentLossCount);
+  }, [gameSession?.gameData?.lossCount, playerSelf?.playerId, isInitialLoad]);
 
   useEffect(() => {
     setAnimatingReshuffle([])
@@ -145,8 +185,6 @@ function Game() {
   const drawCard = () => sendMessage('/app/game/draw', { playerId: playerSelf.playerId });
 
   const handleCardClick = (card) => {
-
-
     setSelectedCards(prev => {
       const exists = prev.find(c => c.cardId === card.cardId);
 
@@ -183,7 +221,8 @@ function Game() {
         playerSelf,
         gameSession.players.length,
         playerSelf.seat,
-        gameSession.playerHand.ownCards
+        gameSession.playerHand.ownCards,isMobile
+
     );
 
     console.log('[PLAY CARDS] Generated animations:', animations.length);
@@ -328,10 +367,7 @@ function Game() {
   const handleLastDeckCardAnimationComplete = useCallback(() => {
     setLastDeckCardAnimated(true);
   }, []);
-  useEffect(() => {
-    console.log(isMobile)
 
-  }, [isMobile]);
   return (
       <div className={styles.game}>
         <div className={styles.playgroundBlock}>
@@ -342,6 +378,7 @@ function Game() {
                     selectedCards={selectedCards}
                     handleCardClick={handleCardClick}
                     isAnimating={queueRef.current.length > 0}
+                    selectedCardsOrder={selectedCards}
                 /> :
                 isTablet ? <TabletSelfPlayerHand
                         initialCards={initialCards}
@@ -359,12 +396,13 @@ function Game() {
                           playerHand: {...prev.playerHand, ownCards: newOrder}
                         }))}
                         handleCardClick={handleCardClick}
+
                     />
             }
             {!(isMobile || isTablet) && <div className={styles.playerNameContainer}>
               <PlayerNameBox playerName={playerSelf.playerName} pos={"bottom"}  isYourTurn={playerSelf.seat === turn.currentSeat}
                              playerId={playerSelf.playerId}
-                             seat={playerSelf.seat}/>
+                             seat={playerSelf.seat} isMobile={isMobile}/>
             </div>}
 
             <HungarianCard
@@ -397,10 +435,12 @@ function Game() {
                             isYourTurn={p.seat === turn.currentSeat}
                             playerId={p.playerId}
                             seat={p.seat}
+                            isMobile={isMobile}
+                           cardPositions={getCardStyleForPosition(pos, 0, count)}
                         />
                       </div>
                       {Array.from({ length: count }).map((_, cardIndex) => {
-                        const style = getCardStyleForPosition(pos, cardIndex + 1, count);
+                        const style = getCardStyleForPosition(pos, cardIndex, count);
                         const refKey = `${p.playerId}-${cardIndex}`;
                         const stableKey = `opponent-${p.playerId}-card-${cardIndex}`;
 
@@ -441,7 +481,9 @@ function Game() {
                     duration={anim.duration}
                     delay={anim.delay}
                     linear={true}
+                    zIndex={100000}
                     onComplete={() => handleAnimationCompleteWrapper(anim.card.cardId, false)}
+                    isMobileScaling={anim.isMobileScaling}
                 />
             ))}
 
@@ -453,7 +495,9 @@ function Game() {
                     waypoints={anim.waypoints}
                     duration={anim.duration}
                     delay={anim.delay}
+                    zIndex={100000}
                     onComplete={() => handleAnimationCompleteWrapper(anim.card.cardId, true)}
+                    isMobileScaling={anim.isMobileScaling}
                 />
             ))}
 
@@ -467,6 +511,7 @@ function Game() {
                     delay={anim.delay}
                     zIndex={100000 + index}
                     onComplete={() => handleDrawAnimationCompleteWrapper(anim.card.cardId)}
+                    isMobileScaling={anim.isMobileScaling}
                 />
             ))}
             {memoizedAnimatingReshuffle.map((anim,index) => (
@@ -480,30 +525,32 @@ function Game() {
                     zIndex={100000*(index+10)}
                     delay={anim.delay}
                     onComplete={() => handleReshuffleAnimationCompleteWrapper(anim.card.index, memoizedAnimatingReshuffle.length)}
+                    isMobileScaling={anim.isMobileScaling}
                 />
             ))}
 
-            <div className={"deck"} ref={deckRef}>
-              {(() => {
-                const deckSize = Number(gameSession?.deckSize - animatingDrawCards.length);
-                const noMoreCardsNextDraw = gameSession?.gameData?.noMoreCardsNextDraw;
-                const currentRound = gameSession?.gameData?.currentRound || 0;
 
-                // Ha van normál deck
-                if (deckSize > 0 ) {
+              <div className={"deck"} ref={deckRef}>
+                {(() => {
+                  const deckSize = Number(gameSession?.deckSize - animatingDrawCards.length);
+                  const noMoreCardsNextDraw = gameSession?.gameData?.noMoreCardsNextDraw;
+                  const currentRound = gameSession?.gameData?.currentRound || 0;
 
-                  console.log(deckRotations)
-                  return Array.from({ length: deckSize }).map((_, index) => (
+                  // Ha van normÃ¡l deck
+                  if (deckSize > 0 ) {
 
-                      <div key={`deck-${currentRound}-${index}`}>
-                        <DeckCard
-                            index={index}
-                            rotation={deckRotations && deckRotations[index]}
-                            isMobile={isMobile}
-                        />
-                      </div>
-                  ));
-                }
+                    console.log(deckRotations)
+                    return Array.from({ length: deckSize }).map((_, index) => (
+
+                        <div key={`deck-${currentRound}-${index}`}>
+                          <DeckCard
+                              index={index}
+                              rotation={deckRotations?.[index-1] || '0deg'}
+                              isMobile={isMobile}
+                          />
+                        </div>
+                    ));
+                  }
 
                 // Ha nincs deck de kellene lennie egy utolsó kártyának (noMoreCardsNextDraw === false)
                 if (!noMoreCardsNextDraw && animatingDrawCards.length===0) {
@@ -526,6 +573,8 @@ function Game() {
             </div>
 
             <NewRoundNotification
+                lossIncreased={lossIncreased}
+                setLossIncreased={setLossIncreased}
                 isVisible={shouldShowNotification}
                 onAnimationComplete={handleNextRoundAnimationComplete}
             />

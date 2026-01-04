@@ -8,7 +8,8 @@ const AnimatingCard = function AnimatingCard({
                                                  delay = 0,
                                                  onComplete,
                                                  rotation,
-                                                 zIndex,linear
+                                                 zIndex,
+                                                 linear
                                              }) {
     const cardRef = useRef(null);
     const animationStartedRef = useRef(false);
@@ -17,13 +18,13 @@ const AnimatingCard = function AnimatingCard({
     const completedRef = useRef(false);
 
     useEffect(() => {
-        // Ha már elindult vagy befejeződött, ne csináljunk semmit
         console.log("[animation calculation started]")
 
         if (animationStartedRef.current || completedRef.current) return;
         console.log("[animation calculation started 1]")
         if (!cardRef.current || waypoints.length === 0) return;
         console.log("[animation calculation started 2]")
+
         const element = cardRef.current;
         animationStartedRef.current = true;
 
@@ -34,8 +35,11 @@ const AnimatingCard = function AnimatingCard({
                 transforms.push(`scale(${wp.scale})`);
             }
 
-            if (rotation ? rotation :firstWaypoint.rotate && wp.rotate !== '0deg') {
-                transforms.push(`rotate(${rotation ? rotation :firstWaypoint.rotate})`);
+            // FIX: Használjuk a waypoint saját rotate értékét, ha van
+            // A rotation prop csak reshuffle animációnál van használva
+            const rotateValue = rotation || wp.rotate;
+            if (rotateValue && rotateValue !== '0deg') {
+                transforms.push(`rotate(${rotateValue})`);
             }
 
             if (wp.transform && wp.transform.includes('rotateY')) {
@@ -58,7 +62,8 @@ const AnimatingCard = function AnimatingCard({
         console.log('[ANIMATION START]', {
             cardId: card.cardId || card.refKey,
             delay,
-            duration: totalDuration
+            duration: totalDuration,
+            keyframes
         });
 
         timeoutIdRef.current = setTimeout(() => {
@@ -66,12 +71,11 @@ const AnimatingCard = function AnimatingCard({
 
             animationRef.current = element.animate(keyframes, {
                 duration: totalDuration,
-                easing: !linear?'cubic-bezier(0.2, 0.65, 0.3, 1)':"linear",
+                easing: !linear ? 'cubic-bezier(0.2, 0.65, 0.3, 1)' : "linear",
                 fill: 'forwards',
             });
 
             animationRef.current.onfinish = () => {
-                // Biztosítjuk, hogy csak egyszer hívódjon meg
                 if (!completedRef.current) {
                     completedRef.current = true;
 
@@ -81,7 +85,6 @@ const AnimatingCard = function AnimatingCard({
                         timestamp: Date.now()
                     });
 
-                    // Kis késleltetés a biztonság kedvéért
                     setTimeout(() => {
                         console.log('[CALLING onComplete]', card.cardId || card.refKey);
                         onComplete?.(card.cardId || card.refKey);
@@ -94,9 +97,8 @@ const AnimatingCard = function AnimatingCard({
             if (timeoutIdRef.current) {
                 clearTimeout(timeoutIdRef.current);
             }
-
         };
-    }, []); // Továbbra is üres dependency array
+    }, []);
 
     const firstWaypoint = waypoints[0] || {};
     const initialTransforms = [];
@@ -104,9 +106,13 @@ const AnimatingCard = function AnimatingCard({
     if (firstWaypoint.scale) {
         initialTransforms.push(`scale(${firstWaypoint.scale})`);
     }
-    if (firstWaypoint.rotate && firstWaypoint.rotate !== '0deg') {
-        initialTransforms.push(`rotate(${rotation ? rotation :firstWaypoint.rotate})`);
+
+    // FIX: Használjuk a rotation prop-ot vagy az első waypoint rotate értékét
+    const initialRotate = rotation || firstWaypoint.rotate;
+    if (initialRotate && initialRotate !== '0deg') {
+        initialTransforms.push(`rotate(${initialRotate})`);
     }
+
     if (firstWaypoint.transform && firstWaypoint.transform.includes('rotateY')) {
         const match = firstWaypoint.transform.match(/rotateY\(([^)]+)\)/);
         if (match) {
@@ -124,10 +130,10 @@ const AnimatingCard = function AnimatingCard({
         border: 'none',
         background: 'transparent',
         transition: `
-    left 0.35s ease,
-    top 0.35s ease,
-    transform 0.35s ease
-  `,
+            left 0.35s ease,
+            top 0.35s ease,
+            transform 0.35s ease
+        `,
     };
 
     return (
@@ -166,7 +172,7 @@ const AnimatingCard = function AnimatingCard({
                     top: 0,
                     left: 0,
                     backfaceVisibility: 'hidden',
-                    transform: rotation? 'rotateY(0deg)' :'rotateY(180deg)',
+                    transform: rotation ? 'rotateY(0deg)' : 'rotateY(180deg)',
                     backgroundColor: '#2c5f2d',
                     border: '2px solid #1a3a1b',
                     borderRadius: '8px',

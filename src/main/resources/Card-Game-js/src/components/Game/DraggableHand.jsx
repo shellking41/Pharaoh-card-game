@@ -26,12 +26,21 @@ const DraggableHand = forwardRef(({
   }));
 
   useEffect(() => {
+
     setCards(initialCards);
     setHasChanges(false);
   }, [initialCards]);
 
+  const stateRef = useRef({ draggedIndex: null, hasChanges: false, cards: [] });
+
+  useEffect(() => {
+    stateRef.current = { draggedIndex, hasChanges, cards };
+  }, [draggedIndex, hasChanges, cards]);
+
   useEffect(() => {
     const handleDragEnd = () => {
+      const { draggedIndex, hasChanges, cards } = stateRef.current;
+
       if (draggedIndex !== null) {
         setDraggedIndex(null);
 
@@ -40,18 +49,13 @@ const DraggableHand = forwardRef(({
           setHasChanges(false);
         }
 
-        if (onReorder) {
-          onReorder(cards);
-        }
+        onReorder?.(cards);
       }
     };
 
     document.addEventListener('dragend', handleDragEnd);
-
-    return () => {
-      document.removeEventListener('dragend', handleDragEnd);
-    };
-  }, [draggedIndex, cards, onReorder, hasChanges]);
+    return () => document.removeEventListener('dragend', handleDragEnd);
+  }, []);
 
   const sendReorderToBackend = (reorderedCards) => {
     if (!playerSelf?.playerId) {
@@ -86,53 +90,63 @@ const DraggableHand = forwardRef(({
     setHasChanges(true);
   };
 
-  // Helper fÃ¼ggvÃ©ny: ellenÅ‘rzi, hogy egy kÃ¡rtya ki van-e vÃ¡lasztva (cardId alapjÃ¡n)
+
   const isCardSelected = (card) => {
     return selectedCards.some(selected => selected.cardId === card.cardId);
   };
 
+
+
   return (
       <>
-        {cards.map((card, index, arr) => (
-            <div
-                key={`fallback-${card.cardId}-${index}`}
-                ref={(el) => {
-                  if (el) {
-                    cardRefs.current[card.cardId] = el;
-                  }
-                }}
-                className={"own-card-container"}
-                draggable={!isAnimating}
-                onDragStart={() => !isAnimating && handleDragStart(index)}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  if (!isAnimating) handleDragOver(index);
-                }}
-                style={{
-                  position: 'absolute',
-                  left: getCardStyleForPosition("bottom", index, cards.length).left,
-                  bottom: 'var(--card-height)',
-                  transition: `
-                            left 0.35s ease,
-                            top 0.35s ease,
-                            transform 0.35s ease
-                        `,
-                  transform: draggedIndex === index ? 'scale(1.05)' : 'scale(1)',
-                  zIndex: draggedIndex === index ? 1000 : 1,
-                  cursor: isAnimating ? 'not-allowed' : 'grab',
-                }}
-            >
-              <HungarianCard
-                  cardData={card}
-                  ownCard={true}
-                  onClick={() => handleCardClick(card)}
-                  isAnimating={isAnimating}
-                  isSelected={isCardSelected(card)}
-              />
-            </div>
-        ))}
+        {cards.map((card, index) => {
+          const orderIndex = selectedCards.findIndex(c => c.cardId === card.cardId);
+          const orderNumber = orderIndex >= 0 ? orderIndex + 1 : null;
+          const cardStyle = getCardStyleForPosition("bottom", index, cards.length);
+
+          return (
+              <div
+                  key={`card-container-${card.cardId}`}
+                  ref={(el) => {
+                    if (el) {
+                      cardRefs.current[card.cardId] = el;
+                    }
+                  }}
+                  className={`own-card-container ${draggedIndex !== null ? 'dragging' : ''}`}
+                  draggable={!isAnimating}
+                  onDragStart={() => !isAnimating && handleDragStart(index)}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    if (!isAnimating) handleDragOver(index);
+                  }}
+                  style={{
+                    position: 'absolute',
+                    left: cardStyle.left,
+                    top: cardStyle.top,
+                    transition: `
+                left 0.35s ease,
+                top 0.35s ease,
+                transform 0.35s ease
+              `,
+                    transform: `rotate(${cardStyle.rotate}) scale(1)`,
+                    zIndex: index + 1,
+                    cursor: isAnimating ? 'not-allowed' : 'grab',
+                  }}
+              >
+                <HungarianCard
+                    cardData={card}
+                    ownCard={true}
+                    onClick={() => handleCardClick(card)}
+                    selectedOrderNumber={orderNumber}
+                    isAnimating={isAnimating}
+                    isSelected={isCardSelected(card)}
+                />
+              </div>
+          );
+        })}
       </>
   );
+
 });
 
 DraggableHand.displayName = 'DraggableHand';

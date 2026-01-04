@@ -682,7 +682,6 @@ public class GameSessionService implements IGameSessionService {
     @Override
     public LeaveGameSessionResponse leaveGameSession(LeaveGameSessionRequest request, User user) {
 
-
         // Get the game session
         GameSession gameSession = gameSessionRepository.findByIdWithPlayers(request.getGameSessionId())
                 .orElseThrow(() -> new GameSessionNotFoundException("GameSession not found"));
@@ -704,34 +703,46 @@ public class GameSessionService implements IGameSessionService {
         }
 
         if (isGamemaster) {
-            handleGamemasterLeaving(gameSession);
-            // Notify all players that game has ended
+
             notificationHelpers.sendGameEnded(gameSession, "Gamemaster left the game");
+
+            handleGamemasterLeaving(gameSession);
 
             UserCurrentStatus userStatus = responseMapper.toUserCurrentStatus(user, true);
             RoomResponse currentRoom = responseMapper.toRoomResponse(user.getCurrentRoom());
-            RoomResponse managedRoom = responseMapper.toRoomResponse(Objects.requireNonNull(user.getManagedRooms().stream().filter(Room::isActive).findFirst().orElse(null)));
-            return LeaveGameSessionResponse.builder().userStatus(userStatus).currentRoom(currentRoom).managedRoom(managedRoom).build();
+            RoomResponse managedRoom = responseMapper.toRoomResponse(
+                    Objects.requireNonNull(
+                            user.getManagedRooms().stream()
+                                    .filter(Room::isActive)
+                                    .findFirst()
+                                    .orElse(null)
+                    )
+            );
+            return LeaveGameSessionResponse.builder()
+                    .userStatus(userStatus)
+                    .currentRoom(currentRoom)
+                    .managedRoom(managedRoom)
+                    .build();
         } else {
-            //todo: még értesiteni kell a playereket hogy valaki kilepett es egy bot vette át a helyet
             handlePlayerLeaving(gameSession, leavingPlayer, user);
 
-            //ha a user akkor lép ki amikor ő van soron akkor a bottal rögtön lépnünk kell
+            // ha a user akkor lép ki amikor ő van soron akkor a bottal rögtön lépnünk kell
             GameState gameState = gameSessionUtils.getGameState(gameSession.getGameSessionId());
 
             if (gameState.getCurrentPlayerId().equals(leavingPlayer.getPlayerId())) {
-                //ide a bot logikát
                 NextTurnResult nextTurnResult = new NextTurnResult(leavingPlayer, leavingPlayer.getSeat());
-
                 botLogic.handleIfNextPlayerIsBot(nextTurnResult, gameSession);
             }
 
             notificationHelpers.sendPlayerLeftNotification(leavingPlayer, gameSession.getPlayers());
             UserCurrentStatus userStatus = responseMapper.toUserCurrentStatus(user, true);
-            return LeaveGameSessionResponse.builder().userStatus(userStatus).currentRoom(null).managedRoom(null).build();
+            return LeaveGameSessionResponse.builder()
+                    .userStatus(userStatus)
+                    .currentRoom(null)
+                    .managedRoom(null)
+                    .build();
         }
     }
-
     private boolean handleIfGameFinished(GameState current, GameSession gameSession, List<PlayedCardResponse> playedCardResponses,List<CardRequest> newPlayedCards,Long playerId) {
         if (current.getStatus().equals(GameStatus.FINISHED)) {
             // End the game session
@@ -774,6 +785,9 @@ public class GameSessionService implements IGameSessionService {
     }
 
     public void handleGamemasterLeaving(GameSession gameSession) {
+
+        notificationHelpers.sendGameEnded(gameSession, "Gamemaster left the game");
+
         // End the game session
         gameSession.setGameStatus(GameStatus.FINISHED);
         gameSessionRepository.save(gameSession);
@@ -781,6 +795,7 @@ public class GameSessionService implements IGameSessionService {
         // End game state in cache
         gameSessionUtils.deleteGameState(gameSession.getGameSessionId());
 
+        log.info("Game session {} ended - gamemaster left", gameSession.getGameSessionId());
     }
 
 

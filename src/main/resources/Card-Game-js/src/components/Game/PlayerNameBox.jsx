@@ -2,7 +2,7 @@ import React, { useContext, useEffect, useState } from 'react';
 import { useMediaQuery } from "@mui/material";
 import { GameSessionContext } from "../../Contexts/GameSessionContext.jsx";
 
-function PlayerNameBox({ playerName, pos, isYourTurn, playerId, seat }) {
+function PlayerNameBox({ playerName, pos, isYourTurn, playerId, seat,isMobile,cardPositions }) {
     const { skipTurn, setSkipTurn,setSkippedPlayers,skippedPlayers } = useContext(GameSessionContext);
     const [isTurnSkipped, setIsTurnSkipped] = useState(false);
     const [isSkipped, setIsSkipped] = useState(false);
@@ -63,29 +63,47 @@ function PlayerNameBox({ playerName, pos, isYourTurn, playerId, seat }) {
             case 'bottom':
                 return {
                     left: `calc(50%)`,
-                    top: 'calc(90% - var(--card-height))',
+                    top: 'calc(90% - var(--card-height) - 20px)',
                     rotate: '0deg',
                     transform: "translate(-50%, 50%)"
                 };
             case 'top':
                 return {
                     left: `calc(50%)`,
-                    top: 'calc(var(--card-height)/1.4)',
+                    top: 'calc(var(--card-height) / 1.4 + 20px)',
                     rotate: '0deg',
                     transform: "translate(-50%, 50%)"
                 };
             case 'left':
-                return {
-                    left: 'calc(var(--card-width) + 10px)',
-                    top: `calc(50%)`,
-                    rotate: '90deg',
-                };
+                if(!isMobile){
+                    return {
+                        left: 'calc(var(--card-width) + 10px)',
+                        top: `calc(50%)`,
+                        rotate: '90deg',
+                    };
+                }
+                else{
+                    return {
+                        left: cardPositions?.left,
+                        top: `calc(${cardPositions?.top} - var(--card-width) / 2)`,
+                        rotate: '0deg',
+                    }
+                }
+
             case 'right':
-                return {
-                    right: 'calc(var(--card-width) + 10px)',
-                    top: `calc(50%)`,
-                    rotate: '270deg',
-                };
+                if(!isMobile){
+                    return {
+                        right: 'calc(var(--card-width) + 10px)',
+                        top: `calc(50%)`,
+                        rotate: '270deg',
+                    }
+                }else{
+                    return {
+                        left: `calc(${cardPositions?.left} - var(--card-height) / 2.8)`,
+                        top: `calc(${cardPositions?.top} - var(--card-width) / 2)`,
+                        rotate: '0deg',
+                    }
+                }
         }
     };
 
@@ -102,7 +120,7 @@ function PlayerNameBox({ playerName, pos, isYourTurn, playerId, seat }) {
                 return {
                     bottom: '-8px',
                     left: '50%',
-                    transform: 'translateX(-50%)',
+                    transform: `translateX(-50%)${(isSkipped || isTurnSkipped) ? ' scale(0.95)' : ' scale(1)'}`,
                     borderLeft: '8px solid transparent',
                     borderRight: '8px solid transparent',
                     borderTop: `8px solid ${color}`,
@@ -111,21 +129,23 @@ function PlayerNameBox({ playerName, pos, isYourTurn, playerId, seat }) {
                 return {
                     top: '-8px',
                     left: '50%',
-                    transform: 'translateX(-50%)',
+                    transform: `translateX(-50%)${(isSkipped || isTurnSkipped) ? ' scale(0.95)' : ' scale(1)'}`,
                     borderLeft: '8px solid transparent',
                     borderRight: '8px solid transparent',
                     borderBottom: `8px solid ${color}`,
                 };
             case 'left':
             case 'right':
-                return {
-                    bottom: '-8px',
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    borderLeft: '8px solid transparent',
-                    borderRight: '8px solid transparent',
-                    borderTop: `8px solid ${color}`,
-                };
+
+                    return {
+                        bottom: '-8px',
+                        left: '50%',
+                        transform: `translateX(-50%)${(isSkipped || isTurnSkipped) ? ' scale(0.95)' : ' scale(1)'}`,
+                        borderLeft: '8px solid transparent',
+                        borderRight: '8px solid transparent',
+                        borderTop: `8px solid ${color}`,
+                    };
+
         }
     };
 
@@ -151,26 +171,33 @@ function PlayerNameBox({ playerName, pos, isYourTurn, playerId, seat }) {
                 position: 'relative',
                 backgroundColor: backgroundColor,
                 color: '#ecf0f1',
-                padding: '8px 16px',
+                padding: isMobile?'4px 8px':'8px 16px',
                 borderRadius: '12px',
-                fontSize: '14px',
+                fontSize: isMobile?'12px':'14px',
                 fontWeight: '600',
                 whiteSpace: 'nowrap',
                 boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
                 fontFamily: 'system-ui, -apple-system, sans-serif',
                 transition: 'background-color 0.3s ease, transform 0.3s ease',
                 transform: isSkipped || isTurnSkipped ? 'scale(1.05)' : 'scale(1)',
+                minWidth: isMobile?'40px':'60px',  // ← FIX szélesség
+                maxWidth: isMobile?'80px':'120px',  // ← Maximum szélesség
+                textAlign: 'center', // ← Szöveg középre
+                overflow: 'hidden',  // ← Ha túl hosszú
+                textOverflow: 'ellipsis' // ← "..." ha levágva
             }}>
+
                 {playerName}
-                <div
-                    style={{
-                        position: 'absolute',
-                        width: 0,
-                        height: 0,
-                        ...getPointerStyle()
-                    }}
-                />
+
             </div>
+            <div
+                style={{
+                    position: 'absolute',
+                    width: 0,
+                    height: 0,
+                    ...getPointerStyle()
+                }}
+            />
         </div>
     );
 }
