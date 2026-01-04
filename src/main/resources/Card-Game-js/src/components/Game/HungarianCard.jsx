@@ -121,6 +121,7 @@ const HungarianCardInner = ({
                               rotate,
                               ownCard,
                                 player,
+    zIndex,
     isAnimating
                             }, forwardedRef) => {
 
@@ -177,7 +178,7 @@ const HungarianCardInner = ({
         right: right ?? undefined,
         top: top ?? undefined,
         bottom: bottom ?? undefined,
-
+        zIndex:zIndex,
         transform: transformRotate ?? undefined,
         transformOrigin: 'center center',
 

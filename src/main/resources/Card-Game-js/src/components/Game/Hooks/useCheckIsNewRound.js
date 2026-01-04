@@ -50,6 +50,7 @@ export default function useCheckIsNewRound() {
     return {
         isNewRound,
         shouldShowNotification,
-        handleNextRoundAnimationComplete
+        handleNextRoundAnimationComplete,
+        setIsNewRound
     }
 }

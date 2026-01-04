@@ -87,20 +87,29 @@ public class BotLogic implements IBotLogic {
             }
 
             // Van játszható kártya - döntés húzásról
+            int deckSize = current.getDeck().size();
+            int reshuffleableCards = Math.max(0, current.getPlayedCards().size() - 1);
+            boolean canActuallyDraw = (deckSize > 0) || (reshuffleableCards > 0);
+
             boolean shouldDrawInsteadOfPlay = shouldDrawInsteadOfPlaying(botPlayer, current, random);
 
-            if (shouldDrawInsteadOfPlay && !current.getDeck().isEmpty()) {
+            // Csak akkor húzzon ha TÉNYLEG lehet
+            if (shouldDrawInsteadOfPlay && canActuallyDraw) {
                 Card drawnCard = gameEngine.drawCard(current, botPlayer);
-                notificationHelpers.sendDrawCardNotification(
-                        gameSession.getPlayers(), botPlayer,
-                        Collections.singletonList(drawnCard),
-                        current.getDeck().size(),
-                        current.getPlayedCards().size(),
-                        current,Collections.singletonList(drawnCard).size()
-                );
-                NextTurnResult nextTurnResult = gameEngine.nextTurn(botPlayer, gameSession, current, 0);
-                nextTurnRef.set(nextTurnResult);
-                return current;
+
+                // Extra védelem: ha mégis null jött vissza
+                if (drawnCard != null) {
+                    notificationHelpers.sendDrawCardNotification(
+                            gameSession.getPlayers(), botPlayer,
+                            Collections.singletonList(drawnCard),
+                            current.getDeck().size(),
+                            current.getPlayedCards().size(),
+                            current, Collections.singletonList(drawnCard).size()
+                    );
+                    NextTurnResult nextTurnResult = gameEngine.nextTurn(botPlayer, gameSession, current, 0);
+                    nextTurnRef.set(nextTurnResult);
+                    return current;
+                }
             }
 
             // Monte Carlo alapú választás
@@ -408,8 +417,11 @@ public class BotLogic implements IBotLogic {
                                          GameSession gameSession,
                                          GameState current,
                                          AtomicReference<NextTurnResult> nextTurnRef) {
-        // Ha nem tudunk reshufflezni akkor skippeljük a kört
-        if (current.getDeck().isEmpty() && current.getPlayedCards().size() > 1) {
+        int deckSize = current.getDeck().size();
+        int reshuffleableCards = Math.max(0, current.getPlayedCards().size() - 1);
+
+        // Csak akkor skip ha TÉNYLEG nem tud húzni
+        if (deckSize == 0 && reshuffleableCards == 0) {
             NextTurnResult nextTurnResult = gameEngine.nextTurn(botPlayer, gameSession, current, 0);
             nextTurnRef.set(nextTurnResult);
             notificationHelpers.sendTurnSkipped(gameSession, botPlayer, current);

@@ -3,17 +3,15 @@ package org.game.pharaohcardgame.Service.Implementation;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.game.pharaohcardgame.Enum.GameStatus;
 import org.game.pharaohcardgame.Exception.BotNotFoundException;
 import org.game.pharaohcardgame.Exception.RoomNotFoundException;
-import org.game.pharaohcardgame.Model.Bot;
+import org.game.pharaohcardgame.Model.*;
 import org.game.pharaohcardgame.Model.DTO.Request.AddBotToRoomRequest;
 import org.game.pharaohcardgame.Model.DTO.Request.BotEditRequest;
 import org.game.pharaohcardgame.Model.DTO.Request.BotRemoveFromRoomRequest;
 import org.game.pharaohcardgame.Model.DTO.Response.SuccessMessageResponse;
 import org.game.pharaohcardgame.Model.DTO.ResponseMapper;
-import org.game.pharaohcardgame.Model.Player;
-import org.game.pharaohcardgame.Model.Room;
-import org.game.pharaohcardgame.Model.User;
 import org.game.pharaohcardgame.Repository.BotRepository;
 import org.game.pharaohcardgame.Repository.PlayerRepository;
 import org.game.pharaohcardgame.Repository.RoomRepository;
@@ -93,7 +91,16 @@ public class BotService implements IBotService {
 			if (player != null) {
 				player.setBot(null);
 				bot.setBotPlayer(null);
-				playerRepository.save(player);
+
+
+				GameSession gameSession = player.getGameSession();
+				if (gameSession != null && gameSession.getGameStatus() == GameStatus.FINISHED) {
+					playerRepository.delete(player);
+					log.info("Deleted player {} from finished game session {}",
+							player.getPlayerId(), gameSession.getGameSessionId());
+				} else {
+					playerRepository.save(player);
+				}
 			}
 
 			// 💡 Szoba kapcsolat bontás

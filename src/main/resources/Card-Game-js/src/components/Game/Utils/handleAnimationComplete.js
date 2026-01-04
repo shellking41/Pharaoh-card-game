@@ -77,7 +77,6 @@ export const handleAnimationComplete = (
                 setGameSession(prev => {
                     const [first, ...rest] = prev.playedCardsQueue || [];
 
-                    setTimeout(() => {
                         queueRef.current = rest;
 
                         // Reset animation state
@@ -88,7 +87,7 @@ export const handleAnimationComplete = (
 
                         // Próbáljuk meg feldolgozni a következő queue elemet
                         attemptStartNextWithQueue(rest);
-                    }, 0);
+
 
                     return {
                         ...prev,

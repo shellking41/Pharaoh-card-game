@@ -12,5 +12,6 @@ import lombok.NoArgsConstructor;
 public class SkipTurnResponse {
 	private Long skippedPlayerId;
 	private Integer skippedPlayerSeat;
+	private boolean skipTurn;
 	private Integer deckSize;
 }

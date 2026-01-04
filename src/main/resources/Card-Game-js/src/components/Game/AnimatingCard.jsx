@@ -1,24 +1,29 @@
-import React, {memo, useEffect, useRef} from 'react';
+import React, { useEffect, useRef } from 'react';
 import HungarianCard from './HungarianCard';
 
-// AnimatingCard.jsx
-const AnimatingCard = memo(function AnimatingCard({
-                                                      card,
-                                                      waypoints = [],
-                                                      duration,
-                                                      delay = 0,
-                                                      onComplete,
-                                                      zIndex
-                                                  }) {
+const AnimatingCard = function AnimatingCard({
+                                                 card,
+                                                 waypoints = [],
+                                                 duration,
+                                                 delay = 0,
+                                                 onComplete,
+                                                 rotation,
+                                                 zIndex,linear
+                                             }) {
     const cardRef = useRef(null);
     const animationStartedRef = useRef(false);
     const animationRef = useRef(null);
     const timeoutIdRef = useRef(null);
+    const completedRef = useRef(false);
 
     useEffect(() => {
-        if (animationStartedRef.current) return;
-        if (!cardRef.current || waypoints.length === 0) return;
+        // Ha már elindult vagy befejeződött, ne csináljunk semmit
+        console.log("[animation calculation started]")
 
+        if (animationStartedRef.current || completedRef.current) return;
+        console.log("[animation calculation started 1]")
+        if (!cardRef.current || waypoints.length === 0) return;
+        console.log("[animation calculation started 2]")
         const element = cardRef.current;
         animationStartedRef.current = true;
 
@@ -29,8 +34,8 @@ const AnimatingCard = memo(function AnimatingCard({
                 transforms.push(`scale(${wp.scale})`);
             }
 
-            if (wp.rotate && wp.rotate !== '0deg') {
-                transforms.push(`rotate(${wp.rotate})`);
+            if (rotation ? rotation :firstWaypoint.rotate && wp.rotate !== '0deg') {
+                transforms.push(`rotate(${rotation ? rotation :firstWaypoint.rotate})`);
             }
 
             if (wp.transform && wp.transform.includes('rotateY')) {
@@ -50,17 +55,38 @@ const AnimatingCard = memo(function AnimatingCard({
 
         const totalDuration = duration || 0;
 
+        console.log('[ANIMATION START]', {
+            cardId: card.cardId || card.refKey,
+            delay,
+            duration: totalDuration
+        });
+
         timeoutIdRef.current = setTimeout(() => {
+            console.log('[ANIMATION STARTING NOW]', card.cardId || card.refKey);
+
             animationRef.current = element.animate(keyframes, {
                 duration: totalDuration,
-                easing: 'linear',
+                easing: !linear?'cubic-bezier(0.2, 0.65, 0.3, 1)':"linear",
                 fill: 'forwards',
             });
 
             animationRef.current.onfinish = () => {
-                setTimeout(() => {
-                    onComplete?.(card.cardId || card.refKey);
-                }, 100);
+                // Biztosítjuk, hogy csak egyszer hívódjon meg
+                if (!completedRef.current) {
+                    completedRef.current = true;
+
+                    console.log('[ANIMATION COMPLETE]', {
+                        cardId: card.cardId || card.refKey,
+                        completed: true,
+                        timestamp: Date.now()
+                    });
+
+                    // Kis késleltetés a biztonság kedvéért
+                    setTimeout(() => {
+                        console.log('[CALLING onComplete]', card.cardId || card.refKey);
+                        onComplete?.(card.cardId || card.refKey);
+                    }, 100);
+                }
             };
         }, delay);
 
@@ -68,11 +94,9 @@ const AnimatingCard = memo(function AnimatingCard({
             if (timeoutIdRef.current) {
                 clearTimeout(timeoutIdRef.current);
             }
-            if (animationRef.current) {
-                animationRef.current.cancel();
-            }
+
         };
-    }, []); // Üres dependency array!
+    }, []); // Továbbra is üres dependency array
 
     const firstWaypoint = waypoints[0] || {};
     const initialTransforms = [];
@@ -81,7 +105,7 @@ const AnimatingCard = memo(function AnimatingCard({
         initialTransforms.push(`scale(${firstWaypoint.scale})`);
     }
     if (firstWaypoint.rotate && firstWaypoint.rotate !== '0deg') {
-        initialTransforms.push(`rotate(${firstWaypoint.rotate})`);
+        initialTransforms.push(`rotate(${rotation ? rotation :firstWaypoint.rotate})`);
     }
     if (firstWaypoint.transform && firstWaypoint.transform.includes('rotateY')) {
         const match = firstWaypoint.transform.match(/rotateY\(([^)]+)\)/);
@@ -99,6 +123,11 @@ const AnimatingCard = memo(function AnimatingCard({
         boxSizing: 'border-box',
         border: 'none',
         background: 'transparent',
+        transition: `
+    left 0.35s ease,
+    top 0.35s ease,
+    transform 0.35s ease
+  `,
     };
 
     return (
@@ -111,7 +140,7 @@ const AnimatingCard = memo(function AnimatingCard({
                 width: '60px',
                 height: '90px',
                 transform: initialTransforms.length > 0 ? initialTransforms.join(' ') : 'none',
-                zIndex: zIndex?zIndex: 99 ,
+                zIndex: zIndex ? zIndex : 99,
                 pointerEvents: 'none',
                 transformStyle: 'preserve-3d',
                 transformOrigin: 'center center',
@@ -127,7 +156,7 @@ const AnimatingCard = memo(function AnimatingCard({
                     transform: 'rotateY(0deg)',
                 }}
             >
-                <HungarianCard cardData={card.cardId || card.refKey ? card : null}/>
+                <HungarianCard cardData={card.cardId || card.refKey ? card : null} zIndex={zIndex} />
             </div>
 
             <div
@@ -137,7 +166,7 @@ const AnimatingCard = memo(function AnimatingCard({
                     top: 0,
                     left: 0,
                     backfaceVisibility: 'hidden',
-                    transform: 'rotateY(180deg)',
+                    transform: rotation? 'rotateY(0deg)' :'rotateY(180deg)',
                     backgroundColor: '#2c5f2d',
                     border: '2px solid #1a3a1b',
                     borderRadius: '8px',
@@ -160,13 +189,6 @@ const AnimatingCard = memo(function AnimatingCard({
             </div>
         </div>
     );
-}, (prevProps, nextProps) => {
-    // TRUE = NEM renderelődik újra
-    // FALSE = újrarenderelődik
-    return (
-        prevProps.card.cardId === nextProps.card.cardId &&
-        prevProps.card.refKey === nextProps.card.refKey
-    );
-});
+};
 
 export default AnimatingCard;

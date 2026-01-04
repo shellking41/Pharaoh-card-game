@@ -1,13 +1,15 @@
-import {useCallback, useContext, useEffect, useRef} from 'react'
+import {useCallback, useContext, useEffect, useRef, useState} from 'react'
 import {StompContext} from "../Contexts/StompContext.jsx";
 import {UserContext} from "../Contexts/UserContext.jsx";
 import {TokenContext} from "../Contexts/TokenContext.jsx";
 
 function useWebsocket() {
-    const {reconnecting, subscriptionRef, connected, clientRef} = useContext(StompContext);
+    const {reconnecting, subscriptionRef, connected, clientRef,hasError} = useContext(StompContext);
     const messageQueueRef = useRef([]);
     const {token} = useContext(TokenContext);
     const isResubscribingRef = useRef(false);
+    const disconnectTimerRef = useRef(null);
+    const [showRefreshPrompt, setShowRefreshPrompt] = useState(false);
 
     const sendMessage = useCallback(
         (destination, message) => {
@@ -29,20 +31,17 @@ function useWebsocket() {
                     console.log(`[STOMP] Üzenet elküldve: ${destination}`, message);
                     return true;
                 } catch (error) {
-
-
-                    // Ha hiba van, queue-ba tesszük
                     messageQueueRef.current.push(messageData);
                     return false;
                 }
             } else {
-                // Ha nincs kapcsolat, queue-ba tesszük
                 console.log(`[STOMP] Nincs kapcsolat, üzenet queue-ba téve: ${destination}`);
                 messageQueueRef.current.push(messageData);
                 return false;
             }
         }, [clientRef, connected, reconnecting, token]
     );
+
     const sendQueuedMessages = useCallback(
         () => {
             if (clientRef.current && connected && !reconnecting) {
@@ -61,21 +60,16 @@ function useWebsocket() {
                         console.log(`[STOMP] Queue-ból elküldve: ${destination}`, message);
                     } catch (error) {
                         console.error('[STOMP] Queue üzenet küldési hiba:', error);
-                        // Visszatesszük a queue-ba
                         messageQueueRef.current.push({destination, message, id, timestamp: Date.now()});
                     }
-
                 })
             }
         },
-        [clientRef, connected, reconnecting]);
+        [clientRef, connected, reconnecting, token]);
 
-
-    // Feliratkozás mentéssel és automatikus újrafeliratkozással
     const subscribe = useCallback((destination, callback, options = {}) => {
         const subscriptionId = `${destination}`;
 
-        // Feliratkozás tárolása
         subscriptionRef.current.set(subscriptionId, {
             destination,
             callback,
@@ -84,38 +78,29 @@ function useWebsocket() {
         });
 
         sessionStorage.setItem("callback", JSON.stringify({callback, destination}));
+
         const performSubscription = () => {
             if (clientRef.current && connected) {
                 try {
                     const subscription = clientRef.current.subscribe(destination, (message) => {
-
-
-                        // Ellenőrizzük, hogy a message.body JSON-nak tűnik-e
                         const messageBody = message.body.trim();
 
-                        // Ha JSON-nak tűnik (kezdődik { vagy [ karakterrel)
                         if ((messageBody.startsWith('{') && messageBody.endsWith('}')) ||
                             (messageBody.startsWith('[') && messageBody.endsWith(']'))) {
                             try {
                                 const parsedMessage = JSON.parse(messageBody);
                                 callback(parsedMessage);
-
-
                             } catch (error) {
                                 console.error('[STOMP] JSON parsing hiba:', error);
-                                // Ha mégsem valid JSON, akkor string-ként kezeljük
                                 callback(messageBody);
-
                             }
                         } else {
-                            // Ha nem JSON formátum, akkor string-ként kezeljük
                             callback(messageBody);
                         }
                     }, {
-                        Authorization: "Bearer " + token   // <-- Token ide kerül
+                        Authorization: "Bearer " + token
                     });
 
-                    // Subscription objektum mentése
                     const stored = subscriptionRef.current.get(subscriptionId);
                     if (stored) {
                         stored.subscription = subscription;
@@ -131,10 +116,8 @@ function useWebsocket() {
             return null;
         };
 
-        // Azonnali feliratkozás, ha van kapcsolat
         performSubscription();
 
-        // Cleanup function visszaadása
         return () => {
             const stored = subscriptionRef.current.get(subscriptionId);
             if (stored?.subscription) {
@@ -147,25 +130,60 @@ function useWebsocket() {
             }
             subscriptionRef.current.delete(subscriptionId);
         };
-    }, [clientRef, connected, token]);
+    }, [clientRef, connected, token, subscriptionRef]);
 
-
-    // Kapcsolat változás figyelése - egyszerűsített verzió
+    // ✅ MANUAL REFRESH PROMPT: Megjelenítünk egy gombot
     useEffect(() => {
+        if (!connected || hasError) {
+            console.warn('[STOMP] Kapcsolat megszakadt vagy error történt, prompt időzítő indítása...');
 
-        if (connected && !reconnecting) {
-            console.log('[STOMP] Kapcsolat helyreállt, újrafeliratkozás és queue feldolgozás...');
+            disconnectTimerRef.current = setTimeout(() => {
+                if (!connected || hasError) {
+                    console.warn('[STOMP] Kapcsolat nem állt helyre, refresh prompt megjelenítése...');
+                    setShowRefreshPrompt(true);
+                }
+            }, 10000);
 
-            // Rövid késleltetés a stabilitásért
-            const timer = setTimeout(() => {
-                sendQueuedMessages();
-            }, 100);
-
-            return () => clearTimeout(timer);
+            return () => {
+                if (disconnectTimerRef.current) {
+                    clearTimeout(disconnectTimerRef.current);
+                    disconnectTimerRef.current = null;
+                }
+            };
         }
-    }, [connected, reconnecting]); // Csak ezekre figyelünk, a callback függvényekre nem
 
-    return {sendMessage, subscribe}
+        // Ha megszakadt a kapcsolat
+        if (!connected) {
+            console.warn('[STOMP] Kapcsolat megszakadt, prompt időzítő indítása...');
+
+            // 10 másodperc múlva megjelenik a refresh prompt
+            disconnectTimerRef.current = setTimeout(() => {
+                if (!connected) {
+                    console.warn('[STOMP] Kapcsolat nem állt helyre, refresh prompt megjelenítése...');
+                    setShowRefreshPrompt(true);
+                }
+            }, 10000);
+
+            return () => {
+                if (disconnectTimerRef.current) {
+                    clearTimeout(disconnectTimerRef.current);
+                    disconnectTimerRef.current = null;
+                }
+            };
+        }
+    }, [connected, reconnecting,hasError, sendQueuedMessages]);
+
+    // Refresh függvény
+    const handleRefresh = useCallback(() => {
+        window.location.reload();
+    }, []);
+
+    return {
+        sendMessage,
+        subscribe,
+        showRefreshPrompt,
+        handleRefresh
+    }
 }
 
 export default useWebsocket

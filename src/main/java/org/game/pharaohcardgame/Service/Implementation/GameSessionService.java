@@ -401,7 +401,7 @@ public class GameSessionService implements IGameSessionService {
         });
 
         //itt ha huzunk egy kartyat akkor a kartyahuzo user lassa a kartyat mások nem kapjak meg a tartalmát
-        notificationHelpers.sendDrawCardNotification(players, currentPlayer, Collections.singletonList(drawnCardRef.get()), deckSizeRef.get(), newGameState.getPlayedCards().size(), newGameState,Collections.singletonList(drawnCardRef.get()).size());
+        notificationHelpers.sendDrawCardNotification(players, currentPlayer, Collections.singletonList(drawnCardRef.get()), newGameState.getDeck().size(), newGameState.getPlayedCards().size(), newGameState,Collections.singletonList(drawnCardRef.get()).size());
 
         //kikuldjuk a kovetkezo kor notifkációit
         NextTurnResult next = nextTurnRef.get();

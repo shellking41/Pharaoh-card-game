@@ -42,10 +42,20 @@ function useCalculateReshuffleAnimation(spacing = 40) {
             const batchId = Date.now();
 
             const animations = Array.from({ length: deckCardNumber }).map((_, index) => {
+                // Ha a deckPos.top már calc() kifejezés, akkor azt használjuk alapként
+                // Egyébként létrehozunk egy calc() kifejezést
+                let targetTop;
+                if (deckPos.top && deckPos.top.includes('calc(')) {
+                    // Ha már calc() van, bővítjük az index offset-tel
+                    targetTop = deckPos.top.replace('calc(', `calc(${index * 1.2}px + `);
+                } else {
+                    // Egyébként létrehozunk egy új calc() kifejezést
+                    targetTop = `calc(${index * 1.2}px + ${deckPos.top})`;
+                }
+
                 return {
                     card: {
                         index: index,
-                        // Egyedi refKey minden kártyához
                         refKey: `reshuffle-${batchId}-${index}`
                     },
                     waypoints: [
@@ -58,7 +68,7 @@ function useCalculateReshuffleAnimation(spacing = 40) {
                         },
                         {
                             left: deckPos.left,
-                            top: `calc(${index*1.2}px + 49%)`,
+                            top: targetTop,
                             rotate: `${Math.random() * 20 - 10}deg`,
                             scale: 1,
                             offset: 1,

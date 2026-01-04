@@ -32,16 +32,20 @@ import PlayerNameBox from "../components/Game/PlayerNameBox.jsx";
 //tudok huzni kartyat mikozben a enemie kartya huzas animacioja van es az beszakitja az animaciot-kesz
 // valmiert a reshuffle animacio beragad ha uj gamet inditunk-kesz
 //jelenleg rossz helyre mennek a huzott kartyak opponens es selfplayernek is-kesz
-//todo: ha ujra enkovetkezek akkor nem tudok lepni (amikor streakelek)
+// ha ujra enkovetkezek akkor nem tudok lepni (amikor streakelek)-kesz
+//todo: amikor jon az uj kor akkor frissditeni kell azt a statet hogy ki fog jonni
 //todo: egyet villan a kép amikor leteszunk tobb mint egy kartyat
-//todo: valamiert nem fut le a opponens kartya letetelenek az animacioja
+//todo: amikor tobb kartyat huz fel az ellenfel akkor ugranak egyet az animacio utan a kartyai
+//todo: kell egy szamlalot kitenni hogy most milyen sorrendben fognak kimenni a kivvalasztott kartyak
+//ha skippel valaki akkor kell jelezni azt valamilyen szinnel a nameboxban-kesz
+//valamiert nem fut le a opponens kartya letetelenek az animacioja--kesz
 //todo: ha uj kor van akkor kesleltetve frissuljelen a playerhandek
 //todo: ha telefon nezet van akkor legyenek kissebbek a kartyak
 //todo: a mobil nezetbe is kell kartya letetel es draw animacio, ha levan csukva a taska akkor menjen a huzott kartya a nyilfele es kicsinyitodjon le
 //todo: kell a last card shuffle animaciojat megcsinalni,
-//todo: a blokkolas animaciot meg kell csinaln
+//a blokkolas animaciot meg kell csinaln-kezs
 //todo: a szinvaltas animaciot megkell csinalni
-//todo: a blokolast es azt hogy kivan koron animaciot ugy meglehetne csinalni hogy lesznek szoveg buborekok  a card handek felett es azokba  aplayerek nevei bennelesznek, majd arra kell egy "X" es egy mas szinnel mejeloles animacio
+//blokolast es azt hogy kivan koron animaciot ugy meglehetne csinalni hogy lesznek szoveg buborekok  a card handek felett es azokba  aplayerek nevei bennelesznek, majd arra kell egy "X" es egy mas szinnel mejeloles animacio
 //ha nem mi vagyunk a soron akkor addig csukodjon le a taska, majd vissza-kesz
 //a self kartyak letÃƒÂ´telÃƒÂ´nek az animacÃƒÂ­oit megcsinalni,-kesz
 // tobb kartya letel eltorott-kesz
@@ -54,21 +58,21 @@ import PlayerNameBox from "../components/Game/PlayerNameBox.jsx";
 //todo: ha nincs userPlayer jatekban csak botok akkor a botok valtozzanak at ideiglenesen hardbotta hogy  ne tartjos sokaig a jatek
 //kezelni kell frontenden az uj kort-kesz
 //kell frissiten a decksizet rogton a uj kor-kesz
-//todo: a sajat kartya letÃƒâ€°tel animaciot szebbre kell csinalni
+// a sajat kartya letÃƒâ€°tel animaciot szebbre kell csinalni-kesz
 //ha egy ellenfel leteszi a utolso kartyat akkor a kovetkezo korbe nem frissul a init played card-kesz
 //a kartyahuzas animaciot megcsinalni-kesz
 //amikor leteszi az ellenfel a kartyat akkor legyen kis kartya megfordulas animacio-kesz
 //a kartya letetel animacio nem onnan indul aahonnan kellene-kesz
 //legyen jelzes hogy ki van soron, valami highlitinggal-kesz
 // legyen a paklinak helye ahonnan felhuzzak a kartyakat-kesz
-//todo: ha leavelunk akkor a playernek refreshelnie kell ahhoz hogy lÃƒÂ¡ssa hogy tenyleg kilÃƒÂ©pett, gondolom nincs reshetelve a state
+//ha leavelunk akkor a playernek refreshelnie kell ahhoz hogy lÃƒÂ¡ssa hogy tenyleg kilÃƒÂ©pett, gondolom nincs reshetelve a state-kesz
 //todo: ha a vÃƒÂ©ge a jateknak akkor az animacio elosszor menjen vÃƒÂ©gbe,
 function Game() {
   const { gameSession, playerSelf, turn, setTurn, setPlayerSelf, setGameSession, selectedCards, setSelectedCards, validPlays,animatingDrawCards,setAnimatingDrawCards,animatingReshuffle,
     setAnimatingReshuffle,setDeckRotations ,deckRotations } = useContext(GameSessionContext);
   const { gameSessionId } = useParams();
   const { sendMessage } = useWebsocket();
-  const { userCurrentStatus } = useContext(UserContext);
+  const { userCurrentStatus,setUserCurrentStatus } = useContext(UserContext);
   const { token } = useContext(TokenContext);
   const { get, post } = useApiCallHook();
   const { calculateAnimation } = useCalculatePlayAnimation();
@@ -79,6 +83,8 @@ function Game() {
 
   const [changeSuitTo, setChangeSuitTo] = useState('');
   const [animatingCards, setAnimatingCards] = useState([]);
+  const [leave, setLeave] = useState(false);
+
   const [animatingOwnCards, setAnimatingOwnCards] = useState([]);
   const draggableHandRef = useRef(null);
   const opponentsCardRefs = useRef({});
@@ -89,6 +95,8 @@ function Game() {
   const animationLockRef = useRef(false);
   const animatingQueueItemIdRef = useRef(null);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [lastDeckCardAnimated, setLastDeckCardAnimated] = useState(false);
+  const lastDeckKeyRef = useRef(null);
 
   const isMobile = useMediaQuery('(max-width: 768px)');
   const isTablet = useMediaQuery('(max-height: 769px)');
@@ -107,7 +115,7 @@ function Game() {
       calculateAnimation,
   );
 
-  const { isNewRound, shouldShowNotification, handleNextRoundAnimationComplete } = useCheckIsNewRound();
+  const { isNewRound, shouldShowNotification, handleNextRoundAnimationComplete,setIsNewRound } = useCheckIsNewRound();
 
   useEffect(() => {
     setAnimatingReshuffle([])
@@ -153,42 +161,61 @@ function Game() {
     });
   };
 
+// Game.jsx - playCards function
   const playCards = () => {
     const cardRefs = draggableHandRef.current?.getCardRefs();
-    if (cardRefs) {
-      const playedCardElement = playedCardRef.current;
-      if (!playedCardElement) {
-        console.error('Played card element not found');
-        animationLockRef.current = false;
-        setIsAnimating(false);
-        animatingQueueItemIdRef.current = null;
-        return;
-      }
+    if (!cardRefs) return;
 
-      const animations = calculateAnimation(
-          gameSession.playerHand.ownCards.length,
-          selectedCards,
-          playedCardElement.style,
-          '0deg',
-          playerSelf,
-          gameSession.players,
-          playerSelf.seat,
-          gameSession.playerHand.ownCards
-      );
-
-      const totalDelay = animations.reduce((max, a) => {
-        const finish = (a.delay ?? 0) + (a.duration ?? 0);
-        return Math.max(max, finish);
-      }, 0);
-
-      selectedCards.forEach(card => {
-        const cardElement = cardRefs[card.cardId];
-        if (cardElement) cardElement.style.display = 'none';
-      });
-
-      setAnimatingOwnCards(prev => [...prev, ...animations]);
-
+    const playedCardElement = playedCardRef.current;
+    if (!playedCardElement) {
+      console.error('Played card element not found');
+      return;
     }
+
+    console.log('[PLAY CARDS] Starting animation for cards:', selectedCards.map(c => c.cardId));
+
+    // Számítsd ki az animációkat
+    const animations = calculateAnimation(
+        gameSession.playerHand.ownCards.length,
+        selectedCards,
+        playedCardElement.style,
+        '0deg',
+        playerSelf,
+        gameSession.players.length,
+        playerSelf.seat,
+        gameSession.playerHand.ownCards
+    );
+
+    console.log('[PLAY CARDS] Generated animations:', animations.length);
+
+    // Elrejtjük a kártyákat
+    selectedCards.forEach(card => {
+      const cardElement = cardRefs[card.cardId];
+      if (cardElement) {
+        cardElement.style.display = 'none';
+      }
+    });
+
+    // *** Hozzáadjuk a saját kártyáinkat is a queue-hoz ***
+    // Így az animáció végén frissül a playedCards
+    setGameSession(prev => {
+      const entry = {
+        id: `${playerSelf.playerId}-${Date.now()}`,
+        playerId: playerSelf.playerId,
+        cards: selectedCards,
+        receivedAt: Date.now(),
+      };
+
+      return {
+        ...prev,
+        playedCardsQueue: [...(prev.playedCardsQueue || []), entry],
+      };
+    });
+
+    // Hozzáadjuk az animációkat
+    setAnimatingOwnCards(prev => [...prev, ...animations]);
+
+    // Backend értesítés
     const playCardsData = selectedCards.map(({cardId, suit, rank, ownerId, position}) => ({
       cardId,
       suit,
@@ -205,7 +232,6 @@ function Game() {
 
     setSelectedCards([]);
     setChangeSuitTo(null);
-    handleAnimationCompleteWrapper(playCardsData.cardId, playCardsData)
   };
 
   const handleAnimationCompleteWrapper = useCallback((cardId, ownCards) => {
@@ -239,12 +265,24 @@ function Game() {
         index,
         setAnimatingReshuffle,
         setGameSession,
-        setDeckRotations,
         totalCards
     );
   }, []);
 
-
+  useEffect(() => {
+    if(leave) {
+      setLeave(false)
+      setSelectedCards([]);
+      setAnimatingCards([])
+      setAnimatingOwnCards([])
+      setAnimatingDrawCards([])
+      setAnimatingReshuffle([])
+      setGameSession({})
+      setIsNewRound(false)
+      setUserCurrentStatus((prev)=>({...prev,currentRoom:prev.managedRoom?prev.currentRoom:null}))
+      setDeckRotations([])
+    }
+  }, [leave]);
 
   useEffect(() => {
     console.log("gameSession",gameSession,turn)
@@ -268,6 +306,32 @@ function Game() {
 
 
   }, [turn,animatingDrawCards,queueRef]);
+
+
+  useEffect(() => {
+    const deckSize = Number(gameSession?.deckSize - animatingDrawCards.length);
+    const noMoreCardsNextDraw = gameSession?.gameData?.noMoreCardsNextDraw;
+    const currentRound = gameSession?.gameData?.currentRound;
+
+    // Új key generálás ha új kör van vagy deck állapot változik
+    const newKey = `deck-last-card-${currentRound || 0}`;
+
+    // Ha változott a kulcs vagy a feltételek, reseteljük
+    if (lastDeckKeyRef.current !== newKey || (deckSize === 0 && !noMoreCardsNextDraw)) {
+      lastDeckKeyRef.current = newKey;
+      setLastDeckCardAnimated(false);
+    }
+  }, [gameSession?.deckSize, animatingDrawCards.length, gameSession?.gameData?.noMoreCardsNextDraw, gameSession?.gameData?.currentRound]);
+
+
+// Callback az animáció befejezéséhez
+  const handleLastDeckCardAnimationComplete = useCallback(() => {
+    setLastDeckCardAnimated(true);
+  }, []);
+  useEffect(() => {
+    console.log(isMobile)
+
+  }, [isMobile]);
   return (
       <div className={styles.game}>
         <div className={styles.playgroundBlock}>
@@ -298,7 +362,9 @@ function Game() {
                     />
             }
             {!(isMobile || isTablet) && <div className={styles.playerNameContainer}>
-              <PlayerNameBox playerName={playerSelf.playerName} pos={"bottom"}/>
+              <PlayerNameBox playerName={playerSelf.playerName} pos={"bottom"}  isYourTurn={playerSelf.seat === turn.currentSeat}
+                             playerId={playerSelf.playerId}
+                             seat={playerSelf.seat}/>
             </div>}
 
             <HungarianCard
@@ -325,7 +391,13 @@ function Game() {
                 return (
                     <div key={`player-${p.playerId}`}>
                       <div className={styles.playerNameContainer}>
-                        <PlayerNameBox playerName={p.playerName} pos={pos} isYourTurn={ p.seat===turn.currentSeat}/>
+                        <PlayerNameBox
+                            playerName={p.playerName}
+                            pos={pos}
+                            isYourTurn={p.seat === turn.currentSeat}
+                            playerId={p.playerId}
+                            seat={p.seat}
+                        />
                       </div>
                       {Array.from({ length: count }).map((_, cardIndex) => {
                         const style = getCardStyleForPosition(pos, cardIndex + 1, count);
@@ -341,6 +413,7 @@ function Game() {
                                   }
                                 }}
                                 key={stableKey}
+                                zIndex={cardIndex*10}
                                 player={{playerId:p.playerId,pos:pos}}
                                 cardData={null}
                                 left={style.left}
@@ -367,6 +440,7 @@ function Game() {
                     waypoints={anim.waypoints}
                     duration={anim.duration}
                     delay={anim.delay}
+                    linear={true}
                     onComplete={() => handleAnimationCompleteWrapper(anim.card.cardId, false)}
                 />
             ))}
@@ -375,6 +449,7 @@ function Game() {
                 <AnimatingCard
                     key={anim.card.refKey}
                     card={anim.card}
+                    linear={false}
                     waypoints={anim.waypoints}
                     duration={anim.duration}
                     delay={anim.delay}
@@ -382,34 +457,72 @@ function Game() {
                 />
             ))}
 
-            {memoizedAnimatingDrawCards.map(anim => (
+            {memoizedAnimatingDrawCards.map((anim,index) => (
                 <AnimatingCard
                     key={anim.card.refKey}
                     card={anim.card}
                     waypoints={anim.waypoints}
+                    linear={false}
                     duration={anim.duration}
                     delay={anim.delay}
+                    zIndex={100000 + index}
                     onComplete={() => handleDrawAnimationCompleteWrapper(anim.card.cardId)}
                 />
             ))}
-            {memoizedAnimatingReshuffle.map((anim) => (
+            {memoizedAnimatingReshuffle.map((anim,index) => (
                 <AnimatingCard
                     key={anim.card.refKey}
                     card={anim.card}
                     waypoints={anim.waypoints}
+                    linear={true}
+                    rotation={deckRotations[index]}
                     duration={anim.duration}
-                    zIndex={anim.zIndex}
+                    zIndex={100000*(index+10)}
                     delay={anim.delay}
                     onComplete={() => handleReshuffleAnimationCompleteWrapper(anim.card.index, memoizedAnimatingReshuffle.length)}
                 />
             ))}
 
             <div className={"deck"} ref={deckRef}>
-              {Array.from({ length: Number(gameSession?.deckSize) || (gameSession.gameData?.noMoreCardsNextDraw?0:1) }).map((_, index) => (
-                  <div key={`deck-${gameSession.gameData?.currentRound || 0}-${index}-${Date.now()}`}>
-                    <DeckCard index={index} rotation={deckRotations && deckRotations[index]} />
-                  </div>
-              ))}
+              {(() => {
+                const deckSize = Number(gameSession?.deckSize - animatingDrawCards.length);
+                const noMoreCardsNextDraw = gameSession?.gameData?.noMoreCardsNextDraw;
+                const currentRound = gameSession?.gameData?.currentRound || 0;
+
+                // Ha van normál deck
+                if (deckSize > 0 ) {
+
+                  console.log(deckRotations)
+                  return Array.from({ length: deckSize }).map((_, index) => (
+
+                      <div key={`deck-${currentRound}-${index}`}>
+                        <DeckCard
+                            index={index}
+                            rotation={deckRotations && deckRotations[index]}
+                            isMobile={isMobile}
+                        />
+                      </div>
+                  ));
+                }
+
+                // Ha nincs deck de kellene lennie egy utolsó kártyának (noMoreCardsNextDraw === false)
+                if (!noMoreCardsNextDraw && animatingDrawCards.length===0) {
+                  return (
+                      <div key={`deck-last-card-${currentRound} special-deck-card`}>
+                        <DeckCard
+                            index={0}
+                            rotation={deckRotations?.[0] || '0deg'}
+                            shouldAnimate={!lastDeckCardAnimated}
+                            isMobile={isMobile}
+                            onAnimationComplete={handleLastDeckCardAnimationComplete}
+                        />
+                      </div>
+                  );
+                }
+
+                // Ha tényleg nincs több kártya
+                return null;
+              })()}
             </div>
 
             <NewRoundNotification
@@ -446,7 +559,7 @@ function Game() {
               have to draw: {gameSession?.gameData?.drawStack[playerSelf.playerId]}
             </button>
         )}
-        {gameSession?.gameData?.noMoreCards &&
+        {(gameSession?.gameData?.noMoreCards|| gameSession?.gameData?.noMoreCardsNextDraw) &&
             turn?.yourTurn &&
             validPlays.length === 0 && (
                 <button
@@ -462,14 +575,8 @@ function Game() {
         <button onClick={async () => {
           const response = await post('http://localhost:8080/game/leave', { gameSessionId: gameSession.gameSessionId }, token);
           console.log(response);
-          setSelectedCards([]);
-          setAnimatingCards([])
-          setAnimatingOwnCards([])
-          setAnimatingDrawCards([])
-          setAnimatingReshuffle([])
-          setGameSession({})
-          setIsNewRound(false)
-          setDeckRotations([])
+          setLeave(true)
+
         }}>Leave</button>
       </div>
   );

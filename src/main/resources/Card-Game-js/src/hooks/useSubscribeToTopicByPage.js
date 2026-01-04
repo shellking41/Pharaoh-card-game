@@ -11,13 +11,65 @@ import useCalculateDrawAnimation from '../components/Game/Hooks/useCalculateDraw
 import { useMediaQuery } from '@mui/material';
 import {getCardStyleForPosition, getPlayerPositionBySeat} from '../components/Game/HungarianCard.jsx';
 
+function computeSkippedPlayersVisual(message,gameSession) {
+  // Biztonsági alapok
+  console.log("visual only",message)
+  const players = gameSession.players ?? [];
+  const finishedPlayers = gameSession.gameData.finishedPlayers ?? [];
+  const lostPlayers = gameSession.gameData.lostPlayers ?? [];
+  const currentPlayerId = message.playerId;
+  const newPlayedCards = message.newPlayedCards ?? [];
+
+  //  játékosok kiválasztása
+  const activePlayers = players.filter(
+      p =>
+          !finishedPlayers.includes(p.playerId) &&
+          !lostPlayers.includes(p.playerId)
+  );
+  console.log("visual only",activePlayers)
+
+
+  //  Hány ACE készült le?
+  const aceCount = newPlayedCards.filter(card => {
+    // card lehet, hogy csak egy string vagy objektum - ha objektum, nézzük a rank mezőt
+    if (!card) return false;
+    const rank = (typeof card === 'object' && card.rank) ? card.rank : card;
+    return typeof rank === 'string' && rank.toUpperCase() === 'ACE';
+  }).length;
+
+  // Edge-case kezelések
+  if (aceCount === 0) {
+    console.log('No ACE played → no skips.');
+    return [];
+  }
+  if (activePlayers.length === 0) {
+    console.log('Nincsenek aktív játékosok (mindenki finished vagy lost).');
+    return [];
+  }
+
+  //  Körkörös  skipped lista generálása playerId-ként
+  const startIndex = activePlayers.findIndex(
+      p => p.playerId === currentPlayerId
+  );
+
+  const skippedVisual = [];
+
+  for (let i = 1; i <= aceCount; i++) {
+    skippedVisual.push(
+        activePlayers[(startIndex + i) % activePlayers.length].playerId
+    );
+  }
+
+  return skippedVisual; // pl. [6,7,6,7]
+}
+
 function handleReshuffle(
     cardsToReshuffle,
     deckPosition,
     calculateReshuffleAnimation,
     setAnimatingReshuffle,
     setGameSession,
-    newDeckSize
+    newDeckSize,setDeckRotations
 ) {
   // 500ms várakozás, hogy látszódjon az üres deck
   setTimeout(() => {
@@ -36,15 +88,19 @@ function handleReshuffle(
       newDeckSize,
     });
 
+
     const reshuffleAnimations = calculateReshuffleAnimation(
         playedCardPosition,
         deckPosition,
-        cardsToReshuffle
+        cardsToReshuffle,
     );
 
     console.log('[RESHUFFLE ANIMATION] Generated animations:', reshuffleAnimations.length);
 
     setAnimatingReshuffle((prev) => [...prev, ...reshuffleAnimations]);
+    console.log("[RESHUFFLE ANIMATION]",reshuffleAnimations.map((a)=>(a.waypoints[a.waypoints.length-1].rotate)))
+
+    setDeckRotations(reshuffleAnimations.map((a)=>(a.waypoints[a.waypoints.length-1].rotate)))
 
     // Ideiglenesen beállítjuk a newDeckSize-t
     setGameSession((prev) => ({
@@ -191,6 +247,7 @@ const getPageSubscriptions = (getCtx) => {
             isMobile,
             calculateReshuffleAnimation,
             setAnimatingReshuffle,
+            setDeckRotations
           } = ctx;
 
           console.log('[DRAW] Message received:', message);
@@ -199,8 +256,8 @@ const getPageSubscriptions = (getCtx) => {
           const deckElement = document.querySelector('.deck');
           const deckPosition = deckElement
               ? {
-                left: isMobile ? '75%' : '55%',
-                top: '49%',
+                left:  isMobile ? '45%' : '55%',
+                top: isMobile ?'30%':'49%',
               }
               : { left: '50%', top: '50%' };
 
@@ -299,12 +356,12 @@ const getPageSubscriptions = (getCtx) => {
               if (willReshuffle) {
               const cardsToReshuffle = message.deckSize; // Az új deck mérete
               handleReshuffle(
-                  cardsToReshuffle,
+                  cardsToReshuffle-1,
                   deckPosition,
                   calculateReshuffleAnimation,
                   setAnimatingReshuffle,
                   setGameSession,
-                  message.deckSize
+                  message.deckSize,setDeckRotations
               );
                } else {
                  // Normál deckSize frissítés
@@ -313,7 +370,7 @@ const getPageSubscriptions = (getCtx) => {
                    deckSize: message.deckSize,
                  }));
                }
-            }, drawTotalDelay+100);
+            }, drawTotalDelay);
           }
           // OPPONENT DRAW
           else {
@@ -415,12 +472,12 @@ const getPageSubscriptions = (getCtx) => {
                 const cardsToReshuffle = message.deckSize;
 
                 handleReshuffle(
-                    cardsToReshuffle,
+                    cardsToReshuffle-1,
                     deckPosition,
                     calculateReshuffleAnimation,
                     setAnimatingReshuffle,
                     setGameSession,
-                    message.deckSize
+                    message.deckSize,setDeckRotations
                 );
               } else {
                 // Normál deckSize frissítés
@@ -429,7 +486,7 @@ const getPageSubscriptions = (getCtx) => {
                   deckSize: message.deckSize,
                 }));
               }
-            }, totalDelay + 100);
+            }, totalDelay);
           }
         },
       },
@@ -440,15 +497,39 @@ const getPageSubscriptions = (getCtx) => {
       {
         destination: '/topic/game/' + getCtx().gameSession?.gameSessionId + '/played-cards',
         callback: (message) => {
+          const { gameSession,setSkippedPlayers}=getCtx()
+            //ace handling
+
+          if(message.newPlayedCards[0].rank==="ACE"){
+            console.log('visual only',message.newPlayedCards[0].rank)
+            const skippedVisual = computeSkippedPlayersVisual(message,gameSession);
+
+            // kiírás / debug
+            console.log('visual only', skippedVisual);
+            setSkippedPlayers(skippedVisual)
+
+          }
           console.log('[WS] played-cards incoming', message);
 
           const incoming = message?.newPlayedCards ?? [];
           if (!incoming || incoming.length === 0) return;
 
-          const { setGameSession } = getCtx();
+          const { setGameSession, playerSelf } = getCtx();
 
+          // *** Most MÁR hozzáadjuk a saját kártyáinkat is, DE csak ha még nincs a queue-ban ***
           setGameSession((prev) => {
             const queue = Array.isArray(prev?.playedCardsQueue) ? prev.playedCardsQueue : [];
+
+            // Ellenőrizzük hogy már van-e ilyen queue item (ugyanaz a playerId + hasonló timestamp)
+            const alreadyExists = queue.some(item =>
+                item.playerId === message.playerId &&
+                Math.abs(item.receivedAt - Date.now()) < 1000 // 1 másodpercen belül
+            );
+
+            if (alreadyExists) {
+              console.log('[WS] Queue item already exists, skipping duplicate');
+              return prev;
+            }
 
             const entry = {
               id: `${message.playerId}-${Date.now()}`,
@@ -456,6 +537,8 @@ const getPageSubscriptions = (getCtx) => {
               cards: incoming,
               receivedAt: Date.now(),
             };
+
+            console.log('[WS] Adding cards to queue:', entry);
 
             return {
               ...prev,
@@ -469,7 +552,8 @@ const getPageSubscriptions = (getCtx) => {
         destination: '/user/queue/game/play-cards',
         callback: (message) => {
           const { setGameSession } = getCtx();
-          console.log('PLAY-CARD-XD', message);
+          console.log('[WS] play-cards response from backend:', message);
+
           const newRound = message.gameData?.currentRound;
           setGameSession((prev) => ({
             ...prev,
@@ -486,10 +570,8 @@ const getPageSubscriptions = (getCtx) => {
               skippedPlayers: message.gameData.skippedPlayers,
               noMoreCardsNextDraw:message.gameData.noMoreCardsNextDraw,
             },
-          }));
-        },
+          }));}
       },
-
       {
         destination: '/user/queue/game/turn',
         callback: (message) => {
@@ -573,7 +655,15 @@ const getPageSubscriptions = (getCtx) => {
       {
         destination: '/user/queue/game/skip',
         callback: (message) => {
+          const { setSkipTurn,}=getCtx()
           console.log(message);
+          if (message.skipTurn && message.skippedPlayerId) {
+            setSkipTurn({
+              playerId: message.skippedPlayerId,
+              seat: message.skippedPlayerSeat,
+              timestamp: Date.now()
+            });
+          }
         },
       },
       {
@@ -631,7 +721,10 @@ function UseSubscribeToTopicByPage({ page, currentRoomId }) {
     setIsNewRound,
     setDeckRotations,
     setAnimatingCards,
-    animatingReshuffle
+    animatingReshuffle,
+    setSkipTurn,
+    skippedPlayers,
+    setSkippedPlayers
   } = useContext(GameSessionContext);
   const { setRooms, joinRequests, setJoinRequests } = useContext(RoomsDataContext);
   const { showNotification } = useContext(NotificationContext);
@@ -639,6 +732,7 @@ function UseSubscribeToTopicByPage({ page, currentRoomId }) {
   const { post } = useApiCallHook();
   const { calculateDrawAnimation } = useCalculateDrawAnimation(40);
   const { calculateReshuffleAnimation } = useCalculateReshuffleAnimation();
+
   const isMobile = useMediaQuery('(max-width: 768px)');
 
   // keep a ref with the latest context used by callbacks at runtime
@@ -669,7 +763,10 @@ function UseSubscribeToTopicByPage({ page, currentRoomId }) {
     setIsNewRound,
     setDeckRotations,
     setAnimatingCards,
-    animatingReshuffle
+    animatingReshuffle,
+    setSkipTurn,
+    skippedPlayers,
+    setSkippedPlayers
   });
 
   // keep ref.current up to date when important pieces change
@@ -702,7 +799,10 @@ function UseSubscribeToTopicByPage({ page, currentRoomId }) {
       setIsNewRound,
       setDeckRotations,
       setAnimatingCards,
-      animatingReshuffle
+      animatingReshuffle,
+      setSkipTurn,
+      skippedPlayers,
+      setSkippedPlayers
     };
   }, [
     userCurrentStatus,
@@ -731,7 +831,10 @@ function UseSubscribeToTopicByPage({ page, currentRoomId }) {
     setIsNewRound,
     setDeckRotations,
     setAnimatingCards,
-    animatingReshuffle
+    animatingReshuffle,
+    setSkipTurn,
+    skippedPlayers,
+    setSkippedPlayers
   ]);
 
   useEffect(() => {

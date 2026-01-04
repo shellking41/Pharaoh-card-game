@@ -156,6 +156,7 @@ public class NotificationHelpers {
                                 .skippedPlayerId(currentPlayer.getPlayerId())
                                 .skippedPlayerSeat(currentPlayer.getSeat())
                                 .deckSize(gameState.getDeck().size())
+                                .skipTurn(true)
                                 .build()
                 );
             }
