@@ -4,7 +4,7 @@ import {UserContext} from "../Contexts/UserContext.jsx";
 import {TokenContext} from "../Contexts/TokenContext.jsx";
 
 function useWebsocket() {
-    const {reconnecting, subscriptionRef, connected, clientRef,hasError} = useContext(StompContext);
+    const {reconnecting, subscriptionRef, connected, clientRef, hasError} = useContext(StompContext);
     const messageQueueRef = useRef([]);
     const {token} = useContext(TokenContext);
     const isResubscribingRef = useRef(false);
@@ -132,11 +132,25 @@ function useWebsocket() {
         };
     }, [clientRef, connected, token, subscriptionRef]);
 
-    // ✅ MANUAL REFRESH PROMPT: Megjelenítünk egy gombot
+    // ✅ JAVÍTOTT - Egyszerűsített refresh prompt logika
     useEffect(() => {
+        // Ha kapcsolódva van és nincs hiba, elrejtjük a promptot és töröljük a timert
+        if (connected && !hasError) {
+            setShowRefreshPrompt(false);
+
+            if (disconnectTimerRef.current) {
+                clearTimeout(disconnectTimerRef.current);
+                disconnectTimerRef.current = null;
+            }
+
+            return; // ✅ Nem ad vissza cleanup függvényt
+        }
+
+        // Ha nincs kapcsolat VAGY van hiba
         if (!connected || hasError) {
             console.warn('[STOMP] Kapcsolat megszakadt vagy error történt, prompt időzítő indítása...');
 
+            // 10 másodperc múlva megjelenik a refresh prompt
             disconnectTimerRef.current = setTimeout(() => {
                 if (!connected || hasError) {
                     console.warn('[STOMP] Kapcsolat nem állt helyre, refresh prompt megjelenítése...');
@@ -144,6 +158,7 @@ function useWebsocket() {
                 }
             }, 10000);
 
+            // ✅ Cleanup függvény visszaadása
             return () => {
                 if (disconnectTimerRef.current) {
                     clearTimeout(disconnectTimerRef.current);
@@ -151,27 +166,7 @@ function useWebsocket() {
                 }
             };
         }
-
-        // Ha megszakadt a kapcsolat
-        if (!connected) {
-            console.warn('[STOMP] Kapcsolat megszakadt, prompt időzítő indítása...');
-
-            // 10 másodperc múlva megjelenik a refresh prompt
-            disconnectTimerRef.current = setTimeout(() => {
-                if (!connected) {
-                    console.warn('[STOMP] Kapcsolat nem állt helyre, refresh prompt megjelenítése...');
-                    setShowRefreshPrompt(true);
-                }
-            }, 10000);
-
-            return () => {
-                if (disconnectTimerRef.current) {
-                    clearTimeout(disconnectTimerRef.current);
-                    disconnectTimerRef.current = null;
-                }
-            };
-        }
-    }, [connected, reconnecting,hasError, sendQueuedMessages]);
+    }, [connected, hasError]);
 
     // Refresh függvény
     const handleRefresh = useCallback(() => {

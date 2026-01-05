@@ -607,47 +607,48 @@ const getPageSubscriptions = (getCtx) => {
             setAnimatingDrawCards,setAnimatingReshuffle,setIsNewRound,setDeckRotations,animatingReshuffle} = getCtx();
           console.log("gameEND",message,animatingReshuffle,setAnimatingReshuffle);
 
-          setGameSession({
-
-          });
-          setValidPlays([]);
-
-          setPlayerSelf({
-
-          });
-
-          setTurn({
-
-          });
-
-          setSelectedCards([]);
-          setAnimatingCards([])
-          setAnimatingOwnCards([])
-          setAnimatingDrawCards([])
-          setAnimatingReshuffle([])
-          setGameSession({})
-          setIsNewRound(false)
-          setDeckRotations([])
-
-          const userCurrentStatus = getCtx().userCurrentStatus;
-
-          const currentAndManagedRoom = await post(
-              'http://localhost:8080/room/current-and-managed-room',
-              {
-                currentRoomId: userCurrentStatus.currentRoom?.roomId,
-                managedRoomId: userCurrentStatus.managedRoom?.roomId,
-              },
-              token
-          );
-
-          const userStatusWRooms = {
-            userInfo: userCurrentStatus?.userInfo,
-            authenticated: userCurrentStatus?.authenticated,
-            currentRoom: currentAndManagedRoom?.currentRoom,
-            managedRoom: currentAndManagedRoom?.managedRoom,
-          };
-
-          setUserCurrentStatus(userStatusWRooms);
+          window.location.reload();
+          // setGameSession({
+          //
+          // });
+          // setValidPlays([]);
+          //
+          // setPlayerSelf({
+          //
+          // });
+          //
+          // setTurn({
+          //
+          // });
+          //
+          // setSelectedCards([]);
+          // setAnimatingCards([])
+          // setAnimatingOwnCards([])
+          // setAnimatingDrawCards([])
+          // setAnimatingReshuffle([])
+          // setGameSession({})
+          // setIsNewRound(false)
+          // setDeckRotations([])
+          //
+          // const userCurrentStatus = getCtx().userCurrentStatus;
+          //
+          // const currentAndManagedRoom = await post(
+          //     'http://localhost:8080/room/current-and-managed-room',
+          //     {
+          //       currentRoomId: userCurrentStatus.currentRoom?.roomId,
+          //       managedRoomId: userCurrentStatus.managedRoom?.roomId,
+          //     },
+          //     token
+          // );
+          //
+          // const userStatusWRooms = {
+          //   userInfo: userCurrentStatus?.userInfo,
+          //   authenticated: userCurrentStatus?.authenticated,
+          //   currentRoom: currentAndManagedRoom?.currentRoom,
+          //   managedRoom: currentAndManagedRoom?.managedRoom,
+          // };
+          //
+          // setUserCurrentStatus(userStatusWRooms);
         },
       },
 

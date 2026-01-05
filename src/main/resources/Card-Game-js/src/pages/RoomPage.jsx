@@ -10,13 +10,14 @@ import {TokenContext} from "../Contexts/TokenContext.jsx";
 import {NotificationContext} from "../Contexts/NotificationContext.jsx";
 import BotView from "../components/Room/BotView.jsx";
 import {GameSessionContext} from "../Contexts/GameSessionContext.jsx";
+import SomethingWentWrong from "../service/somethingWentWrong.jsx";
 
 function RoomPage() {
     const {roomId} = useParams();
     const navigate = useNavigate();
 
     const {userCurrentStatus, setUserCurrentStatus} = useContext(UserContext);
-    const {gameSession}=useContext(GameSessionContext);
+    const {gameSession,setGameSession}=useContext(GameSessionContext);
     const {token} = useContext(TokenContext);
     const {post} = useApiCallHook();
     const {joinRequests, setJoinRequests} = useContext(RoomsDataContext);
@@ -94,7 +95,9 @@ function RoomPage() {
 
     return (
         <>
+            <SomethingWentWrong/>
             <div>Room: {roomId}</div>
+
             {joinRequests
                 .filter((req, index, self) =>
                     index === self.findIndex(r => r.username === req.username)

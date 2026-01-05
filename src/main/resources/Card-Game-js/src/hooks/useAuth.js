@@ -79,7 +79,10 @@ export const useAuth = () => {
           managedRoom: currentAndManagedRoom?.managedRoom,
         };
         setUserCurrentStatus(userStatusWRooms);
-        await getGameSession(token, userStatusWRooms);
+        // Csak akkor kérjük le a game session-t, ha van current room
+        if (userStatusWRooms.currentRoom?.roomId) {
+          await getGameSession(token, userStatusWRooms);
+        }
         return userStatusWRooms;
       }
       throw new Error('User not authenticated');
@@ -91,32 +94,29 @@ export const useAuth = () => {
   }, [post, token, setUserCurrentStatus]);
 
   const getGameSession = async (token, userStatusWRooms) => {
-
-    console.log(token);
-
     if (!token) {
       return null;
     }
 
     try {
       const gameSession = await get('http://localhost:8080/game/state', token);
-      console.log(gameSession);
 
       if (gameSession) {
         const { validPlays, ...rest } = gameSession;
-
-        // gameSession: minden más adat, kivéve validPlays
         setGameSession(rest);
-
-        // validPlays: külön state-ben
         setValidPlays(validPlays || []);
-        console.log(gameSession?.players, userStatusWRooms.userInfo.userId);
 
-        setPlayerSelf(gameSession?.players.find((p) => p.userId === userStatusWRooms.userInfo.userId));
+        const player = gameSession?.players.find(
+            (p) => p.userId === userStatusWRooms.userInfo.userId
+        );
+        setPlayerSelf(player);
       }
-
     } catch (error) {
-      console.error('Get game session failed:', error);
+      // Ha nincs game session, ez normális, ne logolja error-ként
+      console.log('No active game session');
+      setGameSession({});
+      setValidPlays([]);
+      setPlayerSelf({});
     }
   };
 

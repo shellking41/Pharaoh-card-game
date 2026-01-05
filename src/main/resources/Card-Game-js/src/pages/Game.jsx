@@ -24,6 +24,8 @@ import useCheckIsNewRound from "../components/Game/Hooks/useCheckIsNewRound.js";
 import NewRoundNotification from "../components/Game/NewRoundNotification.jsx";
 import { handleReshuffleAnimationComplete } from "../components/Game/Utils/handleReshuffleAnimationComplete.js";
 import PlayerNameBox from "../components/Game/PlayerNameBox.jsx";
+import StackOfCardsCounter from "../components/Game/StackOfCardsCounter.jsx";
+import SomethingWentWrong from "../service/somethingWentWrong.jsx";
 
 // van egy hiba a selectcardsd nak hogy ha kivalasztok egy kartyat, de nem teszem lÃƒÂ´e hanem huzok egy kartyat helyette akkor nem engedne maskartyatr letenni csak azt amit kivalasztottam az elozo korbe- kÃƒâ€°sz
 // valamiert a viewportol fugg hogy hova teszik le a kartyat a opponensek-kesz
@@ -34,14 +36,14 @@ import PlayerNameBox from "../components/Game/PlayerNameBox.jsx";
 //jelenleg rossz helyre mennek a huzott kartyak opponens es selfplayernek is-kesz
 // ha ujra enkovetkezek akkor nem tudok lepni (amikor streakelek)-kesz
 //todo: amikor jon az uj kor akkor frissditeni kell azt a statet hogy ki fog jonni
-//todo: egyet villan a kép amikor leteszunk tobb mint egy kartyat
+//egyet villan a kép amikor leteszunk tobb mint egy kartyat-kesz
 //amikor tobb kartyat huz fel az ellenfel akkor ugranak egyet az animacio utan a kartyai-kesz
 //kell egy szamlalot kitenni hogy most milyen sorrendben fognak kimenni a kivvalasztott kartyak-kesz
-//todo: a refresh notification, csak afooldal, room es a game oldalon jelenjen meg
+//a refresh notification, csak afooldal, room es a game oldalon jelenjen meg-kezs
 //ha skippel valaki akkor kell jelezni azt valamilyen szinnel a nameboxban-kesz
 //valamiert nem fut le a opponens kartya letetelenek az animacioja--kesz
 //todo: ha uj kor van akkor kesleltetve frissuljelen a playerhandek
-//todo: ha telefon nezet van akkor legyenek kissebbek a kartyak
+//ha telefon nezet van akkor legyenek kissebbek a kartyak-kesz
 //todo: a mobil nezetbe is kell kartya letetel es draw animacio, ha levan csukva a taska akkor menjen a huzott kartya a nyilfele es kicsinyitodjon le
 //kell a last card shuffle animaciojat megcsinalni,-kesz
 //a blokkolas animaciot meg kell csinaln-kezs
@@ -102,6 +104,7 @@ function Game() {
   const [playerLosses, setPlayerLosses] = useState(0);
   const [lossIncreased, setLossIncreased] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [drawn,setDrawn]=useState(false)
 
   const isMobile = useMediaQuery('(max-width: 768px)');
   const isTablet = useMediaQuery('(max-height: 769px)');
@@ -199,7 +202,6 @@ function Game() {
     });
   };
 
-// Game.jsx - playCards function
   const playCards = () => {
     const cardRefs = draggableHandRef.current?.getCardRefs();
     if (!cardRefs) return;
@@ -235,21 +237,21 @@ function Game() {
       }
     });
 
-    // *** Hozzáadjuk a saját kártyáinkat is a queue-hoz ***
-    // Így az animáció végén frissül a playedCards
-    setGameSession(prev => {
-      const entry = {
-        id: `${playerSelf.playerId}-${Date.now()}`,
-        playerId: playerSelf.playerId,
-        cards: selectedCards,
-        receivedAt: Date.now(),
-      };
-
-      return {
-        ...prev,
-        playedCardsQueue: [...(prev.playedCardsQueue || []), entry],
-      };
-    });
+    // // *** Hozzáadjuk a saját kártyáinkat is a queue-hoz ***
+    // // Így az animáció végén frissül a playedCards
+    // setGameSession(prev => {
+    //   const entry = {
+    //     id: `${playerSelf.playerId}-${Date.now()}`,
+    //     playerId: playerSelf.playerId,
+    //     cards: selectedCards,
+    //     receivedAt: Date.now(),
+    //   };
+    //
+    //   return {
+    //     ...prev,
+    //     playedCardsQueue: [...(prev.playedCardsQueue || []), entry],
+    //   };
+    // });
 
     // Hozzáadjuk az animációkat
     setAnimatingOwnCards(prev => [...prev, ...animations]);
@@ -277,6 +279,7 @@ function Game() {
     handleAnimationComplete(
         cardId,
         setAnimatingCards,
+        animatingCards,
         setGameSession,
         animatingQueueItemIdRef,
         animationLockRef,
@@ -310,16 +313,9 @@ function Game() {
 
   useEffect(() => {
     if(leave) {
+      window.location.reload();
       setLeave(false)
-      setSelectedCards([]);
-      setAnimatingCards([])
-      setAnimatingOwnCards([])
-      setAnimatingDrawCards([])
-      setAnimatingReshuffle([])
-      setGameSession({})
-      setIsNewRound(false)
-      setUserCurrentStatus((prev)=>({...prev,currentRoom:prev.managedRoom?prev.currentRoom:null}))
-      setDeckRotations([])
+
     }
   }, [leave]);
 
@@ -369,7 +365,9 @@ function Game() {
   }, []);
 
   return (
+
       <div className={styles.game}>
+        <SomethingWentWrong/>
         <div className={styles.playgroundBlock}>
           <PlayGround>
             {isMobile ?
@@ -405,6 +403,7 @@ function Game() {
                              seat={playerSelf.seat} isMobile={isMobile}/>
             </div>}
 
+            <StackOfCardsCounter drawn={drawn} setDrawn={setDrawn}/>
             <HungarianCard
                 data-played-card={"data-played-card"}
                 ref={playedCardRef}
@@ -604,6 +603,7 @@ function Game() {
             <button disabled={queueRef.current.length > 0} onClick={() => {
               sendMessage('/app/game/draw-stack-of-cards', { playerId: playerSelf.playerId });
               setPlayerSelf(prev => ({ ...prev, drawStackNumber: null }));
+              setDrawn(true)
             }}>
               have to draw: {gameSession?.gameData?.drawStack[playerSelf.playerId]}
             </button>

@@ -65,7 +65,7 @@ export function getCardStyleForPosition(pos, cardIndex, cardsCount) {
     const arcDepth = 20;      // mennyire "domborodik" a kéz
     const depthBoost = 7;    // mennyire legyen túlzó
     // Arc configuration
-    const arcRadius = 1000 - (cardsCount *50); // Radius of the arc circle
+    const arcRadius = 1100 - (cardsCount *30); // Radius of the arc circle
     const maxArcAngle = 30; // Maximum angle spread in degrees for the entire hand
 
     switch (pos) {
@@ -77,9 +77,9 @@ export function getCardStyleForPosition(pos, cardIndex, cardsCount) {
 
             const radians = (cardAngle * Math.PI) / 180;
 
-            const xOffset = Math.sin(radians) * 1400;
+            const xOffset = Math.sin(radians) * 1100;
 
-            const visualAngle = radians * 12;
+            const visualAngle = radians * 10;
             const yOffset = Math.cos(visualAngle) * 15;
 
             return {
@@ -107,7 +107,7 @@ export function getCardStyleForPosition(pos, cardIndex, cardsCount) {
 
             return {
                 left: `calc(47% + ${xOffset}px)`,
-                top: `${yOffset}px`,
+                top: `calc(5px + ${yOffset}px)`,
                 rotate: `${180 - cardAngle}deg`,
             };
         }
@@ -126,7 +126,7 @@ export function getCardStyleForPosition(pos, cardIndex, cardsCount) {
             const xOffset = Math.cos(visualAngle) * arcDepth;
 
             return {
-                left: `calc(var(--card-width) / 6 + ${xOffset}px)`,
+                left: `calc(var(--card-width) / 15 + ${xOffset}px)`,
                 top: `calc(47% + ${yOffset}px)`,
                 rotate: `${90 + cardAngle}deg`
             };
@@ -147,7 +147,7 @@ export function getCardStyleForPosition(pos, cardIndex, cardsCount) {
             const xOffset = Math.cos(visualAngle) * arcDepth;
 
             return {
-                left: `calc(100% - var(--card-width) / 1.2 - ${xOffset}px)`,
+                left: `calc(100% - var(--card-width) / 1.1 - ${xOffset}px)`,
                 top: `calc(47% + ${yOffset}px)`,
                 rotate: `${90 - cardAngle}deg`,
             };

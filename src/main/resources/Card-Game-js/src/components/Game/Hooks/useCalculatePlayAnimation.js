@@ -102,7 +102,7 @@ function useCalculatePlayAnimation(spacing = 40) {
                             offset: 1,
                         }
                     ],
-                    delay: index * 50,
+                    delay: index * 120,
                     duration: 600,
                     isMobileScaling: shouldScale,
                 };

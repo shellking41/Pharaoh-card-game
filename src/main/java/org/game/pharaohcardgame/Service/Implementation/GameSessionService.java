@@ -211,11 +211,20 @@ public class GameSessionService implements IGameSessionService {
     public GameSessionResponse getGameSession() {
         User user = authenticationService.getAuthenticatedUser();
         if (user.getCurrentRoom() == null) {
-            throw new IllegalStateException("Room not found for user id: " + user.getId().toString());
+            return null; // Ne dobjon exception-t
         }
-        GameSession gameSession = gameSessionRepository.findByRoomIdAndGameStatusWithPlayers(
-                        user.getCurrentRoom().getRoomId(), GameStatus.IN_PROGRESS)
-                .orElseThrow(() -> new GameSessionNotFoundException("Active Game not Found"));
+
+        Optional<GameSession> gameSessionOpt = gameSessionRepository
+                .findByRoomIdAndGameStatusWithPlayers(
+                        user.getCurrentRoom().getRoomId(),
+                        GameStatus.IN_PROGRESS
+                );
+
+        if (gameSessionOpt.isEmpty()) {
+            return null; // Ne dobjon GameSessionNotFoundException-t
+        }
+
+        GameSession gameSession = gameSessionOpt.get();
 
         Long playerId = getPlayerIdFromUserAndGameSession(user, gameSession);
 

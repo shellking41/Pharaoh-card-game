@@ -1,6 +1,7 @@
 export const handleAnimationComplete = (
     cardId,
     setAnimatingCards,
+    animatingCards,
     setGameSession,
     animatingQueueItemIdRef,
     animationLockRef,
@@ -48,6 +49,12 @@ export const handleAnimationComplete = (
                         attemptStartNextWithQueue(newQueue);
                     }, 0);
 
+
+                    setTimeout(() => {
+                        console.log('[OWN CARD COMPLETE] Clearing animating cards after delay');
+                        setAnimatingCards([]);
+                    }, 100);
+
                     return {
                         ...prev,
                         playedCardsSize: (prev.playedCardsSize ?? 0) + (addedPlayedCards.length),
@@ -55,6 +62,7 @@ export const handleAnimationComplete = (
                         playedCardsQueue: newQueue,
                     };
                 });
+                return prev;
             }
 
             return filtered;
@@ -73,21 +81,20 @@ export const handleAnimationComplete = (
             if (filtered.length === 0) {
                 console.log('[OWN CARD COMPLETE] All animations finished, updating game state');
 
-                // Frissítjük a game state-et
+                // *** ELŐSZÖR frissítjük a gameSession-t (playedCards) ***
                 setGameSession(prev => {
                     const [first, ...rest] = prev.playedCardsQueue || [];
 
-                        queueRef.current = rest;
+                    queueRef.current = rest;
 
-                        // Reset animation state
-                        animationLockRef.current = false;
-                        animatingQueueItemIdRef.current = null;
-                        animationTimingRef.current = { animations: null, totalDelay: 0 };
-                        setIsAnimating(false);
+                    // Reset animation state
+                    animationLockRef.current = false;
+                    animatingQueueItemIdRef.current = null;
+                    animationTimingRef.current = { animations: null, totalDelay: 0 };
+                    setIsAnimating(false);
 
-                        // Próbáljuk meg feldolgozni a következő queue elemet
-                        attemptStartNextWithQueue(rest);
-
+                    // Próbáljuk meg feldolgozni a következő queue elemet
+                    attemptStartNextWithQueue(rest);
 
                     return {
                         ...prev,
@@ -96,6 +103,15 @@ export const handleAnimationComplete = (
                         playedCardsQueue: rest,
                     };
                 });
+
+
+                setTimeout(() => {
+                    console.log('[OWN CARD COMPLETE] Clearing animating cards after delay');
+                    setAnimationOwnCards([]);
+                }, 100);
+
+
+                return prev;
             }
 
             return filtered;

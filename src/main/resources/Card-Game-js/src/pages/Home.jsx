@@ -17,6 +17,7 @@ import useSubscribeToTopicByPage from '../hooks/useSubscribeToTopicByPage.js';
 import { StompContext } from '../Contexts/StompContext.jsx';
 import ProgressBar from '../service/ProgressBar.jsx';
 import useAllRoom from '../components/Home/Hooks/useAllRoom.js';
+import SomethingWentWrong from "../service/somethingWentWrong.jsx";
 
 function Home() {
   const { rooms } = useContext(RoomsDataContext);
@@ -49,6 +50,7 @@ function Home() {
   // Ekkor biztos, hogy be van jelentkezve, és van legalább 1 room
   return (
     <>
+      <SomethingWentWrong/>
       KELL MENÜ, A ROOM ELŐTT
       A BOT AZ SZERINT IS DONTOSN HOGY MILYEN SZINRER VÁLT
       <button onClick={() => getAllRoom()} disabled={loading}>Refresh</button>
