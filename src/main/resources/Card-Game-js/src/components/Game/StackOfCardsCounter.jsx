@@ -104,7 +104,7 @@ function StackOfCardsCounter({drawn,setDrawn}) {
                 left: coords.left,
                 transform: `translate(-50%, -50%) scale(${(visible && !drawn) ? 1 : 0})`,
                 transition: 'transform 160ms ease, font-size 200ms ease, top 300ms ease, left 300ms ease, opacity 300ms ease',
-                zIndex: 10000,
+                zIndex: 10000000,
                 pointerEvents: 'none',
                 fontSize: `${25 + count * 2}px`,
                 fontWeight: '700',
