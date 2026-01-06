@@ -81,13 +81,13 @@ function StackOfCardsCounter({drawn,setDrawn}) {
     const getCoordsByPosition = (pos) => {
         switch (pos) {
             case 'top':
-                return { top: '10%', left: '48%' };
+                return { top: '10%', left: '50%' };
             case 'left':
-                return { top: '50%', left: '5%' };
+                return { top: '55%', left: '8%' };
             case 'right':
-                return { top: '50%', left: '95%' };
+                return { top: '55%', left: '92%' };
             case 'bottom':
-                return { top: '85%', left: '48%' }
+                return { top: '85%', left: '50%' }
             default:
                 return { top: '45%', left: '50%' };
         }
