@@ -4,6 +4,7 @@ import { TokenContext } from '../Contexts/TokenContext.jsx';
 import { UserContext } from '../Contexts/UserContext.jsx';
 import { useApiCallHook } from './useApiCallHook.js';
 import { GameSessionContext } from '../Contexts/GameSessionContext.jsx';
+import {StompContext} from "../Contexts/StompContext.jsx";
 
 export const useAuth = () => {
   const { token, setToken } = useContext(TokenContext);
@@ -12,6 +13,8 @@ export const useAuth = () => {
   const { get, post } = useApiCallHook();
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const { clientRef } = useContext(StompContext); // ✅ Add ezt
+
 
   // Token lejáratának ellenőrzése (JWT decode nélkül, becsléssel)
   const isTokenExpiringSoon = useCallback((token) => {
@@ -143,6 +146,11 @@ export const useAuth = () => {
             managedRoom: currentAndManagedRoom?.managedRoom,
           };
           setUserCurrentStatus(userStatusWRooms);
+          console.log(userStatusWRooms.currentRoom,"userStatusWRooms.currentRoom?.roomId")
+
+          if (userStatusWRooms.currentRoom?.roomId) {
+            await getGameSession(response.accessToken, userStatusWRooms);
+          }
         }
 
         return { success: true };
@@ -156,14 +164,32 @@ export const useAuth = () => {
 
   // Kijelentkezés
   const logout = useCallback(async () => {
+    console.log('[LOGOUT] Starting logout process...');
 
     try {
+      // ✅ 1. Disconnect WebSocket ELŐSZÖR
+      if (clientRef?.current) {
+        console.log('[LOGOUT] Disconnecting WebSocket...');
+        try {
+          clientRef.current.deactivate();
+        } catch (error) {
+          console.error('[LOGOUT] WebSocket disconnect error:', error);
+        }
+      }
+
+      // ✅ 2. Backend logout hívás (ha van token)
       // if (token) {
+      //   try {
       //     await post('http://localhost:8080/auth/logout', {}, token);
+      //   } catch (error) {
+      //     console.error('[LOGOUT] Backend logout failed:', error);
+      //   }
       // }
+
     } catch (error) {
-      console.error('Logout request failed:', error);
+      console.error('[LOGOUT] Logout request failed:', error);
     } finally {
+      // ✅ 3. Tisztítsd meg az összes state-et
       setToken(null);
       setUserCurrentStatus({
         userInfo: {
@@ -171,21 +197,17 @@ export const useAuth = () => {
           username: '',
           role: '',
         },
-        currentRoom: {
-          roomId: '',
-          roomName: '',
-          participants: [],
-        },
-        managedRoom: {
-          roomId: '',
-          roomName: '',
-          participants: [],
-        },
+        currentRoom: null,
+        managedRoom: null,
         authenticated: false,
       });
-    }
-  }, [post, token, setUserCurrentStatus]);
+      setGameSession({});
+      setPlayerSelf({});
+      setValidPlays([]);
 
+      console.log('[LOGOUT] Logout complete');
+    }
+  }, [post, token, setUserCurrentStatus, setGameSession, setPlayerSelf, setValidPlays, clientRef]);
   // Automatikus token frissítés és validáció
   const ensureValidToken = useCallback(async () => {
 

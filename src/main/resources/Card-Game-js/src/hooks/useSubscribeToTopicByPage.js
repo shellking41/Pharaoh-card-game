@@ -10,6 +10,7 @@ import { TokenContext } from '../Contexts/TokenContext.jsx';
 import useCalculateDrawAnimation from '../components/Game/Hooks/useCalculateDrawAnimation.js';
 import { useMediaQuery } from '@mui/material';
 import {getCardStyleForPosition, getPlayerPositionBySeat} from '../components/Game/HungarianCard.jsx';
+import {useAuth} from "./useAuth.js";
 
 function computeSkippedPlayersVisual(message,gameSession) {
   // Biztonsági alapok
@@ -112,6 +113,25 @@ function handleReshuffle(
 
 const getPageSubscriptions = (getCtx) => {
   return {
+
+    global: [
+      {
+        destination: '/user/queue/force-logout',
+        callback: (message) => {
+          const { logout } = getCtx();
+          console.warn('[FORCE LOGOUT]', message);
+
+          // Azonnal kijelentkeztetjük a usert
+          logout();
+
+          // Alert vagy notification megjelenítése
+          alert(message.message || 'You have been logged in from another device');
+
+          // Oldal újratöltése, hogy minden state tiszta legyen
+          window.location.href="/"
+        },
+      },
+    ],
     home: [
       {
         destination: '/user/queue/room-creation-response',
@@ -732,6 +752,7 @@ function UseSubscribeToTopicByPage({ page, currentRoomId }) {
   const { post } = useApiCallHook();
   const { calculateDrawAnimation } = useCalculateDrawAnimation(40);
   const { calculateReshuffleAnimation } = useCalculateReshuffleAnimation();
+  const { logout } = useAuth();
 
   const isMobile = useMediaQuery('(max-width: 768px)');
 
@@ -766,7 +787,8 @@ function UseSubscribeToTopicByPage({ page, currentRoomId }) {
     animatingReshuffle,
     setSkipTurn,
     skippedPlayers,
-    setSkippedPlayers
+    setSkippedPlayers,
+    logout
   });
 
   // keep ref.current up to date when important pieces change
@@ -802,7 +824,8 @@ function UseSubscribeToTopicByPage({ page, currentRoomId }) {
       animatingReshuffle,
       setSkipTurn,
       skippedPlayers,
-      setSkippedPlayers
+      setSkippedPlayers,
+      logout
     };
   }, [
     userCurrentStatus,
@@ -834,18 +857,30 @@ function UseSubscribeToTopicByPage({ page, currentRoomId }) {
     animatingReshuffle,
     setSkipTurn,
     skippedPlayers,
-    setSkippedPlayers
+    setSkippedPlayers,
+    logout
   ]);
 
   useEffect(() => {
     const newUnsubscribeFunctions = [];
-
-    // getCtx returns latest context for callbacks to read at runtime
     const getCtx = () => contextRef.current;
 
     const pageSubscriptions = getPageSubscriptions(getCtx);
-    const subscriptionsForPage = pageSubscriptions[page] || [];
 
+    //  MINDIG feliratkozunk a global subscriptions-re
+    const globalSubs = pageSubscriptions.global || [];
+    globalSubs.forEach((sub) => {
+      try {
+        const unsubscribe = subscribe(sub.destination, sub.callback);
+        newUnsubscribeFunctions.push(unsubscribe);
+        console.log('[GLOBAL-SUBSCRIPTION] Subscribed to:', sub.destination);
+      } catch (err) {
+        console.error('[GLOBAL-SUBSCRIPTION] Failed to subscribe to', sub.destination, err);
+      }
+    });
+
+    // Page-specific subscriptions
+    const subscriptionsForPage = pageSubscriptions[page] || [];
     subscriptionsForPage.forEach((sub) => {
       try {
         if (sub.condition && typeof sub.condition === 'function' && !sub.condition()) {
@@ -860,12 +895,12 @@ function UseSubscribeToTopicByPage({ page, currentRoomId }) {
     });
 
     return () => {
-      console.log(`[PAGE-SUBSCRIPTION] Cleaning up ${page} subscriptions`);
+      console.log(`[SUBSCRIPTION] Cleaning up global and ${page} subscriptions`);
       newUnsubscribeFunctions.forEach((unsubscribe) => {
         try {
           unsubscribe();
         } catch (error) {
-          console.error('[PAGE-SUBSCRIPTION] Error during cleanup:', error);
+          console.error('[SUBSCRIPTION] Error during cleanup:', error);
         }
       });
     };
@@ -873,9 +908,9 @@ function UseSubscribeToTopicByPage({ page, currentRoomId }) {
     page,
     currentRoomId,
     userCurrentStatus?.authenticated,
-
     subscribe,
   ]);
+
 }
 
 export default UseSubscribeToTopicByPage;
