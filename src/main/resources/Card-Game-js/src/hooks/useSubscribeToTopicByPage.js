@@ -118,17 +118,18 @@ const getPageSubscriptions = (getCtx) => {
       {
         destination: '/user/queue/force-logout',
         callback: (message) => {
-          const { logout } = getCtx();
+          const { logout, showNotification } = getCtx();
           console.warn('[FORCE LOGOUT]', message);
 
-          // Azonnal kijelentkeztetjük a usert
+          // 1. Notification megjelenítése (nem blokkoló)
+          showNotification(
+              message.message || 'You have been logged in from another device',
+              'warning'
+          );
+
+          // 2. Kijelentkeztetés
           logout();
 
-          // Alert vagy notification megjelenítése
-          alert(message.message || 'You have been logged in from another device');
-
-          // Oldal újratöltése, hogy minden state tiszta legyen
-          window.location.href="/"
         },
       },
     ],

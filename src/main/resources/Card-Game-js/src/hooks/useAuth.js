@@ -178,13 +178,13 @@ export const useAuth = () => {
       }
 
       // ✅ 2. Backend logout hívás (ha van token)
-      // if (token) {
-      //   try {
-      //     await post('http://localhost:8080/auth/logout', {}, token);
-      //   } catch (error) {
-      //     console.error('[LOGOUT] Backend logout failed:', error);
-      //   }
-      // }
+       if (token) {
+         try {
+           await post('http://localhost:8080/auth/logout', {}, token);
+         } catch (error) {
+           console.error('[LOGOUT] Backend logout failed:', error);
+         }
+       }
 
     } catch (error) {
       console.error('[LOGOUT] Logout request failed:', error);

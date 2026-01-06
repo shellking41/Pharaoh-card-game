@@ -56,6 +56,8 @@ import SomethingWentWrong from "../service/somethingWentWrong.jsx";
 // amikor letesszuk a akartyat akkor mar elotte mar latszodik a plaed cardnal hogy mar oda tettuk-kesz
 //kell info a frontednek arrol hogy uj kÃƒÂ¶r kÃƒÂ¶vetkezik-kesz
 //todo:meg kell irni hogy h alehet akkor a easy bot ne streakeljen
+//todo: kell az easy botto jobban lehulyiteni->pl olyan szinre valtson amibol a legkevesebb van
+//todo: hard boto okositani
 //valmiert ha 3 aszt teszek le es ketten jatszunk akkor nem en jovok ujra hanem az ellenfel-kesz
 //todo: az easybot olyan szinre valtson amibol a legkevessebb van neki,
 //todo: kikell javiatni azt hogy ne attol fuggjon a ujkor kezdetekor hogy kikezd hogy kijott volna z aelozoben ,mert ha leteszek egy ÃƒÂ¡szt utolso kartyakaent akjkor valtozik a sorrend
