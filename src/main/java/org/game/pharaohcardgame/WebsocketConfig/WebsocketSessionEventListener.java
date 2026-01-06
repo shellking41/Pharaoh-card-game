@@ -16,7 +16,6 @@ import org.game.pharaohcardgame.Repository.UserRepository;
 import org.game.pharaohcardgame.Service.Implementation.GameSessionService;
 import org.game.pharaohcardgame.Service.Implementation.RoomService; // vagy ahol handleUserDisconnected lesz
 import org.springframework.context.event.EventListener;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -24,7 +23,6 @@ import org.springframework.web.socket.messaging.SessionConnectEvent;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 
 import java.security.Principal;
-import java.util.Map;
 import java.util.Optional;
 
 @Slf4j
@@ -39,36 +37,16 @@ public class WebsocketSessionEventListener {
 	private final PlayerRepository playerRepository;
 	private final DisconnectCoordinator disconnectCoordinator;
 	private final TransactionTemplate transactionTemplate;
-	private final SimpMessagingTemplate simpMessagingTemplate;
 
 	@EventListener
 	public void handleSessionConnected(SessionConnectEvent event) {
 		StompHeaderAccessor accessor = StompHeaderAccessor.wrap(event.getMessage());
 		UserPrincipal principal = (UserPrincipal)accessor.getUser();
 		if (principal == null) return;
-
+		String principalName = principal.getName();
 		String sessionId = accessor.getSessionId();
 		Long userId = Long.parseLong(principal.getName());
-
-		log.info("WS connect: session={} principal={}", sessionId, userId);
-
-		//  Értesít és zár le a régi sessionöket
-		int existingSessionCount = sessionRegistry.getSessionCount(userId);
-		if (existingSessionCount > 0) {
-			log.info("User {} already has {} active session(s). Notifying old sessions.",
-					userId, existingSessionCount);
-
-			// Értesítés küldése a régi sessionöknek
-			simpMessagingTemplate.convertAndSendToUser(
-					userId.toString(),
-					"/queue/force-logout",
-					Map.of(
-							"message", "You have been logged in from another device",
-							"reason", "DUPLICATE_LOGIN"
-					)
-			);
-		}
-
+		log.info("WS connect: session={} principal={}", sessionId, principalName);
 		sessionRegistry.registerSession(userId, sessionId);
 
 		if (disconnectCoordinator.cancelDisconnect(userId)) {

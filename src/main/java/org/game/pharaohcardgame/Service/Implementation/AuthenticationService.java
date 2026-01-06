@@ -165,7 +165,7 @@ public class AuthenticationService implements IAuthenticationService {
                 String accessToken = jwtService.generateToken(user.getId(), user.getName());
                 String refreshToken = jwtService.generateRefreshToken(user.getId());
 
-                revokeAllUserTokensExcept(user,null);
+                //revokeAllUserTokensExcept(user,null);
 
                 List<Tokens> tokens = List.of(
                         Tokens.builder().user(user).token(accessToken).expired(false).revoked(false).type(tokenType.ACCESS).build(),

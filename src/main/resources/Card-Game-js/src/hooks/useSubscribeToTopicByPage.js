@@ -121,13 +121,13 @@ const getPageSubscriptions = (getCtx) => {
           const { logout, showNotification } = getCtx();
           console.warn('[FORCE LOGOUT]', message);
 
-          // 1. Notification megjelenítése (nem blokkoló)
+          //  Notification megjelenítése (nem blokkoló)
           showNotification(
               message.message || 'You have been logged in from another device',
               'warning'
           );
 
-          // 2. Kijelentkeztetés
+          //  Kijelentkeztetés
           logout();
 
         },

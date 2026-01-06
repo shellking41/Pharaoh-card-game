@@ -36,6 +36,7 @@ import SomethingWentWrong from "../service/somethingWentWrong.jsx";
 //jelenleg rossz helyre mennek a huzott kartyak opponens es selfplayernek is-kesz
 // ha ujra enkovetkezek akkor nem tudok lepni (amikor streakelek)-kesz
 //todo: amikor jon az uj kor akkor frissditeni kell azt a statet hogy ki fog jonni
+//todo: megkell nezni hogy ha tobb tabba megvan nyitva  a oldal akkor miert nem jelenik meg a animacio a masik oldlaon
 //egyet villan a kép amikor leteszunk tobb mint egy kartyat-kesz
 //amikor tobb kartyat huz fel az ellenfel akkor ugranak egyet az animacio utan a kartyai-kesz
 //kell egy szamlalot kitenni hogy most milyen sorrendben fognak kimenni a kivvalasztott kartyak-kesz
