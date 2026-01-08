@@ -9,6 +9,7 @@ import {RoomsDataContextProvider} from "./Contexts/RoomsDataContext.jsx";
 import Notification from "./components/Notification.jsx";
 import {NotificationContextProvider} from "./Contexts/NotificationContext.jsx";
 import {GameSessionContextProvider} from "./Contexts/GameSessionContext.jsx";
+import {AuthSyncProvider} from "./Contexts/AuthSyncContext.jsx";
 
 
 function App() {
@@ -20,9 +21,14 @@ function App() {
                 <NotificationContextProvider>
                     <TokenContextProvider>
                         <RoomsDataContextProvider>
-                            <UserContextProvider>
+                        <UserContextProvider>
+                            <StompContextProvider>
+                    <AuthSyncProvider>
+
+
+
                                 <GameSessionContextProvider>
-                                    <StompContextProvider>
+
 
                                         <BrowserRouter>
                                             <Routes>
@@ -31,11 +37,17 @@ function App() {
 
                                             </Routes>
                                         </BrowserRouter>
-                                    </StompContextProvider>
+
                                 </GameSessionContextProvider>
-                            </UserContextProvider>
+
+
+
+                    </AuthSyncProvider>
+                        </StompContextProvider>
+                    </UserContextProvider>
                         </RoomsDataContextProvider>
                     </TokenContextProvider>
+
                 </NotificationContextProvider>
             </ErrorContextProvider>
 

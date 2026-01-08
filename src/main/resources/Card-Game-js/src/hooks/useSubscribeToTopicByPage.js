@@ -121,15 +121,15 @@ const getPageSubscriptions = (getCtx) => {
           const { logout, showNotification } = getCtx();
           console.warn('[FORCE LOGOUT]', message);
 
-          //  Notification megjelenítése (nem blokkoló)
+          // ✅ Notification megjelenítése
           showNotification(
               message.message || 'You have been logged in from another device',
               'warning'
           );
 
-          //  Kijelentkeztetés
+          // ✅ Kijelentkeztetés (broadcast-tal együtt)
+          // Ez automatikusan szinkronizálja az összes tabot
           logout();
-
         },
       },
     ],
@@ -581,6 +581,7 @@ const getPageSubscriptions = (getCtx) => {
             ...(newRound !== undefined && { newRound }),
             gameData: {
               ...prev.gameData,
+              suitChangedTo:message.gameData.suitChangedTo,
               noMoreCards:message.gameData.noMoreCards,
               drawStack: message.gameData.drawStack,
               finishedPlayers: message.gameData.finishedPlayers,

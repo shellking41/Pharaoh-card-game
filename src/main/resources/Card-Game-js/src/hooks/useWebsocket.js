@@ -143,7 +143,7 @@ function useWebsocket() {
                 disconnectTimerRef.current = null;
             }
 
-            return; // ✅ Nem ad vissza cleanup függvényt
+            return; // Nem ad vissza cleanup függvényt
         }
 
         // Ha nincs kapcsolat VAGY van hiba
@@ -156,9 +156,9 @@ function useWebsocket() {
                     console.warn('[STOMP] Kapcsolat nem állt helyre, refresh prompt megjelenítése...');
                     setShowRefreshPrompt(true);
                 }
-            }, 10000);
+            }, 3000);
 
-            // ✅ Cleanup függvény visszaadása
+            // Cleanup függvény visszaadása
             return () => {
                 if (disconnectTimerRef.current) {
                     clearTimeout(disconnectTimerRef.current);

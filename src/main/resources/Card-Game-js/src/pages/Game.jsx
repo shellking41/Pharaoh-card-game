@@ -26,6 +26,8 @@ import { handleReshuffleAnimationComplete } from "../components/Game/Utils/handl
 import PlayerNameBox from "../components/Game/PlayerNameBox.jsx";
 import StackOfCardsCounter from "../components/Game/StackOfCardsCounter.jsx";
 import SomethingWentWrong from "../service/somethingWentWrong.jsx";
+import SuitChange from "../components/Game/SuitChange.jsx";
+import useBroadcastPlayAction from "../components/Game/Hooks/useBroadcastPlayAction.js";
 
 // van egy hiba a selectcardsd nak hogy ha kivalasztok egy kartyat, de nem teszem lÃƒÂ´e hanem huzok egy kartyat helyette akkor nem engedne maskartyatr letenni csak azt amit kivalasztottam az elozo korbe- kÃƒâ€°sz
 // valamiert a viewportol fugg hogy hova teszik le a kartyat a opponensek-kesz
@@ -36,7 +38,10 @@ import SomethingWentWrong from "../service/somethingWentWrong.jsx";
 //jelenleg rossz helyre mennek a huzott kartyak opponens es selfplayernek is-kesz
 // ha ujra enkovetkezek akkor nem tudok lepni (amikor streakelek)-kesz
 //todo: amikor jon az uj kor akkor frissditeni kell azt a statet hogy ki fog jonni
+//todo: megoldani azt hogy ne akkor induljon el az animacio amikor rakantintunk aplaycard ra, vagy azzal abroadcastal lehetne elkuldeni azt hogy rakantintottunk a aplayre es ug yreagal ra a maik kliens hogy megnyomja agombot
 //todo: megkell nezni hogy ha tobb tabba megvan nyitva  a oldal akkor miert nem jelenik meg a animacio a masik oldlaon
+// todo: most jelenleg ug ymukodik a masik devicen kirugas hogy a token ervénytelenitve van a régi sessionnök nek de nem csinalj ameg rogton a error jelentes csak akkor amikor kuldeni akarunk uzenetet, nem dobje le a a websocketrol rogton ha nincs tokenje, valahogy kikell dobni azt a clienst a websocketbol ami nek mar nincs ervenyes tokenje
+//todo: amikor a mar kidobott masik cliens ha ramegy a leavgamerte akkor rogton a loginba tobja, ha mondjuk huzni akar kartyat akkor ferlajanje hogy refreshelje azh oldalt
 //egyet villan a kép amikor leteszunk tobb mint egy kartyat-kesz
 //amikor tobb kartyat huz fel az ellenfel akkor ugranak egyet az animacio utan a kartyai-kesz
 //kell egy szamlalot kitenni hogy most milyen sorrendben fognak kimenni a kivvalasztott kartyak-kesz
@@ -127,7 +132,7 @@ function Game() {
   );
 
   const { isNewRound, shouldShowNotification, handleNextRoundAnimationComplete,setIsNewRound } = useCheckIsNewRound();
-
+  const { broadcastPlayAction, onPlayAction } = useBroadcastPlayAction();
 
 
 
@@ -205,6 +210,53 @@ function Game() {
     });
   };
 
+
+
+// Add this useEffect to listen for broadcasts from other tabs
+  useEffect(() => {
+    const cleanup = onPlayAction((data) => {
+      // Only process if it's from the same player but different tab
+      if (data.playerId === playerSelf?.playerId) {
+        const cardRefs = draggableHandRef.current?.getCardRefs();
+        if (!cardRefs) return;
+
+        const playedCardElement = playedCardRef.current;
+        if (!playedCardElement) return;
+
+        console.log('[BROADCAST] Starting animation from other tab:', data.cards);
+
+        // Calculate animations for the cards
+        const animations = calculateAnimation(
+            gameSession.playerHand.ownCards.length,
+            data.cards,
+            playedCardElement.style,
+            '0deg',
+            playerSelf,
+            gameSession.players.length,
+            playerSelf.seat,
+            gameSession.playerHand.ownCards,
+            isMobile
+        );
+
+        // Hide the cards
+        data.cards.forEach(card => {
+          const cardElement = cardRefs[card.cardId];
+          if (cardElement) {
+            cardElement.style.display = 'none';
+          }
+        });
+
+        // Start animations
+        setAnimatingOwnCards(prev => [...prev, ...animations]);
+        setSelectedCards([]);
+        setChangeSuitTo(null);
+      }
+    });
+
+    return cleanup;
+  }, [playerSelf?.playerId, gameSession, isMobile]);
+
+
   const playCards = () => {
     const cardRefs = draggableHandRef.current?.getCardRefs();
     if (!cardRefs) return;
@@ -217,7 +269,13 @@ function Game() {
 
     console.log('[PLAY CARDS] Starting animation for cards:', selectedCards.map(c => c.cardId));
 
-    // Számítsd ki az animációkat
+    // Broadcast to other tabs FIRST
+    broadcastPlayAction({
+      playerId: playerSelf.playerId,
+      cards: selectedCards,
+    });
+
+    // Calculate animations
     const animations = calculateAnimation(
         gameSession.playerHand.ownCards.length,
         selectedCards,
@@ -226,13 +284,13 @@ function Game() {
         playerSelf,
         gameSession.players.length,
         playerSelf.seat,
-        gameSession.playerHand.ownCards,isMobile
-
+        gameSession.playerHand.ownCards,
+        isMobile
     );
 
     console.log('[PLAY CARDS] Generated animations:', animations.length);
 
-    // Elrejtjük a kártyákat
+    // Hide the cards
     selectedCards.forEach(card => {
       const cardElement = cardRefs[card.cardId];
       if (cardElement) {
@@ -240,26 +298,10 @@ function Game() {
       }
     });
 
-    // // *** Hozzáadjuk a saját kártyáinkat is a queue-hoz ***
-    // // Így az animáció végén frissül a playedCards
-    // setGameSession(prev => {
-    //   const entry = {
-    //     id: `${playerSelf.playerId}-${Date.now()}`,
-    //     playerId: playerSelf.playerId,
-    //     cards: selectedCards,
-    //     receivedAt: Date.now(),
-    //   };
-    //
-    //   return {
-    //     ...prev,
-    //     playedCardsQueue: [...(prev.playedCardsQueue || []), entry],
-    //   };
-    // });
-
-    // Hozzáadjuk az animációkat
+    // Start animations
     setAnimatingOwnCards(prev => [...prev, ...animations]);
 
-    // Backend értesítés
+    // Send to backend
     const playCardsData = selectedCards.map(({cardId, suit, rank, ownerId, position}) => ({
       cardId,
       suit,
@@ -401,7 +443,7 @@ function Game() {
                     />
             }
             {!(isMobile || isTablet) && <div className={styles.playerNameContainer}>
-              <PlayerNameBox playerName={playerSelf.playerName} pos={"bottom"}  isYourTurn={playerSelf.seat === turn.currentSeat}
+              <PlayerNameBox playerName={playerSelf.playerName} pos={"bottom"}  isYourTurn={playerSelf.seat === turn?.currentSeat}
                              playerId={playerSelf.playerId}
                              seat={playerSelf.seat} isMobile={isMobile}/>
             </div>}
@@ -434,7 +476,7 @@ function Game() {
                         <PlayerNameBox
                             playerName={p.playerName}
                             pos={pos}
-                            isYourTurn={p.seat === turn.currentSeat}
+                            isYourTurn={p.seat === turn?.currentSeat}
                             playerId={p.playerId}
                             seat={p.seat}
                             isMobile={isMobile}
@@ -580,7 +622,7 @@ function Game() {
                 isVisible={shouldShowNotification}
                 onAnimationComplete={handleNextRoundAnimationComplete}
             />
-
+            <SuitChange />
           </PlayGround>
         </div>
 
@@ -591,7 +633,7 @@ function Game() {
         }>Draw Card</button>
         <button disabled={selectedCards.length === 0 || !turn?.yourTurn || queueRef.current.length > 0} onClick={playCards}>Play Cards</button>
 
-        {turn?.currentSeat && <div>Current seat: {turn.currentSeat}</div>}
+        {turn?.currentSeat && <div>Current seat: {turn?.currentSeat}</div>}
 
         {selectedCards[selectedCards.length - 1]?.rank === 'OVER' && (
             <div>

@@ -82,7 +82,7 @@ public class AuthenticationService implements IAuthenticationService {
             }
 
             var accessToken = jwtService.generateToken(user.getId(), user.getName());
-            revokeAllUserTokensExcept(user, refreshToken);
+           // revokeAllUserTokensExcept(user, refreshToken);
 
             Tokens tokens = Tokens.builder()
                     .user(user)
@@ -149,7 +149,6 @@ public class AuthenticationService implements IAuthenticationService {
     //todo: olyat kéne csinalni hogy leellenorizni hogy az adott user kapcsolodott e a websockethez, ha igen akkor a login failed
     @Override
     public ResponseEntity<LoginResponse> login(LoginRequest request, HttpServletResponse response) {
-
         try {
             User user = userRepository.findByName(request.getUsername())
                     .orElseThrow(() -> new EntityNotFoundException("User not Found"));
@@ -165,20 +164,19 @@ public class AuthenticationService implements IAuthenticationService {
                 String accessToken = jwtService.generateToken(user.getId(), user.getName());
                 String refreshToken = jwtService.generateRefreshToken(user.getId());
 
-                //revokeAllUserTokensExcept(user,null);
+                // Ez biztosítja, hogy csak egy aktív refresh token legyen
+                revokeAllUserTokensExcept(user, null);
 
                 List<Tokens> tokens = List.of(
                         Tokens.builder().user(user).token(accessToken).expired(false).revoked(false).type(tokenType.ACCESS).build(),
                         Tokens.builder().user(user).token(refreshToken).expired(false).revoked(false).type(tokenType.REFRESH).build()
                 );
                 tokensRepository.saveAll(tokens);
+
+                // ookie beállítás - ez minden tabban látható lesz
                 jwtService.addTokenRefreshCookie(response, "refresh-token", refreshToken);
 
-
-
-                LoginResponse loginResponse= responseMapper.toLoginResponse(user, accessToken, true, "Login successful");
-
-
+                LoginResponse loginResponse = responseMapper.toLoginResponse(user, accessToken, true, "Login successful");
 
                 return ResponseEntity.ok(loginResponse);
             }

@@ -1,7 +1,6 @@
 import {
     createContext, useContext,
     useEffect,
-    useLayoutEffect,
     useRef,
     useState,
 } from 'react';
@@ -9,12 +8,10 @@ import SockJS from 'sockjs-client';
 import {Client} from '@stomp/stompjs';
 import {TokenContext} from "./TokenContext.jsx";
 import {UserContext} from "./UserContext.jsx";
-import useWebsocket from "../hooks/useWebsocket.js";
 import {RoomsDataContext} from "./RoomsDataContext.jsx";
 
 export const StompContext = createContext(null);
 
-// Provider komponens
 export const StompContextProvider = ({children}) => {
 
     const {userCurrentStatus} = useContext(UserContext);
@@ -23,15 +20,19 @@ export const StompContextProvider = ({children}) => {
 
     const [connected, setConnected] = useState(false);
     const [reconnecting, setReconnecting] = useState(false);
-    const [hasError, setHasError] = useState(false); // ✅ ÚJ ERROR STATE
+    const [hasError, setHasError] = useState(false);
     const subscriptionRef = useRef(new Map);
-
     const clientRef = useRef(null);
 
+    // Token tracking
+    const lastTokenRef = useRef(null);
+
     const connectToSocket = () => {
-        console.log(token)
+        console.log('[STOMP] Connecting with token:', token?.substring(0, 20) + '...');
+
         if (clientRef.current) {
-            setReconnecting(true)
+            console.log('[STOMP] Cleaning up previous connection');
+            setReconnecting(true);
             clientRef.current.deactivate();
             clientRef.current = null;
         }
@@ -44,89 +45,103 @@ export const StompContextProvider = ({children}) => {
             },
             webSocketFactory: () => socket,
             reconnectDelay: 0,
+            heartbeatIncoming: 10000,
+            heartbeatOutgoing: 10000,
             onConnect: () => {
-                console.log('[STOMP] Kapcsolódva');
+                console.log('[STOMP] Connected successfully');
                 setConnected(true);
-                setHasError(false); // ✅ Error törlése sikeres kapcsolódáskor
+                setHasError(false);
+                setReconnecting(false);
+
+                lastTokenRef.current = token;
 
                 clientRef.current.subscribe("/topic/rooms", (message) => {
                     const parsed = JSON.parse(message.body);
                     setRooms((prev) => ([...prev, parsed]))
                 }, {
                     Authorization: "Bearer " + token
-                })
+                });
             },
 
             onDisconnect: () => {
-                console.log('[STOMP] Kapcsolat megszakadt');
+                console.log('[STOMP] Disconnected');
                 setConnected(false);
-                setHasError(true); // ✅ Error beállítása disconnect-nél
+                setHasError(true);
             },
 
             onStompError: (frame) => {
-                console.error('[STOMP] Hiba:', frame.headers['message'], frame.body);
-                setHasError(true); // ✅ Error beállítása STOMP hibánál
+                console.error('[STOMP] STOMP Error:', frame.headers['message'], frame.body);
+                setHasError(true);
                 setConnected(false);
             },
 
-            // ✅ ÚJ: WebSocket szintű error kezelés
             onWebSocketClose: (event) => {
-                console.log('[STOMP] WebSocket bezárva:', event);
+                console.log('[STOMP] WebSocket closed:', event.code, event.reason);
                 setConnected(false);
                 setHasError(true);
             },
 
             onWebSocketError: (error) => {
-                console.error('[STOMP] WebSocket hiba:', error);
+                console.error('[STOMP] WebSocket error:', error);
                 setHasError(true);
                 setConnected(false);
             },
 
             debug: (str) => {
-                console.log('[STOMP Debug]:', str);
+                 console.log('[STOMP Debug]:', str);
             }
         });
 
         client.activate();
-        setReconnecting(false);
         clientRef.current = client;
-
-        return () => {
-            if (clientRef.current) {
-                console.log("deactivate2")
-                clientRef.current.deactivate();
-                clientRef.current = null;
-            }
-            setConnected(false);
-        };
-    }
+    };
 
     const disconnectFromSocket = () => {
-        console.log('Disconnecting from WebSocket');
+        console.log('[STOMP] Manual disconnect');
         if (clientRef.current) {
-            clientRef.current.deactivate();
+            try {
+                clientRef.current.deactivate();
+            } catch (error) {
+                console.error('[STOMP] Disconnect error:', error);
+            }
             clientRef.current = null;
         }
         setConnected(false);
-        setHasError(false); // ✅ Manuális disconnect nem error
+        setHasError(false);
+        setReconnecting(false);
+        lastTokenRef.current = null;
     };
 
     useEffect(() => {
-        console.log(userCurrentStatus.authenticated, token, connected)
+        console.log('[STOMP Effect] Auth:', userCurrentStatus.authenticated,
+            'Token:', !!token,
+            'Connected:', connected,
+            'Token changed:', lastTokenRef.current !== token);
 
+        // ✅ Csak akkor kapcsolódj, ha van token ÉS authenticated ÉS nincs kapcsolat
         if (userCurrentStatus.authenticated && token && !connected) {
-            console.log('Token changed, connecting to WebSocket');
-            connectToSocket();
-        }
-    }, [userCurrentStatus.authenticated, token]);
+            const isNewToken = lastTokenRef.current !== token;
 
-    // Cleanup function
+            if (isNewToken || !clientRef.current) {
+                console.log('[STOMP] Connecting - New token or no client');
+                connectToSocket();
+            } else {
+                console.log('[STOMP] Skipping reconnect - Same token, client exists');
+            }
+        }
+
+        // Disconnect ha nincs token (logout után)
+        if (!token && (connected || clientRef.current)) {
+            console.log('[STOMP] No token, disconnecting');
+            disconnectFromSocket();
+        }
+    }, [userCurrentStatus.authenticated, token, connected]);
+
+    // Cleanup on unmount
     useEffect(() => {
         return () => {
-            console.log("deactivate")
-            if (clientRef.current) {
-                clientRef.current.deactivate();
-            }
+            console.log('[STOMP] Component unmounting, cleaning up');
+            disconnectFromSocket();
         };
     }, []);
 
@@ -137,7 +152,8 @@ export const StompContextProvider = ({children}) => {
         subscriptionRef,
         reconnecting,
         setReconnecting,
-        hasError // ✅ hasError exportálása
+        hasError,
+        disconnectFromSocket
     };
 
     return <StompContext.Provider value={contextValue}>{children}</StompContext.Provider>;

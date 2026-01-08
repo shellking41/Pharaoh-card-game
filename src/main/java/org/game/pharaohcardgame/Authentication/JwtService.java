@@ -82,6 +82,7 @@ public class JwtService {
         cookie.setSecure(false);
         cookie.setPath("/");
         cookie.setMaxAge((int) refreshExpiration/1000);
+        cookie.setAttribute("SameSite", "Lax");
         response.addCookie(cookie);
 
     }
@@ -101,7 +102,9 @@ public class JwtService {
         Claims claims = getClaimsFromToken(token);
         return Long.valueOf(claims.getSubject());
     }
-
+    public void clearRefreshTokenCookie(HttpServletResponse response) {
+        addTokenRefreshCookie(response, "refresh-token", "");
+    }
     public String getUsernameFromToken(String token) {
         Claims claims = getClaimsFromToken(token);
         return claims.get("username", String.class);

@@ -44,11 +44,9 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
 			token = servletRequest.getParameter("token");
 			log.debug("Token from parameter: {}", token != null ? "Present" : "Missing");
 
-
-
 			if (token == null || token.isEmpty()) {
 				log.error("Missing or invalid Authorization token");
-				return false; // Ne dobjunk Exception-t, csak térjünk vissza false-szal
+				return false;
 			}
 
 			// User lekérése
@@ -83,8 +81,6 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
 					user.getAuthorities()
 			);
 
-
-
 			// SecurityContext beállítása
 			SecurityContextHolder.getContext().setAuthentication(authToken);
 
@@ -95,6 +91,9 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
 			attributes.put("principal", authToken);
 			attributes.put("userId", userId);
 			attributes.put("username", usernameFromToken);
+
+			// ✅ KRITIKUS: Token elmentése az attributes-be
+			attributes.put("token", token);
 
 			return true;
 
