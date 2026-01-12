@@ -1,5 +1,7 @@
 .containerTop {
   background: var(--page-main-bright-color);
+  display: flex;
+  flex-direction: column;
   padding: 2rem;
   width: 50%;
   margin: 20px auto auto;
@@ -61,7 +63,29 @@
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(236, 119, 119, 0.6);
 }
-
+.tutorialButton{
+  background: rgb(var(--orange-color));
+  border: none;
+  color: white;
+  padding: 0.2rem 1rem;
+  margin-left: auto;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(var(--orange-color), 0.4);
+}
+.tutorialButton:hover:not(:disabled) {
+  background: rgb(var(--orange-color));
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(var(--orange-color), 0.6);
+}
+.tutorialButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 .refreshButton:disabled {
   opacity: 0.5;
   cursor: not-allowed;

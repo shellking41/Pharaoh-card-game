@@ -346,11 +346,17 @@ const getPageSubscriptions = (getCtx) => {
         callback: (message) => {
           console.log('startmessage', message);
 
-          const { userCurrentStatus, setPlayerSelf, setGameSession, setValidPlays } = getCtx();
+          const {
+            userCurrentStatus,
+            setPlayerSelf,
+            setGameSession,
+            setValidPlays,
+            setCurrentRoundKey,
+          } = getCtx();
 
           // Saját játékos beállítása
           const self = message.players.find(
-            (m) => m.userId === userCurrentStatus.userInfo.userId,
+              (m) => m.userId === userCurrentStatus.userInfo.userId,
           );
 
           if (self?.playerId) {
@@ -359,6 +365,9 @@ const getPageSubscriptions = (getCtx) => {
 
           // Külön szedjük szét az adatokat
           const { validPlays, ...rest } = message;
+
+          //  Növeljük a round key-t
+          setCurrentRoundKey(prev => prev + 1);
 
           // gameSession: minden más adat, kivéve playableCards
           setGameSession(rest);
@@ -756,7 +765,8 @@ const getPageSubscriptions = (getCtx) => {
           } = getCtx();
           console.log('gameEND', message, animatingReshuffle, setAnimatingReshuffle);
 
-          window.location.reload();
+          setTimeout(()=>{ window.location.reload();},1000)
+
           // setGameSession({
           //
           // });
@@ -874,6 +884,7 @@ function UseSubscribeToTopicByPage({ page, currentRoomId }) {
     setSkipTurn,
     skippedPlayers,
     setSkippedPlayers,
+    setCurrentRoundKey
   } = useContext(GameSessionContext);
   const { setRooms, joinRequests, setJoinRequests } = useContext(RoomsDataContext);
   const { showNotification } = useContext(NotificationContext);
@@ -920,6 +931,7 @@ function UseSubscribeToTopicByPage({ page, currentRoomId }) {
     skippedPlayers,
     setSkippedPlayers,
     logout,
+    setCurrentRoundKey
   });
 
   // keep ref.current up to date when important pieces change
@@ -958,6 +970,7 @@ function UseSubscribeToTopicByPage({ page, currentRoomId }) {
       skippedPlayers,
       setSkippedPlayers,
       logout,
+      setCurrentRoundKey
     };
   }, [
     userCurrentStatus,
@@ -992,6 +1005,7 @@ function UseSubscribeToTopicByPage({ page, currentRoomId }) {
     skippedPlayers,
     setSkippedPlayers,
     logout,
+    setCurrentRoundKey
   ]);
 
   useEffect(() => {

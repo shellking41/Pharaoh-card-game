@@ -1,17 +1,35 @@
-import {createContext, useEffect, useRef, useState} from 'react';
-import SockJS from 'sockjs-client';
-import {Client} from '@stomp/stompjs';
+import React, { createContext, useState } from 'react';
 
 export const ErrorContext = createContext();
 
-// Provider komponens
-export const ErrorContextProvider = ({children}) => {
+export const ErrorContextProvider = ({ children }) => {
+    // ✅ FIX: Mindig string legyen a message, SOHA ne legyen null
     const [errorLog, setErrorLog] = useState({
-        message: "",
         error: false,
+        message: ''
+    });
 
-    })
-    const contextValue = {errorLog, setErrorLog}
+    // ✅ Wrapper function hogy biztosítsuk a helyes formátumot
+    const setErrorLogSafe = (newValue) => {
+        if (typeof newValue === 'function') {
+            setErrorLog(prev => {
+                const updated = newValue(prev);
+                return {
+                    error: !!updated.error,
+                    message: updated.message || ''
+                };
+            });
+        } else {
+            setErrorLog({
+                error: !!newValue.error,
+                message: newValue.message || ''
+            });
+        }
+    };
 
-    return <ErrorContext.Provider value={contextValue}>{children}</ErrorContext.Provider>;
+    return (
+        <ErrorContext.Provider value={{ errorLog, setErrorLog: setErrorLogSafe }}>
+            {children}
+        </ErrorContext.Provider>
+    );
 };

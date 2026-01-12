@@ -10,6 +10,7 @@ import ProgressBar from '../service/ProgressBar.jsx';
 import useAllRoom from '../components/Home/Hooks/useAllRoom.js';
 import SomethingWentWrong from '../service/somethingWentWrong.jsx';
 import styles from './styles/HomeStyle.module.css';
+import {useNavigate} from "react-router-dom";
 
 function Home() {
   const { rooms } = useContext(RoomsDataContext);
@@ -19,7 +20,7 @@ function Home() {
   const [openModal, setOpenModal] = useState(false);
 
   useSubscribeToTopicByPage({ page: 'home' });
-
+ const navigate=useNavigate()
   useEffect(() => {
     console.log(rooms);
   }, [rooms]);
@@ -42,6 +43,7 @@ function Home() {
         <SomethingWentWrong/>
 
         <div className={styles.containerTop}>
+          <button className={styles.tutorialButton} onClick={()=>navigate("/about")}>Tutorial</button>
           <div className={styles.header}>
             <h1 className={styles.title}>Game Rooms</h1>
             <p className={styles.subtitle}>Join a room or create your own</p>

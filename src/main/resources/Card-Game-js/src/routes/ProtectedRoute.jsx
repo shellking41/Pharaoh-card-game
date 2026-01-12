@@ -16,14 +16,14 @@ function ProtectedRoute({ children }) {
   // Loading állapot
   if (isLoading) {
     return (
-      <Box
-        display="flex"
-        justifyContent="center"
-        alignItems="center"
-        minHeight="100vh"
-      >
-        <CircularProgress/>
-      </Box>
+        <Box
+            display="flex"
+            justifyContent="center"
+            alignItems="center"
+            minHeight="100vh"
+        >
+          <CircularProgress/>
+        </Box>
     );
   }
 
@@ -35,41 +35,38 @@ function ProtectedRoute({ children }) {
     ];
 
     return (
-      <Modal
-        open={true}
-        aria-labelledby="login-modal-title"
-        aria-describedby="login-modal-description"
-      >
-        <FormModal
-          inputs={inputs}
-          buttonText={'Sign in'}
-          header={{ text: 'Login', tag: 'h2' }}
-          onSubmit={async (data) => {
-            setLoginError('');
-
-            const result = await login(data.Username, data.Password);
-            console.log(result);
-
-            if (!result.success) {
-              setLoginError(result.message || 'Login failed');
-            }
-            // Ha sikeres, akkor automatikusan bezáródik a modal
-            // mert az isAuthenticated true lesz
-          }}
+        <Modal
+            open={true}
+            aria-labelledby="login-modal-title"
+            aria-describedby="login-modal-description"
         >
-          <div className={styles.registerLinkContainer}>
-            <p>Don’t have a user account?
+          <FormModal
+              inputs={inputs}
+              buttonText={'Sign in'}
+              header={{ text: 'Login', tag: 'h2' }}
+              onSubmit={async (data) => {
+                setLoginError('');
 
-            </p>
-            <a onClick={() => {
-              navigate('/register');
-              setErrorLog([]);
-            }}>Sign up!</a>
-          </div>
+                const result = await login(data.Username, data.Password);
+                console.log(result);
 
-
-        </FormModal>
-      </Modal>
+                if (!result.success) {
+                  setLoginError(result.message || 'Login failed');
+                }
+                // Ha sikeres, akkor automatikusan bezáródik a modal
+                // mert az isAuthenticated true lesz
+              }}
+          >
+            <div className={styles.registerLinkContainer}>
+              <p>Don't have a user account?</p>
+              <a onClick={() => {
+                navigate('/register');
+                // ✅ FIX: Objektumot adunk át, nem tömböt!
+                setErrorLog({ error: false, message: '' });
+              }}>Sign up!</a>
+            </div>
+          </FormModal>
+        </Modal>
     );
   }
 

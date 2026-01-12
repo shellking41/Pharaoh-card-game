@@ -54,7 +54,7 @@ function Register() {
           </p>
           <a onClick={() => {
             navigate('/');
-            setErrorLog([]);
+            setErrorLog({ error: false, message: '' });
           }}>Sign in!</a>
         </div>
       </FormModal>

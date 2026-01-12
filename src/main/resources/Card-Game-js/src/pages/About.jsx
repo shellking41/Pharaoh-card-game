@@ -1,178 +1,127 @@
-import * as React from 'react';
-import PropTypes from 'prop-types';
-import Box from '@mui/material/Box';
-import Collapse from '@mui/material/Collapse';
-import IconButton from '@mui/material/IconButton';
-import Table from '@mui/material/Table';
-import TableBody from '@mui/material/TableBody';
-import TableCell from '@mui/material/TableCell';
-import TableContainer from '@mui/material/TableContainer';
-import TableHead from '@mui/material/TableHead';
-import TableRow from '@mui/material/TableRow';
-import Typography from '@mui/material/Typography';
-import Paper from '@mui/material/Paper';
-import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
-import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
-import {useContext, useEffect} from "react";
-import {StompContext} from "../Contexts/StompContext.jsx";
-import {TokenContext} from "../Contexts/TokenContext.jsx";
-import useSubscribeToTopicByPage from "../hooks/useSubscribeToTopicByPage.js";
+import React, { useState } from 'react'
+import styles from "./styles/About.module.css"
+import {useNavigate} from "react-router-dom";
 
-function createData(name, calories, fat, carbs, protein, price) {
-    return {
-        name,
-        calories,
-        fat,
-        carbs,
-        protein,
-        price,
-        history: [
-            {
-                date: '2020-01-05',
-                customerId: '11091700',
-                amount: 3,
-            },
-            {
-                date: '2020-01-02',
-                customerId: 'Anonymous',
-                amount: 1,
-            },
-        ],
+function About() {
+    const [currentIndex, setCurrentIndex] = useState(0);
+    const totalSlides = 13;
+const navigate=useNavigate();
+    const toRight = () => {
+        setCurrentIndex((prev) => (prev + 1) % totalSlides);
     };
-}
 
-function Row(props) {
-    const {row} = props;
-    const [open, setOpen] = React.useState(false);
+    const toLeft = () => {
+        setCurrentIndex((prev) => (prev - 1 + totalSlides) % totalSlides);
+    };
 
-    return (
-        <React.Fragment>
-            <TableRow sx={{'& > *': {borderBottom: 'unset'}}}>
-                <TableCell>
-                    <IconButton
-                        aria-label="expand row"
-                        size="small"
-                        onClick={() => setOpen(!open)}
-                    >
-                        {open ? <KeyboardArrowUpIcon/> : <KeyboardArrowDownIcon/>}
-                    </IconButton>
-                </TableCell>
-                <TableCell component="th" scope="row">
-                    {row.name}
-                </TableCell>
-                <TableCell align="right">{row.calories}</TableCell>
-                <TableCell align="right">{row.fat}</TableCell>
-                <TableCell align="right">{row.carbs}</TableCell>
-                <TableCell align="right">{row.protein}</TableCell>
-            </TableRow>
-            <TableRow>
-                <TableCell style={{paddingBottom: 0, paddingTop: 0}} colSpan={6}>
-                    <Collapse in={open} timeout="auto" unmountOnExit>
-                        <Box sx={{margin: 1}}>
-                            <Typography variant="h6" gutterBottom component="div">
-                                History
-                            </Typography>
-                            <Table size="small" aria-label="purchases">
-                                <TableHead>
-                                    <TableRow>
-                                        <TableCell>Date</TableCell>
-                                        <TableCell>Customer</TableCell>
-                                        <TableCell align="right">Amount</TableCell>
-                                        <TableCell align="right">Total price ($)</TableCell>
-                                    </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                    {row.history.map((historyRow) => (
-                                        <TableRow key={historyRow.date}>
-                                            <TableCell component="th" scope="row">
-                                                {historyRow.date}
-                                            </TableCell>
-                                            <TableCell>{historyRow.customerId}</TableCell>
-                                            <TableCell align="right">{historyRow.amount}</TableCell>
-                                            <TableCell align="right">
-                                                {Math.round(historyRow.amount * row.price * 100) / 100}
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </Box>
-                    </Collapse>
-                </TableCell>
-            </TableRow>
-        </React.Fragment>
-    );
-}
-
-Row.propTypes = {
-    row: PropTypes.shape({
-        calories: PropTypes.number.isRequired,
-        carbs: PropTypes.number.isRequired,
-        fat: PropTypes.number.isRequired,
-        history: PropTypes.arrayOf(
-            PropTypes.shape({
-                amount: PropTypes.number.isRequired,
-                customerId: PropTypes.string.isRequired,
-                date: PropTypes.string.isRequired,
-            }),
-        ).isRequired,
-        name: PropTypes.string.isRequired,
-        price: PropTypes.number.isRequired,
-        protein: PropTypes.number.isRequired,
-    }).isRequired,
-};
-
-const rows = [
-    createData('Frozen yoghurt', 159, 6.0, 24, 4.0, 3.99),
-    createData('Ice cream sandwich', 237, 9.0, 37, 4.3, 4.99),
-    createData('Eclair', 262, 16.0, 24, 6.0, 3.79),
-    createData('Cupcake', 305, 3.7, 67, 4.3, 2.5),
-    createData('Gingerbread', 356, 16.0, 49, 3.9, 1.5),
-];
-
-export default function CollapsibleTable() {
-
-    const {reconnecting, subscriptionRef, connected, clientRef} = useContext(StompContext);
-    const {token, setToken} = useContext(TokenContext);
-
-    useSubscribeToTopicByPage({
-        page: "about"
-    });
-    
-    useEffect(() => {
-
-        if (connected && clientRef.current) {
-
-            clientRef.current.publish({
-                destination: "/app/test",
-                headers: {
-                    Authorization: "Bearer " + token // <-- ide rakod a JWT-t
-                },
-
-            });
-        }
-
-    }, [connected]);
+    const slides = [
+        {
+            title: "Room Creation",
+            img: "/src/assets/home_page.png",
+            text: "Create your own game room by clicking the 'Create New Room' button. Choose a unique room name and optionally set a password to control who can join. Your room will appear in the lobby for other players to discover and request to join."
+        },
+        {
+            title: "Room Joining",
+            img: "/src/assets/Home_page2.png",
+            text: "Browse available rooms in the lobby and select one to join. If the room is password-protected, you'll need to enter the correct password. You can also include an optional message to introduce yourself to the room's gamemaster when requesting to join."
+        },
+        {
+            title: "Room Page",
+            img: "/src/assets/Room_page1.png",
+            text: "Once in a room, you'll see all current participants and you have to wait for the game to start. The gamemaster has special privileges to manage the room, accept join requests, and start the game when ready. Rooms can accommodate up to 4 players including bots."
+        },
+        {
+            title: "Add and Change Bots",
+            img: "/src/assets/Room_page2.png",
+            text: "The gamemaster can add AI bots to fill empty slots and choose their difficulty level: Easy, Medium, or Hard.  Hard bots playing optimally while Easy bots make intentionally suboptimal moves."
+        },
+        {
+            title: "Join Requests",
+            img: "/src/assets/Rome_page3.png",
+            text: "As a gamemaster, you'll receive notifications when players request to join your room. Review their optional messages and decide whether to accept or decline each request. "
+        },
+        {
+            title: "Game Page",
+            img: "/src/assets/Game_page1.png",
+            text: "The game board displays all players' positions, the center pile of played cards, and the deck. Your hand appears at the bottom with draggable cards you can reorder. Valid playable cards are highlighted based on the current top card's suit or rank. Draw cards from the deck or play your cards when it's your turn."
+        },
+        {
+            title: "Over Card",
+            img: "/src/assets/Game_page2.png",
+            text: "The Over card is a wild card that can be played on any card. When you play an Over card, you must choose which suit to change to by selecting one of the four suit buttons. The next player must then play a card of the chosen suit or another special card."
+        },
+        {
+            title: "Suit Change",
+            img: "/src/assets/Game_page4.png",
+            text: "After playing an Over card, select your desired suit from the four options: Hearts, Acorns, Bells, or Leaves. The chosen suit becomes the active suit for the next player. Strategic suit changes can help you get rid of cards or block opponents."
+        },
+        {
+            title: "Ace Card",
+            img: "/src/assets/Game_page3.png",
+            text: "Playing an Ace card skips the next player's turn. If you play multiple Aces at once, you skip that many players in sequence. In a 4-player game, playing 3 Aces can bring your turn back around immediately, creating powerful strategic opportunities."
+        },
+        {
+            title: "VII Card",
+            img: "/src/assets/Game_page6.png",
+            text: "When you play a Seven (VII), the next player must draw 3 cards from the deck. Multiple Sevens can be stacked - each Seven adds 3 more cards to the draw penalty. The affected player will see a draw stack indicator showing how many cards they must draw."
+        },
+        {
+            title: "Counter Drawing Penalty",
+            img: "/src/assets/Game_page7.png",
+            text: "If you have a Seven or the Faro (Jack of Leaves) when faced with a draw penalty, you can play it to counter and pass the penalty to the next player. The Faro can counter any Seven and can be played on top of any card, making it extremely valuable defensively."
+        },
+        {
+            title: "Streak!",
+            img: "/src/assets/Game_page8.png",
+            text: "Playing four cards of the same rank in a single turn creates a Streak. When you streak, you get to play again immediately after. This powerful move can help you empty your hand quickly or maintain control of the game flow."
+        },
+        {
+            title: "New Round",
+            img: "/src/assets/Game_page9.png",
+            text: "When a round ends with one player having cards remaining, they receive a loss mark. The game continues with a new round where players start with one fewer card for each loss mark they have (minimum 0). After 5 losses, a player is eliminated. The last player remaining wins the game."
+        },
+    ];
 
     return (
-        <TableContainer component={Paper}>
-            <Table aria-label="collapsible table">
-                <TableHead>
-                    <TableRow>
-                        <TableCell/>
-                        <TableCell>Dessert (100g serving)</TableCell>
-                        <TableCell align="right">Calories</TableCell>
-                        <TableCell align="right">Fat&nbsp;(g)</TableCell>
-                        <TableCell align="right">Carbs&nbsp;(g)</TableCell>
-                        <TableCell align="right">Protein&nbsp;(g)</TableCell>
-                    </TableRow>
-                </TableHead>
-                <TableBody>
-                    {rows.map((row) => (
-                        <Row key={row.name} row={row}/>
+        <div className={styles.tutorialMainContainer}>
+
+            <div className={styles.changeableContentContainer}>
+                <button className={styles.navigation} onClick={toLeft}></button>
+                <button className={styles.navigation} onClick={toRight}></button>
+                <button className={styles.back} onClick={()=>navigate("/")} >❮❮</button>
+
+
+                <div
+                    className={styles.sliderWrapper}
+                    style={{ transform: `translateX(-${currentIndex * 100}%)` }}
+                >
+                    {slides.map((slide, index) => (
+                        <div key={index} className={styles.changeableContent}>
+                            <div className={styles.imageContainer}>
+                                <img src={slide.img} alt={`Slide ${index + 1}`} />
+                            </div>
+                            <div className={styles.textContainer}>
+                                <div className={styles.text}>
+                                    <h2>{slide.title}</h2>
+                                    <p>{slide.text}</p>
+                                </div>
+                            </div>
+                        </div>
                     ))}
-                </TableBody>
-            </Table>
-        </TableContainer>
-    );
+                </div>
+
+                <div className={styles.indicators}>
+                    {slides.map((_, index) => (
+                        <div
+                            key={index}
+                            className={`${styles.indicator} ${currentIndex === index ? styles.active : ''}`}
+                            onClick={() => setCurrentIndex(index)}
+                        />
+                    ))}
+                </div>
+            </div>
+        </div>
+    )
 }
+
+export default About

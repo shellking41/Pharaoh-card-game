@@ -105,6 +105,7 @@ function Game() {
   const {
     gameSession, playerSelf, turn, setTurn, setPlayerSelf, setGameSession, selectedCards, setSelectedCards, validPlays, animatingDrawCards, setAnimatingDrawCards, animatingReshuffle,
     setAnimatingReshuffle, setDeckRotations, deckRotations,
+      currentRoundKey
   } = useContext(GameSessionContext);
   const { gameSessionId } = useParams();
   const { sendMessage } = useWebsocket();
@@ -158,6 +159,10 @@ function Game() {
 
   const { isNewRound, shouldShowNotification, handleNextRoundAnimationComplete, setIsNewRound } = useCheckIsNewRound();
   const { broadcastPlayAction, onPlayAction } = useBroadcastPlayAction();
+
+  const getCardKey = useCallback((card, index, prefix = 'card') => {
+    return `${prefix}-round-${currentRoundKey}-${card.cardId}-${index}`;
+  }, [currentRoundKey]);
 
   useEffect(() => {
     // Reset initial load flag after first render
@@ -483,6 +488,7 @@ function Game() {
                 isAnimating={queueRef.current.length > 0}
                 selectedCardsOrder={selectedCards}
                 onOpenStateChange={setIsHandOpen}
+                currentRoundKey={currentRoundKey}
               /> :
               isTablet ? <MobileSelfPlayerHand
                   ref={mobileRef}
@@ -492,6 +498,7 @@ function Game() {
                   handleCardClick={handleCardClick}
                   selectedCardsOrder={selectedCards}
                   onOpenStateChange={setIsHandOpen}
+                  currentRoundKey={currentRoundKey}
                 /> :
                 <DraggableHand
                   initialCards={initialCards}
@@ -503,7 +510,7 @@ function Game() {
                     playerHand: { ...prev.playerHand, ownCards: newOrder },
                   }))}
                   handleCardClick={handleCardClick}
-
+                  currentRoundKey={currentRoundKey}
                 />
             }
             {!(isMobile || isTablet) &&
@@ -540,47 +547,49 @@ function Game() {
                 const count = gameSession.playerHand?.otherPlayersCardCount?.[String(p.playerId)] ?? 0;
 
                 return (
-                  <div key={`player-${p.playerId}`}>
-                    <div className={styles.playerNameContainer}>
-                      <PlayerNameBox
-                        playerName={p.playerName}
-                        pos={pos}
-                        isYourTurn={p.seat === turn?.currentSeat}
-                        playerId={p.playerId}
-                        seat={p.seat}
-                        isMobile={isMobile || isTablet}
-                        cardPositions={getCardStyleForPosition(pos, 0, count)}
-                      />
-                    </div>
-                    {Array.from({ length: count }).map((_, cardIndex) => {
-                      const style = getCardStyleForPosition(pos, cardIndex, count);
-                      const refKey = `${p.playerId}-${cardIndex}`;
-                      const stableKey = `opponent-${p.playerId}-card-${cardIndex}`;
-
-                      return (
-                        <HungarianCard
-                          ref={(el) => {
-                            if (el) {
-                              opponentsCardRefs.current[refKey] = el;
-                            }
-                          }}
-                          key={stableKey}
-                          zIndex={cardIndex * 10}
-                          player={{ playerId: p.playerId, pos: pos }}
-                          cardData={null}
-                          left={style.left}
-                          right={style.right}
-                          top={style.top}
-                          bottom={style.bottom}
-                          rotate={style.rotate}
-                          styleOverride={{
-                            transform: style.transform,
-                            transition: 'all 0.3s ease-in-out',
-                          }}
+                    <div key={`player-${p.playerId}`}>
+                      <div className={styles.playerNameContainer}>
+                        <PlayerNameBox
+                            playerName={p.playerName}
+                            pos={pos}
+                            isYourTurn={p.seat === turn?.currentSeat}
+                            playerId={p.playerId}
+                            seat={p.seat}
+                            isMobile={isMobile || isTablet}
+                            cardPositions={getCardStyleForPosition(pos, 0, count)}
                         />
-                      );
-                    })}
-                  </div>
+                      </div>
+                      {Array.from({ length: count }).map((_, cardIndex) => {
+                        const style = getCardStyleForPosition(pos, cardIndex, count);
+                        const refKey = `${p.playerId}-${cardIndex}`;
+
+                        //  Egyedi kulcs round-dal
+                        const stableKey = `opponent-round-${currentRoundKey}-${p.playerId}-card-${cardIndex}`;
+
+                        return (
+                            <HungarianCard
+                                ref={(el) => {
+                                  if (el) {
+                                    opponentsCardRefs.current[refKey] = el;
+                                  }
+                                }}
+                                key={stableKey}
+                                zIndex={cardIndex * 10}
+                                player={{ playerId: p.playerId, pos: pos }}
+                                cardData={null}
+                                left={style.left}
+                                right={style.right}
+                                top={style.top}
+                                bottom={style.bottom}
+                                rotate={style.rotate}
+                                styleOverride={{
+                                  transform: style.transform,
+                                  transition: 'all 0.3s ease-in-out',
+                                }}
+                            />
+                        );
+                      })}
+                    </div>
                 );
               });
             })()}

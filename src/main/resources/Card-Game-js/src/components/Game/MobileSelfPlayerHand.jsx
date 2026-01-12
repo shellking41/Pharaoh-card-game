@@ -16,7 +16,8 @@ const MobileSelfPlayerHand = forwardRef(({
   handleCardClick = () => {},
   selectedCardsOrder = [],
   isAnimating,
-  onOpenStateChange, // Új prop: callback az állapotváltozáshoz
+  onOpenStateChange, // callback az állapotváltozáshoz
+                                             currentRoundKey = 0
 }, ref) => {
   const [cards, setCards] = useState(initialCards);
   const [isOpen, setIsOpen] = useState(false);
@@ -111,13 +112,15 @@ const MobileSelfPlayerHand = forwardRef(({
         }}
       >
         {cards.map((card, index) => {
-          // Keressük meg a kártya sorszámát a selectedCardsOrder tömbben
+            const uniqueKey = `mobile-round-${currentRoundKey}-${card.cardId}-${index}`;
+
+            // Keressük meg a kártya sorszámát a selectedCardsOrder tömbben
           const orderIndex = selectedCardsOrder.findIndex(c => c.cardId === card.cardId);
           const orderNumber = orderIndex >= 0 ? orderIndex + 1 : null;
 
           return (
             <div
-              key={card.cardId || index}
+                key={uniqueKey}
               className="mobile-card-container"
               ref={(el) => {
                 if (el) {

@@ -1,20 +1,19 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
-
 import styles from './styles/FormModal.module.css';
 import { ErrorContext } from '../Contexts/ErrorContext.jsx';
 import { useNavigate } from 'react-router-dom';
 
 export default function FormModal({
-  inputs = [],
-  header = { text: 'Header', tag: 'h1' },
-  onSubmit = () => {},
-  buttonText,
-  children,
-}) {
+                                    inputs = [],
+                                    header = { text: 'Header', tag: 'h1' },
+                                    onSubmit = () => {},
+                                    buttonText,
+                                    children,
+                                  }) {
   const navigate = useNavigate();
   const { errorLog, setErrorLog } = useContext(ErrorContext);
   const [formData, setFormData] = useState(
-    Object.fromEntries(inputs.map(input => [input.name, ''])),
+      Object.fromEntries(inputs.map(input => [input.name, ''])),
   );
   const [submitted, setSubmitted] = useState(false);
   const [inputError, setInputError] = useState(Array(inputs.length).fill(false));
@@ -22,19 +21,24 @@ export default function FormModal({
   const [focusedInputs, setFocusedInputs] = useState(Array(inputs.length).fill(false));
   const inputRefs = useRef([]);
 
+  // ✅ Normalize errorLog on mount and when it changes
+  useEffect(() => {
+    if (!errorLog || errorLog.message === null || errorLog.message === undefined) {
+      setErrorLog({ error: false, message: '' });
+    }
+  }, [errorLog]);
+
   // Autofill detektálás
   useEffect(() => {
     const checkAutofill = () => {
       inputRefs.current.forEach((input, index) => {
         if (input && input.matches(':-webkit-autofill')) {
-          // Ha van autofill, állítsd be, hogy "hozzáért"
           setTouchedInputs(prev => {
             const newTouched = [...prev];
             newTouched[index] = true;
             return newTouched;
           });
 
-          // Frissítsd a formData-t is az autofill értékkel
           const value = input.value;
           if (value) {
             setFormData(prev => ({
@@ -42,7 +46,6 @@ export default function FormModal({
               [input.name]: value,
             }));
 
-            // Validáld az értéket
             const minLength = inputs[index].minLength;
             const isValid = value.length >= minLength;
 
@@ -56,10 +59,7 @@ export default function FormModal({
       });
     };
 
-    // Késleltetett ellenőrzés, mert az autofill aszinkron
     const timer = setTimeout(checkAutofill, 100);
-
-    // Ismételt ellenőrzés 500ms után is
     const timer2 = setTimeout(checkAutofill, 500);
 
     return () => {
@@ -68,8 +68,10 @@ export default function FormModal({
     };
   }, [inputs]);
 
-  // Update input errors when errorLog changes (for errorWhen conditions)
+  // Update input errors when errorLog changes
   useEffect(() => {
+    if (!errorLog || !errorLog.message) return;
+
     setInputError(prev => {
       const newErrors = [...prev];
       inputs.forEach((input, index) => {
@@ -80,9 +82,17 @@ export default function FormModal({
       return newErrors;
     });
   }, [errorLog, inputs]);
+  useEffect(() => {
+    console.log(errorLog)
+
+
+      setErrorLog({ error: false, message: '' })
+
+  }, []);
 
   const handleChange = (minLength, index, e, name) => {
-    setErrorLog((prev) => ({ ...prev, error: false, message: '' }));
+    setErrorLog({ error: false, message: '' });
+
     const value = e.target.value;
 
     setFormData(prev => ({
@@ -122,7 +132,10 @@ export default function FormModal({
       errorMessage = `${invalidFields.join(', ')} and ${last} are too short or empty.`;
     }
 
-    setErrorLog((prev) => ({ ...prev, error: invalidFields.length > 0, message: errorMessage }));
+    setErrorLog({
+      error: invalidFields.length > 0,
+      message: errorMessage
+    });
   };
 
   const handleSubmit = (e) => {
@@ -136,80 +149,82 @@ export default function FormModal({
     onSubmit(formData);
   };
 
+  // ✅ Safe message display
+  const displayMessage = errorLog?.message || '';
+
   return (
-    <div className={styles.modal}>
-      <div className={styles.formWrapper}>
-        <form onSubmit={handleSubmit}>
-          <div className={styles.inputSection}>
-            <div className={styles.headerWrapper}>
-              <h1 className={styles.header}>
-                {header.text}
-              </h1>
+      <div className={styles.modal}>
+        <div className={styles.formWrapper}>
+          <form onSubmit={handleSubmit}>
+            <div className={styles.inputSection}>
+              <div className={styles.headerWrapper}>
+                <h1 className={styles.header}>
+                  {header.text}
+                </h1>
+              </div>
+
+              {inputs.map((input, index) => (
+                  <label
+                      key={input.name}
+                      className={`${styles.inputWrapper} ${
+                          inputError[index] &&
+                          !focusedInputs[index] &&
+                          (touchedInputs[index] || submitted)
+                              ? styles.inputError
+                              : ''
+                      }`}
+                      htmlFor={input.name}
+                  >
+                    <label className={styles.inputLabel} htmlFor={input.name}>
+                      {input.name}
+                    </label>
+                    <input
+                        ref={el => inputRefs.current[index] = el}
+                        className={styles.input}
+                        type={input.type}
+                        id={input.name}
+                        name={input.name}
+                        placeholder=""
+                        value={formData[input.name] || ''}
+                        onChange={(e) =>
+                            handleChange(input.minLength, index, e, input.name)
+                        }
+                        onFocus={() => {
+                          setFocusedInputs(prev => {
+                            const newFocus = [...prev];
+                            newFocus[index] = true;
+                            return newFocus;
+                          });
+                        }}
+                        onBlur={() => {
+                          setFocusedInputs(prev => {
+                            const newFocus = [...prev];
+                            newFocus[index] = false;
+                            return newFocus;
+                          });
+                        }}
+                        autoComplete="off"
+                        maxLength="50"
+                    />
+                  </label>
+              ))}
             </div>
 
-            {inputs.map((input, index) => (
-              <label
-                key={input.name}
-                className={`${styles.inputWrapper} ${
-                  inputError[index] &&
-                  !focusedInputs[index] &&
-                  (touchedInputs[index] || submitted)
-                    ? styles.inputError
-                    : ''
-                }`}
-                htmlFor={input.name}
+            <div className={styles.submitButtonWrapper}>
+              <button
+                  disabled={ (inputError.includes(true) || touchedInputs.includes(false))}
+                  className={styles.submitButton}
+                  type="submit"
               >
-                <label className={styles.inputLabel} htmlFor={input.name}>
-                  {input.name}
-                </label>
-                <input
-                  ref={el => inputRefs.current[index] = el}
-                  className={styles.input}
-                  type={input.type}
-                  id={input.name}
-                  name={input.name}
-                  placeholder=""
-                  value={formData[input.name] || ''}
-                  onChange={(e) =>
-                    handleChange(input.minLength, index, e, input.name)
-                  }
-                  onFocus={() => {
-                    setFocusedInputs(prev => {
-                      const newFocus = [...prev];
-                      newFocus[index] = true;
-                      return newFocus;
-                    });
-                  }}
-                  onBlur={() => {
-                    setFocusedInputs(prev => {
-                      const newFocus = [...prev];
-                      newFocus[index] = false;
-                      return newFocus;
-                    });
-                  }}
-                  autoComplete="off"
-                  maxLength="50"
-                />
-              </label>
-            ))}
-          </div>
-
-          <div className={styles.submitButtonWrapper}>
-            <button
-              disabled={inputError.includes(true) || touchedInputs.includes(false)}
-              className={styles.submitButton}
-              type="submit"
-            >
-              {buttonText}
-            </button>
-            {errorLog.error &&
-              <div style={{ color: 'red' }}>{errorLog.message}</div>}
-          </div>
-
-
-        </form>
-        {children}
+                {buttonText}
+              </button>
+              {errorLog?.error && displayMessage && (
+                  <div style={{ color: 'red' }}>{displayMessage}</div>
+              )}
+            </div>
+          </form>
+          {children}
+        </div>
       </div>
-    </div>
   );
 }

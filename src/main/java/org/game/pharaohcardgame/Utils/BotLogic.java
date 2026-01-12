@@ -126,25 +126,28 @@ public class BotLogic implements IBotLogic {
     private NextTurnResult handleAfterPlayCards(List<Card> chosen, GameState current, Player botPlayer, GameSession gameSession) {
         if (!chosen.isEmpty() && chosen.getFirst().getRank() == CardRank.OVER) {
             List<Card> hand = current.getPlayerHands().get(botPlayer.getPlayerId());
-            //TODO: AZ A BAJ HOGY AMIKOR A BOT FINISHEL OVERREL AKKOR NINCS MAR A KEZEBE SEMMI SZOVAL A HAND URES ES NEM TUDJA A MOST COMMONSUITINHANDET MUKODTETNI
-            CardSuit chosenSuit = mostCommonSuitInHand(hand);
+            // Use difficulty-based suit selection
+            CardSuit chosenSuit = chooseSuitBasedOnDifficulty(hand, botPlayer.getBotDifficulty());
             gameEngine.suitChangedTo(chosenSuit, current);
+
+            log.info("{} bot {} changed suit to {} (hand had {} cards of that suit)",
+                    botPlayer.getBotDifficulty(),
+                    botPlayer.getPlayerId(),
+                    chosenSuit,
+                    hand.stream().filter(c -> c.getSuit() == chosenSuit).count());
         }
 
-        //ha a kartya lerakasakor olyan kartyat raktunk le ami skippeli a plajereket akkor az szerint kezdodik el a turn.
         Set<Long> skippedPlayers = gameSessionUtils.getSpecificGameDataTypeSet("skippedPlayers", current);
-        //ha a player égetett akkor ujra jojjon o
         Long streakPlayerId = gameSessionUtils.getSpecificGameData("streakPlayerId", current, null);
         NextTurnResult nextTurnResult;
 
         if (streakPlayerId != botPlayer.getPlayerId()) {
             if(!skippedPlayers.isEmpty()){
-                nextTurnResult=gameEngine.nextTurn(botPlayer, gameSession, current,chosen.size());}
-            else{
+                nextTurnResult=gameEngine.nextTurn(botPlayer, gameSession, current,chosen.size());
+            } else {
                 nextTurnResult = gameEngine.nextTurn(botPlayer, gameSession, current, 0);
             }
         } else {
-            //ha egetett a player akkor o kovetkezzen ujra
             nextTurnResult = new NextTurnResult(botPlayer, botPlayer.getSeat());
             current.setCurrentPlayerId(botPlayer.getPlayerId());
             current.getGameData().remove("streakPlayerId");
@@ -216,14 +219,14 @@ public class BotLogic implements IBotLogic {
                         GameSession ss = cloneSessionLight(realSession);
                         Player botClone = findPlayerInSession(ss, botPlayer.getPlayerId());
 
-                        // root apply
                         NextTurnResult nextTurnResult = applyPlayInClone(sc, ss, botClone, entry.getKey());
 
-                        // handle OVER: choose suit heuristically
+                        // Handle OVER: choose suit based on difficulty
                         if (containsOVER(entry.getKey())) {
                             List<Card> handAfterPlay = sc.getPlayerHands().get(botClone.getPlayerId());
                             if (handAfterPlay != null && !handAfterPlay.isEmpty()) {
-                                CardSuit suit = mostCommonSuitInHand(handAfterPlay);
+                                // Use difficulty-based suit selection in simulation
+                                CardSuit suit = chooseSuitBasedOnDifficulty(handAfterPlay, botClone.getBotDifficulty());
                                 sc.getGameData().put("suitChangedTo", suit);
                             }
                         }
@@ -234,7 +237,6 @@ public class BotLogic implements IBotLogic {
 
                     } catch (Exception e) {
                         log.error("Error during Monte Carlo playout for bot {}: {}", botPlayer.getPlayerId(), e.getMessage());
-                        // Folytatjuk a következő playouttal
                     }
                 }
             }
@@ -867,17 +869,42 @@ public class BotLogic implements IBotLogic {
                 (card.getRank() == CardRank.JACK && card.getSuit() == CardSuit.LEAVES);
     }
 
-    private CardSuit mostCommonSuitInHand(List<Card> hand) {
+    private CardSuit chooseSuitBasedOnDifficulty(List<Card> hand, BotDifficulty difficulty) {
         if (hand.isEmpty()) {
-            //fallback, ez azert kellett mert ha a bot finishel és az utolso kartya amit lettett over volt akkor mar a hand ures volt es a hand.stream dobott egy exceptiont
+            // Fallback if hand is empty (e.g., bot finished with Over card)
             return CardSuit.HEARTS;
         }
-        return hand.stream()
-                .collect(Collectors.groupingBy(Card::getSuit, Collectors.counting()))
-                .entrySet().stream()
-                .max(Map.Entry.comparingByValue())
-                .map(Map.Entry::getKey)
-                .orElse(hand.getFirst().getSuit());
+
+        // Count cards by suit
+        Map<CardSuit, Long> suitCounts = hand.stream()
+                .collect(Collectors.groupingBy(Card::getSuit, Collectors.counting()));
+
+        if (difficulty == BotDifficulty.EASY) {
+            // EASY bot: Choose the WORST suit
+            // First, try to find a suit that the bot doesn't have at all
+            List<CardSuit> missingSuits = Arrays.stream(CardSuit.values())
+                    .filter(suit -> !suitCounts.containsKey(suit))
+                    .collect(Collectors.toList());
+
+            if (!missingSuits.isEmpty()) {
+                // Choose a random suit from the missing ones
+                CardSuit chosenSuit = missingSuits.get(new Random().nextInt(missingSuits.size()));
+                log.info("EASY bot choosing suit {} which it doesn't have", chosenSuit);
+                return chosenSuit;
+            }
+
+            // If bot has all suits, choose the one with the LEAST cards
+            return suitCounts.entrySet().stream()
+                    .min(Map.Entry.comparingByValue())
+                    .map(Map.Entry::getKey)
+                    .orElse(hand.getFirst().getSuit());
+        } else {
+            // MEDIUM and HARD bots: Choose the suit with the MOST cards (best choice)
+            return suitCounts.entrySet().stream()
+                    .max(Map.Entry.comparingByValue())
+                    .map(Map.Entry::getKey)
+                    .orElse(hand.getFirst().getSuit());
+        }
     }
 
 }

@@ -10,6 +10,7 @@ const DraggableHand = forwardRef(({
                                     spacing = 40,
                                     isAnimating,
                                     onReorder,
+                                    currentRoundKey = 0,
                                   }, ref) => {
   const [cards, setCards] = useState(initialCards);
   const [draggedIndex, setDraggedIndex] = useState(null);
@@ -104,9 +105,12 @@ const DraggableHand = forwardRef(({
           const orderNumber = orderIndex >= 0 ? orderIndex + 1 : null;
           const cardStyle = getCardStyleForPosition("bottom", index, cards.length);
 
+
+          const uniqueKey = `desktop-round-${currentRoundKey}-${card.cardId}-${index}`;
+
           return (
               <div
-                  key={`card-container-${card.cardId}`}
+                  key={uniqueKey}
                   ref={(el) => {
                     if (el) {
                       cardRefs.current[card.cardId] = el;
@@ -146,7 +150,6 @@ const DraggableHand = forwardRef(({
         })}
       </>
   );
-
 });
 
 DraggableHand.displayName = 'DraggableHand';
