@@ -26,26 +26,28 @@ function PlayGround({ children, onDimensionsChange }) {
   }, [onDimensionsChange]);
 
   return (
+    <div
+      ref={playgroundRef}
+
+      style={{
+        position: 'relative',
+        width: '100%',
+        height: '70vh   ',
+
+        overflow: 'hidden',
+      }}
+    >
       <div
-          ref={playgroundRef}
-          style={{
-            position: 'relative',
-            width: '100%',
-            height: 'min(70vh, 700px)',
-            minHeight: '40vh',
-            boxSizing: 'border-box',
-            overflow: 'hidden',
-          }}
-      >
-        <div style={{
+
+        style={{
           position: 'relative',
           width: '100%',
           height: '100%',
           overflow: 'visible', // A gyerekek lehetnek láthatók
         }}>
-          {children}
-        </div>
+        {children}
       </div>
+    </div>
   );
 }
 

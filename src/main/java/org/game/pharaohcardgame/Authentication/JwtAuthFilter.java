@@ -56,48 +56,50 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         String path = request.getServletPath();
         final String authHeader = request.getHeader("Authorization");
         final String jwt;
-        final Long userId;
+
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
         }
 
         jwt = authHeader.substring(7);
-        if (jwt.isBlank()) {
-            throw new AuthenticationServiceException("JWT is empty");
-        }
-        userId = jwtService.getUserIdFromToken(jwt);
-        if (userId != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            User user = userRepository.findById(userId).orElseThrow(() -> new AuthenticationServiceException("user not found"));
-            var isTokenValid = tokensRepository.findByToken(jwt)
+        try {
+            Long userId = jwtService.getUserIdFromToken(jwt);
+
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new AuthenticationServiceException("User not found"));
+
+            boolean tokenValidInDb = tokensRepository.findByToken(jwt)
                     .map(t -> !t.isExpired() && !t.isRevoked())
-                    .orElseThrow(() -> new JwtExpired("jwt Expired"));
-            //todo: valamiért ha jwt expired akkor is enged játszani
-            if (jwtService.isTokenValid(jwt, user) && isTokenValid) {
-                // Token adatok kinyerése
-                Long userIdFromToken = jwtService.getUserIdFromToken(jwt);
-                String usernameFromToken = jwtService.getUsernameFromToken(jwt);
+                    .orElse(false);
 
-                // RoomPrincipal létrehozása
-                UserPrincipal principal = new UserPrincipal(usernameFromToken, userIdFromToken);
-
-                // Authentication token létrehozása User jogosultságaival
-                UserAuthenticationToken authToken = UserAuthenticationToken.authenticated(
-                        principal,
-                        user.getAuthorities()
-                );
-
-                // Request details beállítása
-                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-
-                // SecurityContext beállítása
-                SecurityContextHolder.getContext().setAuthentication(authToken);
-
-                log.debug("User {} authenticated {} with roles: {}",
-                        userIdFromToken, usernameFromToken, user.getAuthorities());
+            if (!jwtService.isTokenValid(jwt, user) || !tokenValidInDb) {
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                return;
             }
+
+            UserPrincipal principal = new UserPrincipal(
+                    user.getUsername(),
+                    user.getId()
+            );
+
+            UserAuthenticationToken authToken =
+                    UserAuthenticationToken.authenticated(
+                            principal,
+                            user.getAuthorities()
+                    );
+
+            authToken.setDetails(
+                    new WebAuthenticationDetailsSource().buildDetails(request)
+            );
+
+            SecurityContextHolder.getContext().setAuthentication(authToken);
+
+            filterChain.doFilter(request, response);
+
+        } catch (ExpiredJwtException e) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         }
-        filterChain.doFilter(request, response);
     }
 
     @Override

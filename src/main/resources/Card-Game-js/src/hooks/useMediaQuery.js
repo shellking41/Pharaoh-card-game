@@ -1,19 +1,30 @@
 import { useState, useEffect } from 'react';
 
 export const useMediaQuery = (query) => {
-    const [matches, setMatches] = useState(false);
+  // Azonnal ellenőrizzük a query-t az inicializáláskor
+  const [matches, setMatches] = useState(() => {
+    // SSR esetén return false, egyébként ellenőrizzük
+    if (typeof window === 'undefined') {
+      return false;
+    }
+    return window.matchMedia(query).matches;
+  });
 
-    useEffect(() => {
-        const media = window.matchMedia(query);
-        if (media.matches !== matches) {
-            setMatches(media.matches);
-        }
+  useEffect(() => {
+    const media = window.matchMedia(query);
+    console.log('window.innerWidth', window.innerWidth);
+    console.log('window.innerHeight', window.innerHeight);
 
-        const listener = () => setMatches(media.matches);
-        media.addEventListener('change', listener);
+    // Frissítjük, ha szükséges
+    if (media.matches !== matches) {
+      setMatches(media.matches);
+    }
 
-        return () => media.removeEventListener('change', listener);
-    }, [matches, query]);
+    const listener = () => setMatches(media.matches);
+    media.addEventListener('change', listener);
 
-    return matches;
+    return () => media.removeEventListener('change', listener);
+  }, [query]); // matches-t ne tegyük ide, mert felesleges re-render
+
+  return matches;
 };

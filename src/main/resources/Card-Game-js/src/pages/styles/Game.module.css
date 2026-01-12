@@ -1,72 +1,838 @@
 .game {
-    display: flex;
-    justify-content: center;
-    align-content: center;
-    flex-direction: column;
-    width: 100%;
-    padding: 1rem;
-    box-sizing: border-box;
+  display: flex;
+  justify-content: center;
+  align-content: center;
+  flex-direction: column;
+  width: 100%;
+  padding: 1rem;
+
 }
 
 main {
-    background-color: black;
+  background-color: var(--page-main-color);
 }
 
 .playgroundBlock {
-    position: relative;
-    background-color: white;
-    border-radius: 16px;
-    width: 100%;
-    max-width: 1600px;
-    margin: 0 auto;
-    padding: 1rem;
-    box-sizing: border-box;
-    perspective: 800px;
+  position: relative;
+  background-color: white;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 1rem;
+
+  perspective: 800px;
+
 }
 
 /* Mobile optimalizáció */
 @media (max-width: 768px) {
-    .game {
-        padding: 0.5rem;
-    }
-    .MuiContainer-root{
-        padding: 0!important;
-    }
-    .playgroundBlock {
-        border-radius: 12px;
-        padding: 0;
-    }
+  .game {
+    padding: 0.5rem;
+  }
+  .MuiContainer-root {
+    padding: 0 !important;
+  }
+  .playgroundBlock {
+    border-radius: 12px;
+    padding: 0;
+  }
 }
 
 /* Tablet optimalizáció */
 @media (max-height: 769px) {
-    .playgroundBlock {
-        max-width: 1200px;
-    }
-    .MuiContainer-root{
-        padding: 0!important;
-    }
-    .playgroundBlock {
-        border-radius: 12px;
-        padding: 0;
-    }
+  .playgroundBlock {
+    max-width: 1200px;
+  }
+  .MuiContainer-root {
+    padding: 0 !important;
+  }
+  .playgroundBlock {
+    border-radius: 12px;
+    padding: 0;
+
+  }
+}
+.buttonsAndPlayground {
+  display: flex;
+  gap: 30px;
+  align-items: center;
 }
 
 .playgroundBlock::after {
-    content: '';
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    height: 20px;
-    border-radius: 0 0 12px 12px;
-    background-color: rgba(44, 95, 45);
-    pointer-events: none;
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 20px;
+  border-radius: 0 0 12px 12px;
+  background-color: rgba(var(--main-color));
+  pointer-events: none;
 }
 
+@media (max-width: 768px) {
+  .buttonsAndPlayground {
+    flex-direction: column;
+  }
+}
 /* Nagy képernyő optimalizáció */
 @media (min-width: 1920px) {
-    .playgroundBlock {
-        max-width: 1800px;
-    }
+  .playgroundBlock {
+    max-width: 1800px;
+  }
+}
+.game-container {
+  width: 100%;
+  max-width: 800px;
+  background-color: #16213e;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+/* Top side styling - matches the image structure */
+.topSide {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  background-color: var(--page-main-bright-color);
+  border-radius: 10px;
+  margin-bottom: 30px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.turnAndDecksize {
+  display: flex;
+  align-items: center;
+  gap: 30px;
+}
+
+.decksizeContainer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.deckCardCounter {
+  width: 50px;
+  height: 70px;
+  background: linear-gradient(145deg, rgba(var(--main-bright-color)), rgb(var(--main-color)));
+  border-radius: 8px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-weight: bold;
+  font-size: 20px;
+  color: #f0f0f0;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  position: relative;
+}
+
+.deckCardCounter::before {
+  content: "24";
+  position: absolute;
+}
+
+.decksizeContainer > div:last-child {
+  font-size: 18px;
+  font-weight: 600;
+  color: #f0f0f0;
+}
+
+.yourTurn {
+  background-color: rgba(var(--main-color), 0.5);
+  color: white;
+  padding: 8px 20px;
+  border-radius: 20px;
+  font-weight: bold;
+  font-size: 16px;
+  border: 2px solid rgba(var(--main-bright-color));
+  box-shadow: 0 4px 8px rgba(var(--main-bright-color), 0.3);
+  position: relative;
+
+}
+.yourTurn:before {
+  content: "";
+  display: block;
+  width: 10px;
+  height: 10px;
+  background-color: rgba(var(--main-bright-color));
+  border-radius: 10px;
+  position: absolute;
+  left: 0%;
+  top: 50%;
+  transform: translate(50%, -50%);
+  animation: pulse 2s infinite;
+}
+.notTurn {
+  background-color: rgba(var(--red-color), 0.5);
+  color: white;
+  padding: 8px 20px;
+  border-radius: 20px;
+  font-weight: bold;
+  font-size: 16px;
+  border: 2px solid rgba(var(--red-brigther-color));
+  box-shadow: 0 4px 8px rgba(var(--red-brigther-color), 0.3);
+  position: relative;
+}
+.notTurn:before {
+  content: "";
+  display: block;
+  width: 10px;
+  height: 10px;
+  background-color: rgba(var(--red-brigther-color));
+  border-radius: 10px;
+  position: absolute;
+  left: 0%;
+  top: 50%;
+  transform: translate(50%, -50%);
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+.leaveButtonContianer button {
+  background-color: rgb(var(--red-color));
+  color: white;
+  border: none;
+  padding: 10px 25px;
+  border-radius: 6px;
+  font-weight: bold;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.leaveButtonContianer button:hover {
+  background-color: rgb(var(--red-brigther-color));
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+}
+
+.leaveButtonContianer button:active {
+  transform: translateY(0);
+}
+
+/* Game.module.css - csak a gombok rész frissítve */
+.right {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 32px;
+
+  width: 30%;
+  background-color: var(--page-main-bright-color);
+  border-radius: 16px;
+  padding: 12px;
+  overflow: hidden;
+  height: min-content;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+@media (max-width: 768px) {
+  .right {
+    width: 100%;
+  }
+}
+.drawCard, .playCard, .skipTurn, .drawStack {
+  height: 50px;
+  width: 100%;
+  margin: 10px auto auto;
+  border-radius: 16px;
+  border: none;
+  color: white;
+  font-weight: bolder;
+  font-size: 18px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* Base button styles */
+.drawCard:not(:disabled),
+.playCard:not(:disabled),
+.skipTurn:not(:disabled),
+.drawStack:not(:disabled) {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.drawCard:disabled,
+.playCard:disabled,
+.skipTurn:disabled,
+.drawStack:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+  background-color: #6c757d !important;
+  color: #b0b0b0 !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.drawCard:disabled::before,
+.playCard:disabled::before,
+.skipTurn:disabled::before,
+.drawStack:disabled::before {
+  display: none;
+}
+
+/* Play Card - Zöld */
+.playCard {
+  background: linear-gradient(145deg,
+  rgba(var(--main-bright-color), 0.9),
+  rgb(var(--main-color))
+  );
+  color: #fff;
+  position: relative;
+}
+
+.playCard::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  transition: left 0.5s ease;
+}
+
+.playCard:not(:disabled):hover {
+  background: linear-gradient(145deg,
+  rgba(var(--main-bright-color)),
+  rgba(var(--main-color), 0.9)
+  );
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 8px 20px rgba(var(--main-bright-color), 0.4);
+}
+
+.playCard:not(:disabled):hover::before {
+  left: 100%;
+}
+
+.playCard:not(:disabled):active {
+  transform: translateY(-1px) scale(0.98);
+  transition: transform 0.1s ease;
+}
+
+/* Draw Card - Kék/Indigo */
+.drawCard {
+  background: linear-gradient(145deg,
+  rgba(59, 130, 246, 0.9),
+  rgba(30, 64, 175, 0.9)
+  );
+  color: #fff;
+}
+
+.drawCard:not(:disabled):hover {
+  background: linear-gradient(145deg,
+  rgba(96, 165, 250, 0.9),
+  rgba(59, 130, 246, 0.9)
+  );
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
+  animation: shake 0.4s infinite;
+}
+
+
+/* Skip Turn - Narancs/Vörös */
+.skipTurn {
+  background: linear-gradient(145deg,
+  rgba(245, 158, 11, 0.9),
+  rgba(220, 38, 38, 0.9)
+  );
+  color: #fff;
+}
+
+.skipTurn:not(:disabled):hover {
+  background: linear-gradient(145deg,
+  rgba(251, 191, 36, 0.9),
+  rgba(245, 158, 11, 0.9)
+  );
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(245, 158, 11, 0.4);
+  animation: shake 0.4s infinite;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateY(-3px) rotate(0deg); }
+  25% { transform: translateY(-3px) rotate(-1deg); }
+  75% { transform: translateY(-3px) rotate(1deg); }
+}
+
+/* Draw Stack Button - Lila (ha van ilyen gombod) */
+.drawStack {
+  background: linear-gradient(145deg,
+  rgba(var(--red-color)),
+  rgba(var(--red-brigther-color))
+  );
+  color: #fff;
+}
+
+.drawStack:not(:disabled):hover {
+  background: linear-gradient(145deg,
+  rgba(var(--red-color), 0.9),
+  rgba(var(--red-brigther-color), 0.9)
+  );
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(var(--red-brigther-color), 0.4);
+}
+
+
+/* Leave Button - Piros */
+.leaveButtonContianer button {
+  background: linear-gradient(145deg,
+  rgba(var(--red-brigther-color), 0.9),
+  rgba(var(--red-color), 0.9)
+  );
+  color: white;
+  border: none;
+  padding: 10px 25px;
+  border-radius: 6px;
+  font-weight: bold;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.leaveButtonContianer button:hover {
+  background: linear-gradient(145deg,
+  rgba(var(--red-brigther-color)),
+  rgba(var(--red-color), 0.8)
+  );
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(var(--red-color), 0.4);
+}
+
+.leaveButtonContianer button:active {
+  transform: translateY(0);
+}
+
+/* Icon animations for buttons with icons */
+.drawCard::after,
+.playCard::after,
+.skipTurn::after {
+  font-size: 16px;
+  transition: transform 0.3s ease;
+}
+
+.drawCard:not(:disabled):hover::after {
+  transform: translateX(3px);
+}
+
+.playCard:not(:disabled):hover::after {
+  transform: rotate(15deg);
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 768px) {
+  .drawCard, .playCard, .skipTurn {
+    height: 45px;
+    font-size: 16px;
+    margin: 8px auto;
+  }
+
+  .leaveButtonContianer button {
+    padding: 8px 20px;
+    font-size: 14px;
+  }
+
+  /* Reduce hover effects on mobile for performance */
+  .drawCard:not(:disabled):hover,
+  .playCard:not(:disabled):hover,
+  .skipTurn:not(:disabled):hover {
+    transform: translateY(-1px);
+  }
+}
+
+/* Tablet responsive adjustments */
+@media (max-height: 769px) {
+  .drawCard, .playCard, .skipTurn {
+    height: 40px;
+    font-size: 15px;
+    margin: 6px auto;
+  }
+}
+
+
+/* Focus styles for accessibility */
+.drawCard:focus-visible,
+.playCard:focus-visible,
+.skipTurn:focus-visible,
+.leaveButtonContianer button:focus-visible {
+  outline: 2px solid rgba(59, 130, 246, 0.8);
+  outline-offset: 2px;
+}
+/* Responsive design */
+@media (max-width: 600px) {
+  .topSide {
+    flex-direction: column;
+    gap: 20px;
+    align-items: flex-start;
+  }
+
+  .turnAndDecksize {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .leaveButtonContianer {
+    align-self: flex-end;
+  }
+}
+
+/* Game.module.css - hozzáadva a drawStackContainer stílusok */
+.drawStack {
+  margin: 0;
+}
+.drawStackContainer {
+  background: rgba(var(--red-brigther-color), 0.2);
+  border-radius: 12px;
+  padding: 16px;
+  margin: 15px 0;
+
+  box-shadow: 0 4px 12px rgba(var(--red-brigther-color), 0.2);
+  border: 2px solid rgba(var(--red-color));
+  position: relative;
+  overflow: hidden;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+}
+
+
+.drawStackHighlighter {
+  background: rgb(var(--red-color));
+  color: white;
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-weight: 900;
+  box-shadow: 0 0 10px rgba(var(--red-color), 0.8);
+  animation: bounce 1s infinite alternate;
+  flex-shrink: 0;
+}
+
+@keyframes bounce {
+  from { transform: scale(1); }
+  to { transform: scale(1.1); }
+}
+
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .drawStackContainer {
+    flex-direction: column;
+    text-align: center;
+    padding: 20px 15px;
+
+  }
+
+  .drawStackHighlighter {
+    width: 50px;
+    height: 50px;
+    font-size: 20px;
+    order: -1;
+  }
+
+  .drawStackText div:first-child {
+    font-size: 20px;
+  }
+
+  .drawStackText div:last-child {
+    font-size: 14px;
+    margin-bottom: 12px;
+  }
+
+  .drawStack {
+    width: 100%;
+    padding: 10px 20px;
+  }
+}
+
+/* Tablet responsive */
+@media (max-height: 769px) {
+  .drawStackContainer {
+    padding: 12px;
+  }
+
+  .drawStackHighlighter {
+    width: 50px;
+    height: 50px;
+    font-size: 20px;
+  }
+
+  .drawStackText div:first-child {
+    font-size: 20px;
+  }
+
+  .drawStackText div:last-child {
+    font-size: 14px;
+  }
+}
+.suitSelector {
+  transition: all 0.2s ease;
+  margin-top: 30px;
+  display: flex;
+  height: 160px;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* További animációk - opcionális */
+
+/* Entrance animation */
+@keyframes slideInFromRight {
+  from {
+    transform: translate(-50%, -50%) translateX(600px);
+    opacity: 0;
+  }
+  to {
+    transform: translate(-50%, -50%) translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutToRight {
+  from {
+    transform: translate(-50%, -50%) translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translate(-50%, -50%) translateX(600px);
+    opacity: 0;
+  }
+}
+
+.suitSelector.visible {
+  animation: slideInFromRight 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.suitSelector.hidden {
+  animation: slideOutToRight 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* Individual button stagger animation */
+.suitButton:nth-child(1) { animation-delay: 0.1s; }
+.suitButton:nth-child(2) { animation-delay: 0.2s; }
+.suitButton:nth-child(3) { animation-delay: 0.3s; }
+.suitButton:nth-child(4) { animation-delay: 0.4s; }
+
+@keyframes buttonPopIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.suitSelector.visible .suitButton {
+  animation: buttonPopIn 0.3s ease backwards;
+}
+
+/* Game.module.css - hozzáadva */
+
+/* Suit Selector Container */
+.suitSelector {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  gap: 15px;
+  padding: 20px;
+  background: linear-gradient(145deg, rgba(20, 66, 120, 0.9), rgba(10, 40, 80, 0.9));
+  border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3),
+  inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(59, 130, 246, 0.5);
+  transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: absolute;
+  top: 20%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 200px;
+  height: 200px;
+  z-index: 1000;
+}
+
+.suitSelector.hidden {
+  transform: translate(-50%, -50%) translateX(600px);
+}
+
+.suitSelector.visible {
+  transform: translate(-50%, -50%) translateX(0);
+}
+
+/* Suit Buttons */
+.suitButton {
+  background: linear-gradient(145deg, #144278, #0a2850);
+  border: none;
+  width: 100%;
+  height: 100%;
+  aspect-ratio: 1/1;
+  border-radius: 16px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.suitButton::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.1),
+    rgba(255, 255, 255, 0.05)
+  );
+  border-radius: inherit;
+}
+
+.suitButton:hover {
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4),
+  0 0 20px rgba(59, 130, 246, 0.3);
+  background: linear-gradient(145deg, #1a52a0, #0f3b7a);
+}
+
+.suitButton:active {
+  transform: translateY(-1px) scale(1.02);
+}
+
+.suitButton.selected {
+  outline: 3px solid rgb(var(--red-color));
+  outline-offset: 3px;
+  animation: pulse-selected 1.5s infinite;
+}
+
+@keyframes pulse-selected {
+  0%, 100% {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5),
+    0 0 15px rgba(220, 38, 38, 0.5);
+  }
+  50% {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5),
+    0 0 25px rgba(220, 38, 38, 0.8);
+  }
+}
+
+/* Suit Images */
+.suitImage {
+  z-index: 1;
+  transition: transform 0.3s ease;
+}
+
+.suitButton:hover .suitImage {
+  transform: scale(1.1);
+}
+
+.suitButton:active .suitImage {
+  transform: scale(0.95);
+}
+
+/* Specific image sizes for each suit */
+.suitHearts {
+  width: 80%;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+.suitAcorns {
+  width: 60%;
+  height: 80%;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+.suitBells {
+  width: 80%;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+.suitLeaves {
+  width: 70%;
+  height: 80%;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .suitSelector {
+    width: 200px;
+    height: 200px;
+    gap: 10px;
+    padding: 15px;
+  }
+
+  .suitButton {
+    border-radius: 12px;
+  }
+
+  .suitHearts,
+  .suitBells {
+    width: 70%;
+  }
+
+  .suitAcorns,
+  .suitLeaves {
+    width: 50%;
+    height: 70%;
+  }
+}
+
+/* Tablet responsive */
+@media (max-height: 769px) {
+  .suitSelector {
+    width: 200px;
+    height: 200px;
+    gap: 12px;
+  }
+}
+
+/* Overlay background */
+.suitSelectorOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  z-index: 999;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.suitSelectorOverlay.visible {
+  opacity: 1;
+  pointer-events: all;
 }

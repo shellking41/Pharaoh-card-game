@@ -5,7 +5,7 @@ import { UserContext } from '../Contexts/UserContext.jsx';
 import { AuthSyncContext } from '../Contexts/AuthSyncContext.jsx';
 import { useApiCallHook } from './useApiCallHook.js';
 import { GameSessionContext } from '../Contexts/GameSessionContext.jsx';
-import { StompContext } from "../Contexts/StompContext.jsx";
+import { StompContext } from '../Contexts/StompContext.jsx';
 
 export const useAuth = () => {
   const { token, setToken } = useContext(TokenContext);
@@ -74,12 +74,12 @@ export const useAuth = () => {
 
       if (userStatus?.authenticated) {
         const currentAndManagedRoom = await post(
-            'http://localhost:8080/room/current-and-managed-room',
-            {
-              currentRoomId: userStatus?.currentRoomId,
-              managedRoomId: userStatus?.managedRoomId
-            },
-            token
+          'http://localhost:8080/room/current-and-managed-room',
+          {
+            currentRoomId: userStatus?.currentRoomId,
+            managedRoomId: userStatus?.managedRoomId,
+          },
+          token,
         );
 
         const userStatusWRooms = {
@@ -120,7 +120,7 @@ export const useAuth = () => {
         setValidPlays(validPlays || []);
 
         const player = gameSession?.players.find(
-            (p) => p.userId === userStatusWRooms.userInfo.userId
+          (p) => p.userId === userStatusWRooms.userInfo.userId,
         );
         setPlayerSelf(player);
       }
@@ -142,17 +142,17 @@ export const useAuth = () => {
         password,
       });
 
-      if (response?.status.success && response?.accessToken) {
+      if (response?.success && response?.accessToken) {
         setToken(response.accessToken);
 
         // Szobák lekérése
         const currentAndManagedRoom = await post(
-            'http://localhost:8080/room/current-and-managed-room',
-            {
-              currentRoomId: response.userCurrentStatus?.currentRoomId,
-              managedRoomId: response.userCurrentStatus?.managedRoomId
-            },
-            response.accessToken
+          'http://localhost:8080/room/current-and-managed-room',
+          {
+            currentRoomId: response.userCurrentStatus?.currentRoomId,
+            managedRoomId: response.userCurrentStatus?.managedRoomId,
+          },
+          response.accessToken,
         );
 
         if (currentAndManagedRoom) {
@@ -175,9 +175,13 @@ export const useAuth = () => {
 
         return { success: true };
       }
+      console.log(response);
+
       throw new Error(response?.message || 'Login failed');
     } catch (error) {
       console.error('[AUTH] Login failed:', error);
+      console.log(error);
+
       return { success: false, message: error.message };
     }
   }, [post, setToken, setUserCurrentStatus, broadcastLogin]);
@@ -240,7 +244,7 @@ export const useAuth = () => {
     setPlayerSelf,
     setValidPlays,
     disconnectFromSocket,
-    broadcastLogout
+    broadcastLogout,
   ]);
 
   // Automatikus token validáció

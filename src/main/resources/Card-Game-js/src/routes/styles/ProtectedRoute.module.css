@@ -1,0 +1,15 @@
+.registerLinkContainer {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  margin: auto;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+}
+p {
+  color: white;
+}
+a {
+  color: rgb(var(--red-color));
+}

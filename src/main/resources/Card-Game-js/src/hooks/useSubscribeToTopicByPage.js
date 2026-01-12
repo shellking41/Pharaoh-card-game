@@ -1,20 +1,25 @@
-import React, {useContext, useEffect, useRef} from 'react';
+import React, { useContext, useEffect, useRef } from 'react';
 import useWebsocket from './useWebsocket.js';
 import { UserContext } from '../Contexts/UserContext.jsx';
 import { NotificationContext } from '../Contexts/NotificationContext.jsx';
 import { RoomsDataContext } from '../Contexts/RoomsDataContext.jsx';
 import { GameSessionContext } from '../Contexts/GameSessionContext.jsx';
-import useCalculateReshuffleAnimation from '../components/Game/Hooks/useCalcucateReshuffleAnimation.js';
+import useCalculateReshuffleAnimation
+  from '../components/Game/Hooks/useCalcucateReshuffleAnimation.js';
 import { useApiCallHook } from './useApiCallHook.js';
 import { TokenContext } from '../Contexts/TokenContext.jsx';
-import useCalculateDrawAnimation from '../components/Game/Hooks/useCalculateDrawAnimation.js';
+import useCalculateDrawAnimation
+  from '../components/Game/Hooks/useCalculateDrawAnimation.js';
 import { useMediaQuery } from '@mui/material';
-import {getCardStyleForPosition, getPlayerPositionBySeat} from '../components/Game/HungarianCard.jsx';
-import {useAuth} from "./useAuth.js";
+import {
+  getCardStyleForPosition,
+  getPlayerPositionBySeat,
+} from '../components/Game/HungarianCard.jsx';
+import { useAuth } from './useAuth.js';
 
-function computeSkippedPlayersVisual(message,gameSession) {
+function computeSkippedPlayersVisual(message, gameSession) {
   // Biztonsági alapok
-  console.log("visual only",message)
+  console.log('visual only', message);
   const players = gameSession.players ?? [];
   const finishedPlayers = gameSession.gameData.finishedPlayers ?? [];
   const lostPlayers = gameSession.gameData.lostPlayers ?? [];
@@ -23,17 +28,18 @@ function computeSkippedPlayersVisual(message,gameSession) {
 
   //  játékosok kiválasztása
   const activePlayers = players.filter(
-      p =>
-          !finishedPlayers.includes(p.playerId) &&
-          !lostPlayers.includes(p.playerId)
+    p =>
+      !finishedPlayers.includes(p.playerId) &&
+      !lostPlayers.includes(p.playerId),
   );
-  console.log("visual only",activePlayers)
-
+  console.log('visual only', activePlayers);
 
   //  Hány ACE készült le?
   const aceCount = newPlayedCards.filter(card => {
     // card lehet, hogy csak egy string vagy objektum - ha objektum, nézzük a rank mezőt
-    if (!card) return false;
+    if (!card) {
+      return false;
+    }
     const rank = (typeof card === 'object' && card.rank) ? card.rank : card;
     return typeof rank === 'string' && rank.toUpperCase() === 'ACE';
   }).length;
@@ -50,14 +56,14 @@ function computeSkippedPlayersVisual(message,gameSession) {
 
   //  Körkörös  skipped lista generálása playerId-ként
   const startIndex = activePlayers.findIndex(
-      p => p.playerId === currentPlayerId
+    p => p.playerId === currentPlayerId,
   );
 
   const skippedVisual = [];
 
   for (let i = 1; i <= aceCount; i++) {
     skippedVisual.push(
-        activePlayers[(startIndex + i) % activePlayers.length].playerId
+      activePlayers[(startIndex + i) % activePlayers.length].playerId,
     );
   }
 
@@ -65,22 +71,22 @@ function computeSkippedPlayersVisual(message,gameSession) {
 }
 
 function handleReshuffle(
-    cardsToReshuffle,
-    deckPosition,
-    calculateReshuffleAnimation,
-    setAnimatingReshuffle,
-    setGameSession,
-    newDeckSize,setDeckRotations
+  cardsToReshuffle,
+  deckPosition,
+  calculateReshuffleAnimation,
+  setAnimatingReshuffle,
+  setGameSession,
+  newDeckSize, setDeckRotations,
 ) {
   // 500ms várakozás, hogy látszódjon az üres deck
   setTimeout(() => {
     const playedCardElement = document.querySelector('[data-played-card]');
     const playedCardPosition = playedCardElement
-        ? {
-          left: '45%',
-          top: '50%',
-        }
-        : { left: '50%', top: '50%' };
+      ? {
+        left: '45%',
+        top: '50%',
+      }
+      : { left: '50%', top: '50%' };
 
     console.log('[RESHUFFLE ANIMATION] Starting animation after delay', {
       playedCardPosition,
@@ -89,19 +95,18 @@ function handleReshuffle(
       newDeckSize,
     });
 
-
     const reshuffleAnimations = calculateReshuffleAnimation(
-        playedCardPosition,
-        deckPosition,
-        cardsToReshuffle,
+      playedCardPosition,
+      deckPosition,
+      cardsToReshuffle,
     );
 
     console.log('[RESHUFFLE ANIMATION] Generated animations:', reshuffleAnimations.length);
 
     setAnimatingReshuffle((prev) => [...prev, ...reshuffleAnimations]);
-    console.log("[RESHUFFLE ANIMATION]",reshuffleAnimations.map((a)=>(a.waypoints[a.waypoints.length-1].rotate)))
+    console.log('[RESHUFFLE ANIMATION]', reshuffleAnimations.map((a) => (a.waypoints[a.waypoints.length - 1].rotate)));
 
-    setDeckRotations(reshuffleAnimations.map((a)=>(a.waypoints[a.waypoints.length-1].rotate)))
+    setDeckRotations(reshuffleAnimations.map((a) => (a.waypoints[a.waypoints.length - 1].rotate)));
 
     // Ideiglenesen beállítjuk a newDeckSize-t
     setGameSession((prev) => ({
@@ -123,8 +128,8 @@ const getPageSubscriptions = (getCtx) => {
 
           // ✅ Notification megjelenítése
           showNotification(
-              message.message || 'You have been logged in from another device',
-              'warning'
+            message.message || 'You have been logged in from another device',
+            'warning',
           );
 
           // ✅ Kijelentkeztetés (broadcast-tal együtt)
@@ -151,21 +156,58 @@ const getPageSubscriptions = (getCtx) => {
         destination: '/user/queue/join-response',
         callback: (message) => {
           const { showNotification, setUserCurrentStatus } = getCtx();
+
+          console.log('[JOIN-RESPONSE]', message);
+
+          // ✅ SIKERES KONFIRMÁLÁS (gamemaster elfogadta)
           if (message.confirmed === true) {
             showNotification(message.message, 'success');
-            setUserCurrentStatus((prev) => ({ ...prev, currentRoom: message.currentRoom }));
-            return;
-          } else if (message.confirmed === false) {
-            showNotification(message.message, 'error');
+            setUserCurrentStatus((prev) => ({
+              ...prev,
+              currentRoom: message.currentRoom,
+            }));
             return;
           }
-          showNotification(message.message, message.success ? 'success' : 'error');
+
+          // ❌ ELUTASÍTOTT JOIN (gamemaster visszautasította)
+          if (message.confirmed === false) {
+            showNotification(message.message, 'warning');
+            return;
+          }
+
+          // ⚠️ EGYSZERŰ SIKERES/SIKERTELEN ÜZENET (pl. request elküldve vagy hiba)
+          if (message.success !== undefined) {
+            showNotification(
+              message.message,
+              message.success ? 'success' : 'error',
+            );
+            return;
+          }
+
+          // 🔴 FALLBACK - ha nincs egyértelmű flag
+          showNotification(message.message || 'Unknown response', 'info');
+        },
+      },
+      {
+        destination: '/user/queue/confirm-error',
+        callback: (message) => {
+          const { showNotification } = getCtx();
+
+          console.log('[CONFIRM-ERROR]', message);
+
+          // Gamemaster értesítése, hogy miért nem sikerült a konfirmálás
+          if (message.success === false) {
+            showNotification(
+              message.message || 'Cannot confirm join request',
+              'error',
+            );
+          }
         },
       },
       {
         destination: '/user/queue/errors',
         callback: (message) => {
-          console.log(message);
+          console.log('[ERROR]', message);
         },
       },
     ],
@@ -175,8 +217,38 @@ const getPageSubscriptions = (getCtx) => {
         condition: () => getCtx().userCurrentStatus.managedRoom?.roomId == getCtx().currentRoomId,
         destination: '/user/queue/join-requests',
         callback: (message) => {
-          const { setJoinRequests } = getCtx();
+          const { setJoinRequests, showNotification } = getCtx();
+
+          console.log('[JOIN-REQUEST] New request received:', message);
+
+          // Hozzáadjuk a join request-et a listához
           setJoinRequests((prev) => [...prev, message]);
+
+          // Opcionális: notification gamemaster-nek
+          showNotification(
+            `${message.username} wants to join the room`,
+            'info',
+          );
+        },
+      },
+      {
+        // ✅ ÚJ: Gamemaster confirm error kezelés room oldalon is
+        condition: () => getCtx().userCurrentStatus.managedRoom?.roomId == getCtx().currentRoomId,
+        destination: '/user/queue/confirm-error',
+        callback: (message) => {
+          const { showNotification, setJoinRequests } = getCtx();
+
+          console.log('[CONFIRM-ERROR] Room page:', message);
+
+          if (message.success === false) {
+            showNotification(
+              message.message || 'Cannot confirm join request',
+              'error',
+            );
+
+            // Opcionálisan: eltávolíthatjuk a sikertelen request-et a listából
+            // De jobb lehet ha ott marad, hogy a gamemaster lássa mi történt
+          }
         },
       },
       {
@@ -190,10 +262,12 @@ const getPageSubscriptions = (getCtx) => {
         destination: '/user/queue/user-status',
         callback: (message) => {
           const { setUserCurrentStatus } = getCtx();
+
+          console.log('[USER-STATUS] Status update:', message);
+
           setUserCurrentStatus(message);
         },
-      },
-      {
+      }, {
         destination: `/topic/room/${getCtx().currentRoomId}/participant-update`,
         callback: (message) => {
           const { userCurrentStatus, setUserCurrentStatus, showNotification } = getCtx();
@@ -201,33 +275,82 @@ const getPageSubscriptions = (getCtx) => {
           const oldParticipants = userCurrentStatus.currentRoom?.participants || [];
           const newParticipants = message?.participants || [];
 
+          // Kilépett játékosok detektálása
           const removedParticipants = oldParticipants.filter(
-              (oldParticipant) =>
-                  !newParticipants.some(
-                      (newParticipant) => newParticipant.userId === oldParticipant.userId
-                  )
+            (oldParticipant) =>
+              !newParticipants.some(
+                (newParticipant) => newParticipant.userId === oldParticipant.userId,
+              ),
+          );
+
+          // Új játékosok detektálása
+          const addedParticipants = newParticipants.filter(
+            (newParticipant) =>
+              !oldParticipants.some(
+                (oldParticipant) => oldParticipant.userId === newParticipant.userId,
+              ),
           );
 
           setUserCurrentStatus((prev) => ({ ...prev, currentRoom: message }));
 
-          // If there are removed participants, show a notification for each (safely)
+          // Kilépett játékosok értesítése
           removedParticipants.forEach(rp => {
             if (rp?.username) {
               showNotification(`${rp.username} has left`, 'warning');
             }
           });
+
+          // Új játékosok értesítése
+          addedParticipants.forEach(ap => {
+            if (ap?.username) {
+              showNotification(`${ap.username} has joined`, 'success');
+            }
+          });
+        },
+      },
+      {
+        destination: '/user/queue/join-response',
+        callback: (message) => {
+          const { showNotification, setUserCurrentStatus } = getCtx();
+
+          console.log('[JOIN-RESPONSE] Room page:', message);
+
+          // ✅ SIKERES KONFIRMÁLÁS
+          if (message.confirmed === true) {
+            showNotification(message.message, 'success');
+            setUserCurrentStatus((prev) => ({
+              ...prev,
+              currentRoom: message.currentRoom,
+            }));
+            return;
+          }
+
+          // ❌ ELUTASÍTOTT JOIN
+          if (message.confirmed === false) {
+            showNotification(message.message, 'warning');
+            return;
+          }
+
+          // ⚠️ EGYÉB ÜZENETEK
+          if (message.success !== undefined) {
+            showNotification(
+              message.message,
+              message.success ? 'success' : 'error',
+            );
+            return;
+          }
         },
       },
       {
         destination: `/user/queue/game/start`,
         callback: (message) => {
-          console.log("startmessage",message)
+          console.log('startmessage', message);
 
           const { userCurrentStatus, setPlayerSelf, setGameSession, setValidPlays } = getCtx();
 
           // Saját játékos beállítása
           const self = message.players.find(
-              (m) => m.userId === userCurrentStatus.userInfo.userId
+            (m) => m.userId === userCurrentStatus.userInfo.userId,
           );
 
           if (self?.playerId) {
@@ -247,7 +370,7 @@ const getPageSubscriptions = (getCtx) => {
       {
         destination: '/user/queue/errors',
         callback: (message) => {
-          console.log(message);
+          console.log('[ERROR]', message);
         },
       },
     ],
@@ -268,7 +391,8 @@ const getPageSubscriptions = (getCtx) => {
             isMobile,
             calculateReshuffleAnimation,
             setAnimatingReshuffle,
-            setDeckRotations
+            setDeckRotations,
+            isTablet,
           } = ctx;
 
           console.log('[DRAW] Message received:', message);
@@ -276,11 +400,11 @@ const getPageSubscriptions = (getCtx) => {
 
           const deckElement = document.querySelector('.deck');
           const deckPosition = deckElement
-              ? {
-                left:  isMobile ? '45%' : '55%',
-                top: isMobile ?'30%':'49%',
-              }
-              : { left: '50%', top: '50%' };
+            ? {
+              left: isMobile ? '45%' : '55%',
+              top: isMobile ? '30%' : '49%',
+            }
+            : { left: '50%', top: '50%' };
 
           //RESHUFFLE HANDLING
           const currentDeckSize = gameSession?.deckSize || 0;
@@ -289,7 +413,7 @@ const getPageSubscriptions = (getCtx) => {
           console.log('[DRAW] Deck status:', {
             currentDeckSize,
             newDeckSize: message.deckSize,
-            willReshuffle
+            willReshuffle,
           });
 
           // Ha reshuffle lesz, először csökkentjük a deckSize-t 0-ra
@@ -313,33 +437,34 @@ const getPageSubscriptions = (getCtx) => {
 
             // calculateDrawAnimation visszaadja az animációkat (delay, duration, stb.) minden kártyához
             const drawAnimations = calculateDrawAnimation(
-                message.newCard,
-                deckPosition,
-                currentHandCount,
-                'bottom',
-                true,
-                isMobile
+              isTablet,
+              message.newCard,
+              deckPosition,
+              currentHandCount,
+              'bottom',
+              true,
+              isMobile || isTablet,
             );
 
             //ideiglenesen elokjuk a kartyakat
-            const cardElements=document.querySelectorAll(".own-card-container");
-            console.log(cardElements,"cardElements-own")
+            const cardElements = document.querySelectorAll('.own-card-container');
+            console.log(cardElements, 'cardElements-own');
 
-            cardElements.forEach((el,index)=>{
-              console.log("cardElements-own",index,cardElements.length+message.newCard.length)
-              console.log("cardElements-own",
-                  "card",
-                  index,
-                  "left:",
-                  el.style.left,
-                  "top:",
-                  el.style.top
+            cardElements.forEach((el, index) => {
+              console.log('cardElements-own', index, cardElements.length + message.newCard.length);
+              console.log('cardElements-own',
+                'card',
+                index,
+                'left:',
+                el.style.left,
+                'top:',
+                el.style.top,
               );
-              let style =getCardStyleForPosition("bottom",index,cardElements.length+message.newCard.length)
-              console.log(style,"cardElements-own")
+              let style = getCardStyleForPosition('bottom', index, cardElements.length + message.newCard.length);
+              console.log(style, 'cardElements-own');
 
-              el.style.left=style.left
-            })
+              el.style.left = style.left;
+            });
 
             // Megjelenítjük az animációkat (összeset egyszerre)
             setAnimatingDrawCards((prev) => [...prev, ...drawAnimations]);
@@ -353,9 +478,9 @@ const getPageSubscriptions = (getCtx) => {
               setGameSession((prev) => {
                 const prevOwn = (prev.playerHand?.ownCards ?? []).filter(Boolean);
                 const merged =
-                    message.newCard.length > 0
-                        ? [...prevOwn, ...message.newCard]
-                        : prevOwn;
+                  message.newCard.length > 0
+                    ? [...prevOwn, ...message.newCard]
+                    : prevOwn;
 
                 return {
                   ...prev,
@@ -365,8 +490,8 @@ const getPageSubscriptions = (getCtx) => {
                     ...prev.playerHand,
                     ownCards: merged,
                     otherPlayersCardCount:
-                        message.otherPlayersCardCount ??
-                        prev.playerHand.otherPlayersCardCount,
+                      message.otherPlayersCardCount ??
+                      prev.playerHand.otherPlayersCardCount,
                   },
                 };
               });
@@ -376,22 +501,22 @@ const getPageSubscriptions = (getCtx) => {
               console.log('[DRAW ANIMATION] Self animation complete');
 
               if (willReshuffle) {
-              const cardsToReshuffle = message.deckSize; // Az új deck mérete
-              handleReshuffle(
-                  cardsToReshuffle-1,
+                const cardsToReshuffle = message.deckSize; // Az új deck mérete
+                handleReshuffle(
+                  cardsToReshuffle - 1,
                   deckPosition,
                   calculateReshuffleAnimation,
                   setAnimatingReshuffle,
                   setGameSession,
-                  message.deckSize,setDeckRotations
-              );
-               } else {
-                 // Normál deckSize frissítés
-                 setGameSession((prev) => ({
-                   ...prev,
-                   deckSize: message.deckSize,
-                 }));
-               }
+                  message.deckSize, setDeckRotations,
+                );
+              } else {
+                // Normál deckSize frissítés
+                setGameSession((prev) => ({
+                  ...prev,
+                  deckSize: message.deckSize,
+                }));
+              }
             }, drawTotalDelay);
           }
           // OPPONENT DRAW
@@ -408,9 +533,9 @@ const getPageSubscriptions = (getCtx) => {
             const selfPlayer = gameSession?.players?.find(p => p.playerId === playerSelf?.playerId);
             const totalPlayers = gameSession?.players?.length || 2;
             const opponentPosition = getPlayerPositionBySeat(
-                drawingPlayer.seat,
-                selfPlayer?.seat || 0,
-                totalPlayers
+              drawingPlayer.seat,
+              selfPlayer?.seat || 0,
+              totalPlayers,
             );
 
             const currentCardCount = message.otherPlayersCardCount?.[String(message.playerId)] || 0;
@@ -427,39 +552,40 @@ const getPageSubscriptions = (getCtx) => {
             }));
 
             const drawAnimations = calculateDrawAnimation(
-                dummyCards,
-                deckPosition,
-                Math.max(0, currentCardCount - cardsDrawn),
-                opponentPosition,
-                false,
-                isMobile,
+              isTablet,
+              dummyCards,
+              deckPosition,
+              Math.max(0, currentCardCount - cardsDrawn),
+              opponentPosition,
+              false,
+              isMobile || isTablet,
             );
 
             //ideiglenesen elokjuk a kartyakat
-            const cardElements=document.querySelectorAll(".player-"+message.playerId+"-card");
+            const cardElements = document.querySelectorAll('.player-' + message.playerId + '-card');
 
-            cardElements.forEach((el,index)=>{
+            cardElements.forEach((el, index) => {
               const posClass = [...el.classList].find(c => c.startsWith('pos-'));
               const pos = posClass?.replace('pos-', '');
-              let style
-              console.log("pos",pos)
+              let style;
+              console.log('pos', pos);
 
-              switch (pos){
-                case "top":
-                  style=getCardStyleForPosition(pos,index,cardElements.length+cardsDrawn)
-                  el.style.left=style.left
-                  break
-                case "left":
-                  style=getCardStyleForPosition(pos,index,cardElements.length+cardsDrawn)
-                  el.style.top=style.top
-                  break
-                case "right":
-                  style=getCardStyleForPosition(pos,index,cardElements.length+cardsDrawn)
-                  el.style.top=style.top
-                  break
+              switch (pos) {
+                case 'top':
+                  style = getCardStyleForPosition(pos, index, cardElements.length + cardsDrawn);
+                  el.style.left = style.left;
+                  break;
+                case 'left':
+                  style = getCardStyleForPosition(pos, index, cardElements.length + cardsDrawn);
+                  el.style.top = style.top;
+                  break;
+                case 'right':
+                  style = getCardStyleForPosition(pos, index, cardElements.length + cardsDrawn);
+                  el.style.top = style.top;
+                  break;
               }
 
-            })
+            });
 
             setAnimatingDrawCards((prev) => [...prev, ...drawAnimations]);
 
@@ -486,18 +612,17 @@ const getPageSubscriptions = (getCtx) => {
               setAnimatingDrawCards([]);
               console.log('[DRAW ANIMATION] Opponent animation complete');
 
-
               //  OPPONENTNÉL IS
               if (willReshuffle) {
                 const cardsToReshuffle = message.deckSize;
 
                 handleReshuffle(
-                    cardsToReshuffle-1,
-                    deckPosition,
-                    calculateReshuffleAnimation,
-                    setAnimatingReshuffle,
-                    setGameSession,
-                    message.deckSize,setDeckRotations
+                  cardsToReshuffle - 1,
+                  deckPosition,
+                  calculateReshuffleAnimation,
+                  setAnimatingReshuffle,
+                  setGameSession,
+                  message.deckSize, setDeckRotations,
                 );
               } else {
                 // Normál deckSize frissítés
@@ -511,28 +636,27 @@ const getPageSubscriptions = (getCtx) => {
         },
       },
 
-
-
-
       {
         destination: '/topic/game/' + getCtx().gameSession?.gameSessionId + '/played-cards',
         callback: (message) => {
-          const { gameSession,setSkippedPlayers}=getCtx()
-            //ace handling
+          const { gameSession, setSkippedPlayers } = getCtx();
+          //ace handling
 
-          if(message.newPlayedCards[0].rank==="ACE"){
-            console.log('visual only',message.newPlayedCards[0].rank)
-            const skippedVisual = computeSkippedPlayersVisual(message,gameSession);
+          if (message.newPlayedCards[0].rank === 'ACE') {
+            console.log('visual only', message.newPlayedCards[0].rank);
+            const skippedVisual = computeSkippedPlayersVisual(message, gameSession);
 
             // kiírás / debug
             console.log('visual only', skippedVisual);
-            setSkippedPlayers(skippedVisual)
+            setSkippedPlayers(skippedVisual);
 
           }
           console.log('[WS] played-cards incoming', message);
 
           const incoming = message?.newPlayedCards ?? [];
-          if (!incoming || incoming.length === 0) return;
+          if (!incoming || incoming.length === 0) {
+            return;
+          }
 
           const { setGameSession, playerSelf } = getCtx();
 
@@ -542,8 +666,8 @@ const getPageSubscriptions = (getCtx) => {
 
             // Ellenőrizzük hogy már van-e ilyen queue item (ugyanaz a playerId + hasonló timestamp)
             const alreadyExists = queue.some(item =>
-                item.playerId === message.playerId &&
-                Math.abs(item.receivedAt - Date.now()) < 1000 // 1 másodpercen belül
+              item.playerId === message.playerId &&
+              Math.abs(item.receivedAt - Date.now()) < 1000, // 1 másodpercen belül
             );
 
             if (alreadyExists) {
@@ -581,17 +705,18 @@ const getPageSubscriptions = (getCtx) => {
             ...(newRound !== undefined && { newRound }),
             gameData: {
               ...prev.gameData,
-              suitChangedTo:message.gameData.suitChangedTo,
-              noMoreCards:message.gameData.noMoreCards,
+              suitChangedTo: message.gameData.suitChangedTo,
+              noMoreCards: message.gameData.noMoreCards,
               drawStack: message.gameData.drawStack,
               finishedPlayers: message.gameData.finishedPlayers,
               isRoundFinished: message.gameData.isRoundFinished,
               lossCount: message.gameData.lossCount,
               lostPlayers: message.gameData.lostPlayers,
               skippedPlayers: message.gameData.skippedPlayers,
-              noMoreCardsNextDraw:message.gameData.noMoreCardsNextDraw,
+              noMoreCardsNextDraw: message.gameData.noMoreCardsNextDraw,
             },
-          }));}
+          }));
+        },
       },
       {
         destination: '/user/queue/game/turn',
@@ -625,9 +750,11 @@ const getPageSubscriptions = (getCtx) => {
       {
         destination: '/user/queue/game/end',
         callback: async (message) => {
-          const { setGameSession, setValidPlays, setPlayerSelf, setTurn, post, token, setUserCurrentStatus,setSelectedCards,setAnimatingCards,setAnimatingOwnCards,
-            setAnimatingDrawCards,setAnimatingReshuffle,setIsNewRound,setDeckRotations,animatingReshuffle} = getCtx();
-          console.log("gameEND",message,animatingReshuffle,setAnimatingReshuffle);
+          const {
+            setGameSession, setValidPlays, setPlayerSelf, setTurn, post, token, setUserCurrentStatus, setSelectedCards, setAnimatingCards, setAnimatingOwnCards,
+            setAnimatingDrawCards, setAnimatingReshuffle, setIsNewRound, setDeckRotations, animatingReshuffle,
+          } = getCtx();
+          console.log('gameEND', message, animatingReshuffle, setAnimatingReshuffle);
 
           window.location.reload();
           // setGameSession({
@@ -677,13 +804,13 @@ const getPageSubscriptions = (getCtx) => {
       {
         destination: '/user/queue/game/skip',
         callback: (message) => {
-          const { setSkipTurn,}=getCtx()
+          const { setSkipTurn } = getCtx();
           console.log(message);
           if (message.skipTurn && message.skippedPlayerId) {
             setSkipTurn({
               playerId: message.skippedPlayerId,
               seat: message.skippedPlayerSeat,
-              timestamp: Date.now()
+              timestamp: Date.now(),
             });
           }
         },
@@ -746,7 +873,7 @@ function UseSubscribeToTopicByPage({ page, currentRoomId }) {
     animatingReshuffle,
     setSkipTurn,
     skippedPlayers,
-    setSkippedPlayers
+    setSkippedPlayers,
   } = useContext(GameSessionContext);
   const { setRooms, joinRequests, setJoinRequests } = useContext(RoomsDataContext);
   const { showNotification } = useContext(NotificationContext);
@@ -757,6 +884,7 @@ function UseSubscribeToTopicByPage({ page, currentRoomId }) {
   const { logout } = useAuth();
 
   const isMobile = useMediaQuery('(max-width: 768px)');
+  const isTablet = useMediaQuery('(max-height: 768px) and (orientation: landscape)');
 
   // keep a ref with the latest context used by callbacks at runtime
   const contextRef = useRef({
@@ -779,6 +907,7 @@ function UseSubscribeToTopicByPage({ page, currentRoomId }) {
     calculateReshuffleAnimation,
     setAnimatingDrawCards,
     isMobile,
+    isTablet,
     setAnimatingReshuffle,
     setRooms,
     joinRequests,
@@ -790,7 +919,7 @@ function UseSubscribeToTopicByPage({ page, currentRoomId }) {
     setSkipTurn,
     skippedPlayers,
     setSkippedPlayers,
-    logout
+    logout,
   });
 
   // keep ref.current up to date when important pieces change
@@ -816,6 +945,7 @@ function UseSubscribeToTopicByPage({ page, currentRoomId }) {
       calculateReshuffleAnimation,
       setAnimatingDrawCards,
       isMobile,
+      isTablet,
       setAnimatingReshuffle,
       setRooms,
       joinRequests,
@@ -827,7 +957,7 @@ function UseSubscribeToTopicByPage({ page, currentRoomId }) {
       setSkipTurn,
       skippedPlayers,
       setSkippedPlayers,
-      logout
+      logout,
     };
   }, [
     userCurrentStatus,
@@ -849,6 +979,7 @@ function UseSubscribeToTopicByPage({ page, currentRoomId }) {
     calculateReshuffleAnimation,
     setAnimatingDrawCards,
     isMobile,
+    isTablet,
     setAnimatingReshuffle,
     setRooms,
     joinRequests,
@@ -860,7 +991,7 @@ function UseSubscribeToTopicByPage({ page, currentRoomId }) {
     setSkipTurn,
     skippedPlayers,
     setSkippedPlayers,
-    logout
+    logout,
   ]);
 
   useEffect(() => {

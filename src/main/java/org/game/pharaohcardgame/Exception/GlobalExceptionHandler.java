@@ -40,6 +40,7 @@ public class GlobalExceptionHandler {
         return createErrorResponse(HttpStatus.NOT_FOUND, "ROOM_NOT_FOUND", ex.getMessage());
     }
 
+
     @ExceptionHandler(JwtExpired.class)
     public ResponseEntity<ErrorResponse> handleRoomNotFoundException(JwtExpired ex, WebRequest request) {
         log.warn("jwt expired: {}", ex.getMessage());

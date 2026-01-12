@@ -1,5 +1,6 @@
 package org.game.pharaohcardgame.Controller;
 
+import jakarta.validation.Valid;
 import org.game.pharaohcardgame.Authentication.JwtService;
 import org.game.pharaohcardgame.Model.DTO.Request.LoginRequest;
 import org.game.pharaohcardgame.Model.DTO.Request.RegisterRequest;
@@ -28,30 +29,32 @@ public class AuthenticationController {
 
 
     @PostMapping("/refreshToken")
-    public ResponseEntity<RefreshResponse> refreshToken(HttpServletRequest request, HttpServletResponse response)   {
-     return authenticationService.refreshToken(request,response);
+    public RefreshResponse refreshToken(HttpServletRequest request, HttpServletResponse response) {
+        return authenticationService.refreshToken(request, response);
     }
 
 
     @PostMapping("/set-refresh-cookie")
-    public ResponseEntity<String> setRefreshTokenCookie(HttpServletResponse response, @RequestBody SetRefreshTokenCookieRequest request){
-        return authenticationService.setRefreshTokenCookie(response,request);
+    public ResponseEntity<String> setRefreshTokenCookie(HttpServletResponse response, @RequestBody SetRefreshTokenCookieRequest request) {
+        return authenticationService.setRefreshTokenCookie(response, request);
     }
 
 
     @PostMapping("/register")
-    public ResponseEntity<RegisterResponse> register(@RequestBody RegisterRequest request) {
+    public ResponseEntity<RegisterResponse> register(@Valid @RequestBody RegisterRequest request) {
 
         return authenticationService.register(request);
     }
+
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request,
                                                HttpServletResponse response) {
-        return authenticationService.login(request,response);
+        return authenticationService.login(request, response);
     }
+
     @PostMapping("/logout")
     public ResponseEntity<String> logout(HttpServletRequest request, HttpServletResponse response) {
-        return authenticationService.logout(request,response);
+        return authenticationService.logout(request, response);
     }
 
 }

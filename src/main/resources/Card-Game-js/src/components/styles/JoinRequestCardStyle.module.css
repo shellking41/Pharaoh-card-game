@@ -1,0 +1,118 @@
+.card {
+  background: var(--page-main-bright-color);
+  border-radius: 12px;
+  padding: 1.25rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+
+  transition: all 0.3s ease;
+  margin-bottom: 1rem;
+}
+
+.card:hover {
+  border-color: #667eea;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgb(var(--main-bright-color)) 0%, rgb(var(--main-color)) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.username {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: white;
+  margin: 0;
+}
+
+.messageSection {
+  margin-bottom: 1rem;
+}
+
+.messageLabel {
+  font-size: 0.85rem;
+  color: white;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+  display: block;
+}
+
+.message {
+  background: #1a52a0;
+  padding: 0.75rem;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  color: white;
+  border-left: 3px solid rgb(var(--main-bright-color));
+  font-style: italic;
+}
+
+.actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.button {
+  flex: 1;
+  padding: 0.75rem 1.25rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.confirmButton {
+  background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(72, 187, 120, 0.3);
+}
+
+.confirmButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(72, 187, 120, 0.4);
+}
+
+.declineButton {
+  background: linear-gradient(135deg, #fc8181 0%, #f56565 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(252, 129, 129, 0.3);
+}
+
+.declineButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(252, 129, 129, 0.4);
+}
+
+.button:active {
+  transform: translateY(0);
+}
+
+@media (max-width: 480px) {
+  .actions {
+    flex-direction: column;
+  }
+
+  .button {
+    width: 100%;
+  }
+}

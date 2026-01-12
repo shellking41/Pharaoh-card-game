@@ -10,9 +10,11 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Builder
 public class LoginResponse {
-	SuccessMessageResponse status;
-	UserCurrentStatus userCurrentStatus;
-	private String accessToken;
+    SuccessMessageResponse status;
+    boolean success;
+    String message;
+    UserCurrentStatus userCurrentStatus;
+    private String accessToken;
 
 
 }

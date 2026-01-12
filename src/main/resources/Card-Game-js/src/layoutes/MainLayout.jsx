@@ -7,13 +7,15 @@ import React, {
 } from 'react';
 import { Outlet, useNavigate, useParams } from 'react-router-dom';
 import style from './styles/MainLayoutStyle.module.css';
-import { Box, CircularProgress, Container, Tab, Tabs } from '@mui/material';
-import userContext, { UserContext } from '../Contexts/UserContext.jsx';
+import additionalStyles from './styles/MainLayoutAdditionalStyle.module.css';
+import { Box, Container } from '@mui/material';
+import { UserContext } from '../Contexts/UserContext.jsx';
 import { NotificationContext } from '../Contexts/NotificationContext.jsx';
 import Notification from '../components/Notification.jsx';
 import { StompContext } from '../Contexts/StompContext.jsx';
 import { GameSessionContext } from '../Contexts/GameSessionContext.jsx';
-import useWebsocket from "../hooks/useWebsocket.js";
+import useWebsocket from '../hooks/useWebsocket.js';
+import { useAuth } from '../hooks/useAuth.js';
 
 function MainLayout() {
   const [kikapcs, setKikapcs] = useState(true);
@@ -25,52 +27,40 @@ function MainLayout() {
   const { notifications, removeNotification } = useContext(NotificationContext);
 
   const navRef = useRef(0);
+  const { logout } = useAuth();
 
   const navigate = useNavigate();
-
-
-
 
   const handleChange = (event, newValue) => {
     navRef.current = newValue;
     switch (newValue) {
       case 0:
-        // ha newValue === 0
         navigate('/');
         break;
-
       case 1:
-        // ha newValue === 1
         navigate('/about');
         break;
-
       case 2:
-        // ha newValue === 2
         navigate('/login');
         break;
-
       default:
-        // ha egyik case sem található
         navigate('/not-found');
         break;
     }
   };
 
   useLayoutEffect(() => {
-
-    //ha nincs gamesession akkor iranyitja at
     if (!gameSession.gameSessionId) {
-      //ha van room akkor oda
-      const roomId = userCurrentStatus.currentRoom?.roomId ? userCurrentStatus.currentRoom.roomId : userCurrentStatus.currentRoomId;
+      const roomId = userCurrentStatus.currentRoom?.roomId ?
+        userCurrentStatus.currentRoom.roomId :
+        userCurrentStatus.currentRoomId;
+
       if (roomId) {
         navigate('/room/' + roomId);
-
-
         return;
       }
       navigate('/');
     }
-
   }, [gameSession, userCurrentStatus]);
 
   useEffect(() => {
@@ -81,22 +71,36 @@ function MainLayout() {
 
   useEffect(() => {
     console.log(userCurrentStatus);
-
   }, [userCurrentStatus]);
+
   return (
     <>
-      <header>
-
+      <header className={additionalStyles.header}>
+        <div className={additionalStyles.logoSection}>
+          <div className={additionalStyles.logo}>Game Hub</div>
+        </div>
+        {userCurrentStatus?.userInfo?.userId && (<>
+            <div className={additionalStyles.userName}>
+              {userCurrentStatus?.userInfo?.username}
+            </div>
+            <button
+              className={additionalStyles.logoutButton}
+              onClick={logout}
+            >
+              Logout
+            </button>
+          </>
+        )}
       </header>
 
-      <div>
+      <div className={additionalStyles.notificationsContainer}>
         {notifications && notifications.map((notification) => (
           <Notification {...notification} key={notification.id}/>
         ))}
       </div>
-      <main className={style.content}>
-        <Container
-        >
+
+      <main className={`${style.content} ${additionalStyles.content}`}>
+        <Container>
           <Box>
             {kikapcs && (
               <div className={style.mainContainer}>
@@ -106,13 +110,6 @@ function MainLayout() {
           </Box>
         </Container>
       </main>
-
-      <button
-        className={style.toggleButton}
-        onClick={() => setKikapcs(prevState => !prevState)}
-      >
-        {kikapcs ? 'Tartalom elrejtése' : 'Tartalom megjelenítése'}
-      </button>
     </>
   );
 }

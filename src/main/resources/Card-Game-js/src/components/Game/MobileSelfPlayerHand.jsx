@@ -1,100 +1,148 @@
-import React, {useContext, useEffect, useState} from 'react';
+import React, {
+  useContext,
+  useEffect,
+  useState,
+  useRef,
+  forwardRef,
+  useImperativeHandle,
+} from 'react';
 import { ChevronUp, ChevronDown } from 'lucide-react';
-import HungarianCard from "./HungarianCard.jsx";
-import {GameSessionContext} from "../../Contexts/GameSessionContext.jsx";
+import HungarianCard from './HungarianCard.jsx';
+import { GameSessionContext } from '../../Contexts/GameSessionContext.jsx';
 
-export  default function MobileSelfPlayerHand({
-                                  initialCards = [],
-                                  selectedCards = [],
-                                  handleCardClick = () => {},
-                                                  selectedCardsOrder = [],
-                                                  isAnimating
-                              }) {
-    const [cards, setCards] = useState(initialCards);
-    const [isOpen, setIsOpen] = useState(false);
-    const {turn}=useContext(GameSessionContext)
+const MobileSelfPlayerHand = forwardRef(({
+  initialCards = [],
+  selectedCards = [],
+  handleCardClick = () => {},
+  selectedCardsOrder = [],
+  isAnimating,
+  onOpenStateChange, // Új prop: callback az állapotváltozáshoz
+}, ref) => {
+  const [cards, setCards] = useState(initialCards);
+  const [isOpen, setIsOpen] = useState(false);
+  const { turn, animatingDrawCards } = useContext(GameSessionContext);
 
-   useEffect(() => {
+  const cardRefs = useRef({});
+  const clicked = useRef(false);
 
-        setCards(initialCards);
-    }, [initialCards]);
-    useEffect(() => {
-        setTimeout(()=>{
-            if(turn?.yourTurn){
-                setIsOpen(true)
-            }else{
-                setIsOpen(false)
-            }
-        },200)
+  // Expose getCardRefs method to parent component
+  useImperativeHandle(ref, () => ({
+    getCardRefs: () => cardRefs.current,
+    isOpen: () => isOpen, // Expose current open state
+  }));
 
-    }, [turn]);
+  useEffect(() => {
+    setCards(initialCards);
+  }, [initialCards]);
 
-    return (
-        <>
+  useEffect(() => {
+    const id = setTimeout(() => {
+      if (turn?.yourTurn) {
+        setIsOpen(true);
+      } else {
+        setIsOpen(false);
+      }
+    }, 1300);
 
-            <button
-                className={"toggle-button"}
-                onClick={() => setIsOpen(!isOpen)}
-                style={{
-                    position: 'absolute',
-                    bottom: isOpen ? '110px' : '10px',
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    zIndex: 1000,
-                    width: '60px',
-                    height: '40px',
-                    borderRadius: '20px 20px 0 0',
-                    backgroundColor: '#2c5f2d',
-                    border: '2px solid #1a3a1b',
-                    borderBottom: 'none',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'white',
-                    boxShadow: 'rgba(0, 0, 0, 0.3) 1px -8px 6px 0px',
-                    transition: 'bottom 0.3s ease-in-out'
-                }}
-            >
-                {isOpen ? <ChevronDown size={24} /> : <ChevronUp size={24} />}
-            </button>
+    if (clicked.current) {
+      clearTimeout(id);
+      clicked.current = false;
+    }
+  }, [turn, animatingDrawCards]);
 
-            {/* Cards Container */}
+  // Notify parent when isOpen changes
+  useEffect(() => {
+    if (onOpenStateChange) {
+
+      setTimeout(() => { onOpenStateChange(isOpen);}, 300);
+    }
+  }, [isOpen, onOpenStateChange]);
+
+  const handleToggle = () => {
+    clicked.current = true;
+    const newState = !isOpen;
+    setIsOpen(newState);
+
+    if (onOpenStateChange) {
+      onOpenStateChange(newState);
+
+    }
+  };
+
+  return (
+    <>
+      <button
+        className={'toggle-button'}
+        onClick={handleToggle}
+        style={{
+          position: 'absolute',
+          bottom: isOpen ? '110px' : '10px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 1000,
+          width: '60px',
+          height: '40px',
+          borderRadius: '20px 20px 0 0',
+          backgroundColor: 'rgb(var(--main-color))',
+          border: '2px solid #1a3a1b',
+          borderBottom: 'none',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'white',
+          boxShadow: 'rgba(0, 0, 0, 0.3) 1px -8px 6px 0px',
+          transition: 'bottom 0.3s ease-in-out',
+        }}
+      >
+        {isOpen ? <ChevronDown size={24}/> : <ChevronUp size={24}/>}
+      </button>
+
+      {/* Cards Container */}
+      <div
+        className="mobile-card-hand"
+        style={{
+          transform: isOpen ? 'translateY(0)' : 'translateY(100%)',
+          transition: 'transform 0.3s ease-in-out',
+          backgroundColor: 'rgb(var(--main-color))',
+          borderTop: '2px solid #1a3a1b',
+          paddingTop: '10px',
+          paddingBottom: '10px',
+        }}
+      >
+        {cards.map((card, index) => {
+          // Keressük meg a kártya sorszámát a selectedCardsOrder tömbben
+          const orderIndex = selectedCardsOrder.findIndex(c => c.cardId === card.cardId);
+          const orderNumber = orderIndex >= 0 ? orderIndex + 1 : null;
+
+          return (
             <div
-                className="mobile-card-hand"
-                style={{
-                    transform: isOpen ? 'translateY(0)' : 'translateY(100%)',
-                    transition: 'transform 0.3s ease-in-out',
-                    backgroundColor: 'rgba(44, 95, 45)',
-                    borderTop: '2px solid #1a3a1b',
-                    paddingTop: '10px',
-                    paddingBottom: '10px'
-                }}
+              key={card.cardId || index}
+              className="mobile-card-container"
+              ref={(el) => {
+                if (el) {
+                  cardRefs.current[card.cardId] = el;
+                }
+              }}
             >
-                {cards.map((card, index) => {
-                    // Keressük meg a kártya sorszámát a selectedCardsOrder tömbben
-                    const orderIndex = selectedCardsOrder.findIndex(c => c.cardId === card.cardId);
-                    const orderNumber = orderIndex >= 0 ? orderIndex + 1 : null;
-                    console.log("orderNumber",orderNumber)
-
-                    return (
-                        <div key={card.cardId || index} className="mobile-card-container">
-                            <div style={{ position: 'relative' }}>
-                                <HungarianCard
-                                    cardData={card}
-                                    ownCard={true}
-                                    isAnimating={isAnimating}
-                                    onClick={() => handleCardClick(card)}
-                                    isSelected={selectedCards.includes(card)}
-                                    // Adjuk át a sorszámot prop-ként
-                                    selectedOrderNumber={orderNumber}
-                                />
-                            </div>
-                        </div>
-                    );
-                })}
-
+              <div style={{ position: 'relative' }}>
+                <HungarianCard
+                  cardData={card}
+                  ownCard={true}
+                  isAnimating={isAnimating}
+                  onClick={() => handleCardClick(card)}
+                  isSelected={selectedCards.includes(card)}
+                  selectedOrderNumber={orderNumber}
+                />
+              </div>
             </div>
-        </>
-    );
-}
+          );
+        })}
+      </div>
+    </>
+  );
+});
+
+MobileSelfPlayerHand.displayName = 'MobileSelfPlayerHand';
+
+export default MobileSelfPlayerHand;

@@ -1,0 +1,184 @@
+.card {
+  background: #1a52a0;
+  border-radius: 20px;
+  padding: 2rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(10px);
+  min-width: 45%;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+
+.card:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.header {
+  margin-bottom: 1.75rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.15);
+}
+
+.roomName {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #fff;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  letter-spacing: 0.5px;
+}
+
+.roomIcon {
+  color: #fbbf24;
+  font-size: 1.5rem;
+  filter: drop-shadow(0 2px 4px rgba(251, 191, 36, 0.4));
+}
+
+.infoSection {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.75rem;
+  padding: 1.25rem;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.infoItem {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+  color: #e2e8f0;
+}
+
+.infoItem svg {
+  font-size: 1.25rem;
+  color: #93c5fd;
+  filter: drop-shadow(0 2px 4px rgba(147, 197, 253, 0.4));
+}
+
+.infoLabel {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #cbd5e0;
+  font-weight: 600;
+}
+
+.capacity {
+  font-weight: 700;
+  font-size: 1.25rem;
+  color: #fff;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  text-wrap: nowrap;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 25px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+}
+
+.statusBadge svg {
+  font-size: 0.625rem;
+}
+
+.available {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.occupied {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.joinButton {
+  width: 100%;
+  background: linear-gradient(135deg, rgb(var(--main-bright-color)) 0%, rgb(var(--main-bright-color)) 100%);
+  border: none;
+  color: white;
+  padding: 1rem 1.5rem;
+  border-radius: 12px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+.joinButton::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+
+.joinButton:hover::before {
+  width: 100%;
+  height: 300px;
+}
+
+.joinButton:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 30px rgba(102, 126, 234, 0.6);
+}
+
+.joinButton:active {
+  transform: translateY(-1px);
+}
+
+.joinButton:disabled {
+  background: linear-gradient(135deg, #64748b 0%, #475569 100%);
+  cursor: not-allowed;
+  box-shadow: none;
+  opacity: 0.6;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+@media (max-width: 480px) {
+
+  .card {
+    padding: 1.5rem;
+  }
+
+  .roomName {
+    font-size: 1.5rem;
+  }
+
+  .infoSection {
+    flex-direction: column;
+  }
+}

@@ -10,8 +10,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Builder
 public class RegisterResponse {
-	SuccessMessageResponse status;
-	private Long userId;
-	private String username;
+    boolean success;
+    String message;
+    private Long userId;
+    private String username;
 
 }

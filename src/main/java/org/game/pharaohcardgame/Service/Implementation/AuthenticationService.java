@@ -53,21 +53,21 @@ public class AuthenticationService implements IAuthenticationService {
     @Override
     @Transactional
 
-    public ResponseEntity<RefreshResponse> refreshToken(HttpServletRequest request, HttpServletResponse response) {
+    public RefreshResponse refreshToken(HttpServletRequest request, HttpServletResponse response) {
         try {
             String refreshToken = jwtService.extractTokenFromCookies(request, "refresh-token");
 
             if (refreshToken == null) {
-                throw new IllegalArgumentException("Refresh Token Not Found in cookies");
+                return responseMapper.toRefreshResponse(null);
             }
             if (!jwtService.isTokenValid(refreshToken, null)) {
-                throw new IllegalArgumentException("Token is not valid");
+                return responseMapper.toRefreshResponse(null);
             }
             var isTokenValid = tokensRepository.findByToken(refreshToken)
                     .map(t -> !t.isExpired() && !t.isRevoked())
                     .orElse(false);
-            if(!isTokenValid){
-                throw new IllegalArgumentException("Token is not valid");
+            if (!isTokenValid) {
+                return responseMapper.toRefreshResponse(null);
             }
 
             final Long userIdFromToken = jwtService.getUserIdFromToken(refreshToken);
@@ -82,7 +82,7 @@ public class AuthenticationService implements IAuthenticationService {
             }
 
             var accessToken = jwtService.generateToken(user.getId(), user.getName());
-           // revokeAllUserTokensExcept(user, refreshToken);
+            // revokeAllUserTokensExcept(user, refreshToken);
 
             Tokens tokens = Tokens.builder()
                     .user(user)
@@ -94,22 +94,22 @@ public class AuthenticationService implements IAuthenticationService {
 
             tokensRepository.save(tokens);
 
-            return ResponseEntity.ok(responseMapper.toRefreshResponse(accessToken));
+            return responseMapper.toRefreshResponse(accessToken);
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(responseMapper.toRefreshResponse(null));
+            return responseMapper.toRefreshResponse(null);
         }
     }
 
     @Override
     public ResponseEntity<String> setRefreshTokenCookie(HttpServletResponse response, SetRefreshTokenCookieRequest setRefreshTokenCookieRequest) {
-        String refreshToken=setRefreshTokenCookieRequest.getRefreshToken();
+        String refreshToken = setRefreshTokenCookieRequest.getRefreshToken();
 
 
         if (refreshToken == null) {
             return ResponseEntity.badRequest().body("Missing refresh token");
         }
 
-        User user = userRepository.findById(jwtService.getUserIdFromToken(refreshToken)).orElseThrow(()->new AuthenticationServiceException("user not found")) ;
+        User user = userRepository.findById(jwtService.getUserIdFromToken(refreshToken)).orElseThrow(() -> new AuthenticationServiceException("user not found"));
 
         var isTokenValid = tokensRepository.findByToken(refreshToken)
                 .map(t -> !t.isExpired() && !t.isRevoked())
@@ -191,7 +191,6 @@ public class AuthenticationService implements IAuthenticationService {
     }
 
 
-
     public ResponseEntity<String> logout(HttpServletRequest request, HttpServletResponse response) {
         try {
             final String authHeader = request.getHeader("Authorization");
@@ -237,21 +236,19 @@ public class AuthenticationService implements IAuthenticationService {
     }
 
     @Override
-    public User getAuthenticatedUser(){
-        Authentication authentication= SecurityContextHolder.getContext().getAuthentication();
+    public User getAuthenticatedUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
-        if(authentication==null || authentication instanceof AnonymousAuthenticationToken || !authentication.isAuthenticated()){
+        if (authentication == null || authentication instanceof AnonymousAuthenticationToken || !authentication.isAuthenticated()) {
             throw new EntityNotFoundException("User not found");
         }
 
         Long id = ((UserPrincipal) authentication.getPrincipal()).getUserId();
         return userRepository.findById(id)
-                .orElseThrow(()->new EntityNotFoundException("User not found"));
+                .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
 
     }
-
-
 
 
 }

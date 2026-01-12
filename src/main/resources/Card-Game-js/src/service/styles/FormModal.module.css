@@ -1,177 +1,236 @@
 .modal {
-    min-width: 550px;
-    position: fixed;
-    display: flex;
-    flex-direction: column;
-    height: 70dvh;
-    min-height: 500px;
-    top: 50%;
-    right: 50%;
-    transform: translate(50%, -50%);
-    background-color: black;
-    border-radius: 12px;
+  min-width: 550px;
+  position: fixed;
+  display: flex;
+  flex-direction: column;
+  
+  min-height: 500px;
+  top: 50%;
+  right: 50%;
+  transform: translate(50%, -50%);
+  background-color: var(--page-main-bright-color);
+  border-radius: 12px;
 }
 
 .exitButton {
-    width: 30px;
-    border: none;
-    background-color: black;
-    aspect-ratio: 1/1;
-    border-radius: 100%;
-    position: relative;
+  width: 30px;
+  border: none;
+  background-color: black;
+  aspect-ratio: 1/1;
+  border-radius: 100%;
+  position: relative;
 }
 
 .exitButton:hover,
 .exitButton:focus {
-    background-color: rgba(183, 183, 183, 0.34);
+  background-color: rgba(183, 183, 183, 0.34);
 }
 
 .exitButton:before {
-    content: "";
-    position: absolute;
-    width: 50%;
-    height: 2px;
-    background-color: white;
-    transform: rotateZ(45deg);
-    top: 50%;
-    right: 50%;
-    translate: 50% -50%;
+  content: "";
+  position: absolute;
+  width: 50%;
+  height: 2px;
+  background-color: white;
+  transform: rotateZ(45deg);
+  top: 50%;
+  right: 50%;
+  translate: 50% -50%;
 }
 
 .exitButton:after {
-    content: "";
-    position: absolute;
-    width: 50%;
-    height: 2px;
-    background-color: white;
-    transform: rotateZ(-45deg);
-    top: 50%;
-    right: 50%;
-    translate: 50% -50%;
+  content: "";
+  position: absolute;
+  width: 50%;
+  height: 2px;
+  background-color: white;
+  transform: rotateZ(-45deg);
+  top: 50%;
+  right: 50%;
+  translate: 50% -50%;
 }
 
 .formWrapper {
-    width: 80%;
-    margin: auto;
-    height: calc(100% - 30px);
-    padding: 3%;
+  width: 80%;
+  margin: auto;
+  height: calc(100% - 100px);
+  padding: 3%;
 }
 
 .formWrapper form {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    flex-direction: column;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-direction: column;
 }
 
 .inputSection {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
 .headerWrapper {
-    width: 100%;
-    display: flex;
-    justify-content: flex-start;
+  width: 100%;
+  display: flex;
+  justify-content: flex-start;
 }
 
 .header {
-    color: white;
+  color: white;
 }
 
 .inputWrapper {
-    background-color: black;
-    width: 100%;
-    height: 60px;
-    border: 1px solid green;
-    border-radius: calc(12px - 10px);
-    display: flex;
-    flex-direction: column;
-    position: relative;
-    padding: 2%;
+  background: #1a52a0;
+  width: 100%;
+  height: 60px;
+
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  padding: 2%;
+  border-radius: 8px;
+}
+.inputValid {
+  border: 2px solid green
+}
+/* Checkmark amikor valid az input */
+.inputValid:after {
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="green" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>');
+  content: "";
+  display: block;
+  width: 30px;
+  height: 100%;
+  background-repeat: no-repeat;
+  background-size: contain;
+  background-position: center;
+  position: absolute;
+  right: 5%;
+  top: 0;
 }
 
+/* X amikor error van */
+.inputError:after {
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="red" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>');
+  content: "";
+  display: block;
+  width: 30px;
+  height: 100%;
+  background-repeat: no-repeat;
+  background-size: contain;
+  background-position: center;
+  position: absolute;
+  right: 5%;
+  top: 0;
+}
+.loginLinkContainer {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  margin: auto;
+  align-items: center;
+  justify-content: center;
+}
+p {
+  color: white;
+}
+a {
+  color: rgb(var(--red-color));
+}
 .inputLabel {
-    width: 100%;
-    height: 50%;
-    color: gray;
-    font-size: 20px;
-    position: relative;
-    top: 25%;
-    transition: top 200ms ease-in-out, font-size 200ms ease-in-out;
+  width: 100%;
+  height: 50%;
+  color: #c5c4c4;
+  font-size: 20px;
+  font-weight: bolder;
+  position: relative;
+  top: 25%;
+  transition: top 200ms ease-in-out, font-size 200ms ease-in-out;
 }
 
 .input {
-    height: 50%;
-    width: 100%;
-    background-color: black;
-    border: none;
-    color: white;
-    outline: none;
+  height: 50%;
+  width: 100%;
+  background: #1a52a0;
+  border: none;
+  color: white;
+  outline: none;
 }
 
 .inputError {
-    border: 1px solid red;
+  border: 2px solid red;
 }
 
 .input:-webkit-autofill {
-    -webkit-box-shadow: 0 0 0px 1000px #000000 inset !important;
-    -webkit-text-fill-color: #ffffff !important;
-    transition: background-color 5000s ease-in-out 0s;
+  -webkit-box-shadow: 0 0 0px 1000px #1a52a0 inset !important;
+  -webkit-text-fill-color: #fff !important;
+  transition: background-color 5000s ease-in-out 0s;
 }
 
 .inputWrapper.inputError .inputLabel {
-    color: red;
+  color: red;
 }
 
 .inputWrapper:has(.input:focus) .inputLabel {
-    color: #1DA1F2;
-    top: 0;
-    font-size: 15px;
-    transition: top 200ms ease-in-out, font-size 200ms ease-in-out;
+  color: #1da1f2;
+  top: 0;
+  font-size: 15px;
+  transition: top 200ms ease-in-out, font-size 200ms ease-in-out;
 }
 
 .inputWrapper:has(.input:not(:placeholder-shown)) .inputLabel {
-    top: 0;
-    font-size: 15px;
-    transition: top 200ms ease-in-out, font-size 200ms ease-in-out;
+  top: 0;
+  font-size: 15px;
+  transition: top 200ms ease-in-out, font-size 200ms ease-in-out;
 }
 
 .inputWrapper:has(.input:-webkit-autofill) .inputLabel {
-    top: 0;
-    font-size: 15px;
-    transition: top 200ms ease-in-out, font-size 200ms ease-in-out;
+  top: 0;
+  font-size: 15px;
+  transition: top 200ms ease-in-out, font-size 200ms ease-in-out;
 }
 
 .inputWrapper:has(.input:focus) {
-    border: 1px solid blue;
+  border: 2px solid blue;
 }
 
 .submitButtonWrapper {
-    width: 100%;
-    display: flex;
-    justify-content: center;
-    padding: 10%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: center;
+  padding: 10%;
+
 }
 
 .submitButton {
-    width: 60%;
-    aspect-ratio: 6/1;
-    background-color: white;
-    border: none;
-    outline-color: blue;
-    border-radius: 12px;
+  width: 60%;
+
+  aspect-ratio: 4/1;
+  background-color: white;
+  border: none;
+  outline-color: blue;
+  border-radius: 12px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
 }
 
 @media (max-width: 768px) {
-    .modal {
-        width: 100%;
-        height: 100dvh;
-        border-radius: 0;
-        min-width: 0;
-    }
+  .modal {
+    width: 100%;
+    height: 80dvh;
+    border-radius: 0;
+    min-width: 0;
+  }
+  .formWrapper form {
+
+    justify-content: center;
+    gap: 50px;
+
+  }
+
 }

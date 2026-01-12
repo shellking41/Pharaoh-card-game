@@ -1,56 +1,160 @@
-/* HomeStyle.module.css */
+.containerTop {
+  background: var(--page-main-bright-color);
+  padding: 2rem;
+  width: 50%;
+  margin: 20px auto auto;
+  border-radius: 16px 16px 0 0;
 
+  box-shadow: 0px -9px 8px 0px rgba(0, 0, 0, 0.2);
+
+}
 .container {
-    display: flex;
-    flex-wrap: wrap;
+  position: relative;
+}
+.containerBottom {
+  width: 80%;
+  margin: auto;
+  padding: 1rem;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
 
+  border-radius: 16px;
+  background: var(--page-main-bright-color);
+
+
+}
+.header {
+  text-align: center;
+  margin-bottom: 2rem;
+  color: white;
+}
+
+.title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.subtitle {
+  font-size: 1.1rem;
+  opacity: 0.9;
+  margin-bottom: 1.5rem;
+}
+
+.refreshButton {
+  background: rgb(var(--red-brigther-color));
+  border: none;
+  color: white;
+  padding: 0.75rem 2rem;
+  border-radius: 12px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(245, 87, 108, 0.4);
+
+}
+
+.refreshButton:hover:not(:disabled) {
+  background: rgb(236, 119, 119);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(236, 119, 119, 0.6);
+}
+
+.refreshButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.roomsSection {
+  max-width: 1200px;
+  margin: 0 auto 2rem;
+}
+
+.roomsGrid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+}
+
+.loadingContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+}
+
+.emptyState {
+  text-align: center;
+  padding: 3rem;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+  color: white;
+}
+
+.emptyState h3 {
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.emptyState p {
+  opacity: 0.8;
+}
+
+.createSection {
+  max-width: 400px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.createButton {
+  background: rgba(var(--main-bright-color), 0.3);
+  border: 2px solid rgba(var(--main-bright-color));
+  color: white;
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+
+  width: 100%;
+}
+
+.createButton:hover {
+  transform: translateY(-2px);
+  background: rgba(var(--main-bright-color), 1);
+
+  box-shadow: 0 6px 20px rgba(var(--main-bright-color), 0.6);
+}
+
+.createButton:active {
+  transform: translateY(0);
+}
+
+@media (max-width: 768px) {
+
+  .containerTop {
     width: 100%;
-    max-width: 1800px;
-
-    gap: 1rem;
-    padding: 1rem;
-}
-
-.posts {
+    margin: 0;
+  }
+  .containerBottom {
+    border-radius: 0 0 16px 16px;
     width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 1rem;
-    flex-direction: column;
+    margin: 0;
+
+  }
+  .title {
+    font-size: 2rem;
+  }
+
+  .roomsGrid {
+    grid-template-columns: 1fr;
     gap: 1rem;
-
-}
-
-.profile, .followers, .following {
-    box-shadow: var(--base-shadow);
-    border-radius: var(--base-radius);
-}
-
-.followWrapper {
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-}
-
-.followers, .following {
-    height: 40%;
-
-}
-
-/* Asztali nézet */
-@media (min-width: 768px) {
-    .profile {
-        width: 25%;
-    }
-
-    .posts {
-        width: calc(50% - 3rem);
-        overflow-y: auto;
-        height: 100%;
-    }
-
-    .followWrapper {
-        width: 25%;
-    }
+  }
 }

@@ -87,16 +87,20 @@ public class ResponseMapper {
 
     // Authentication response mappings
     public RegisterResponse toRegisterResponse(User user, boolean success, String message) {
+
         return RegisterResponse.builder()
-                .status(createSuccessResponse(success, message))
+                .message(message)
+                .success(success)
                 .userId(user != null ? user.getId() : null)
                 .username(user != null ? user.getName() : null)
                 .build();
     }
 
     public LoginResponse toLoginResponse(User user, String accessToken, boolean success, String message) {
+        SuccessMessageResponse successResponse = createSuccessResponse(success, message);
         return LoginResponse.builder()
-                .status(createSuccessResponse(success, message))
+                .success(successResponse.getSuccess())
+                .message(successResponse.getMessage())
                 .userCurrentStatus(toUserCurrentStatus(user, success))
                 .accessToken(accessToken)
                 .build();
@@ -264,6 +268,7 @@ public class ResponseMapper {
                 .toList();
 
     }
+
     public DrawCardResponse toDrawCardResponse(GameState gameState, List<Card> drawnCards, Long ownPlayerId, Integer deckSize, Integer playedCardsSize, int drawCardsLength, Long playerId) {
 
         Map<Long, Integer> otherPlayersCardCount = gameState.getPlayerHands().entrySet()
@@ -287,7 +292,7 @@ public class ResponseMapper {
                 .gameData(gameState.getGameData())
                 .playedCardsSize(playedCardsSize)
                 .drawCardsLength(drawCardsLength)
-                .reshuffled(reshuffled) 
+                .reshuffled(reshuffled)
                 .build();
     }
 

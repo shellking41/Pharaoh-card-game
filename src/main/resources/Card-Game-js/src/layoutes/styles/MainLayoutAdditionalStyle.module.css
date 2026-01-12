@@ -1,0 +1,85 @@
+/* Kiegészítő stílusok a MainLayout-hoz */
+
+.header {
+  background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
+  padding: 1rem 2rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logoSection {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.userName {
+  color: white;
+}
+.logo {
+  font-size: 1.5rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, rgb(var(--main-bright-color)) 0%, rgb(var(--main-color)) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.logoutButton {
+  background: rgba(var(--red-brigther-color), 0.9);
+  border: none;
+  color: white;
+  padding: 0.625rem 1.25rem;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(245, 101, 101, 0.3);
+}
+
+.logoutButton:hover {
+  background: rgba(245, 101, 101, 1);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(245, 101, 101, 0.4);
+}
+
+.logoutButton:active {
+  transform: translateY(0);
+}
+
+.notificationsContainer {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.content {
+  min-height: calc(100vh - 80px);
+  padding: 0;
+}
+
+.mainContainer {
+  width: 100%;
+  min-height: calc(100vh - 80px);
+}
+
+@media (max-width: 768px) {
+  .header {
+    padding: 1rem;
+  }
+
+  .logo {
+    font-size: 1.25rem;
+  }
+
+  .notificationsContainer {
+    left: 1rem;
+    right: 1rem;
+  }
+}

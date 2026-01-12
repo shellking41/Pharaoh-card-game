@@ -1,69 +1,117 @@
-import React, {useContext, useState} from 'react'
-import {Box, Modal} from "@mui/material";
-import useWebsocket from "../hooks/useWebsocket.js";
-import {UserContext} from "../Contexts/UserContext.jsx";
-import {NotificationContext} from "../Contexts/NotificationContext.jsx";
+import React, { useContext, useState } from 'react';
+import { Modal } from '@mui/material';
+import useWebsocket from '../hooks/useWebsocket.js';
+import { UserContext } from '../Contexts/UserContext.jsx';
+import { NotificationContext } from '../Contexts/NotificationContext.jsx';
+import styles from './styles/JoinRoomModalStyle.module.css';
 
-function JoinRoomModal({setOpenModal, roomAttributes, openModal}) {
-    const {subscribe, sendMessage} = useWebsocket();
+function JoinRoomModal({ setOpenModal, roomAttributes, openModal }) {
+  const { subscribe, sendMessage } = useWebsocket();
 
-    const {userCurrentStatus, setUserCurrentStatus} = useContext(UserContext);
-    const {showNotification} = useContext(NotificationContext);
+  const { userCurrentStatus, setUserCurrentStatus } = useContext(UserContext);
+  const { showNotification } = useContext(NotificationContext);
 
-    const [roomPassword, setRoomPassword] = useState("");
-    const [message, setMessage] = useState("");
+  const [roomPassword, setRoomPassword] = useState('');
+  const [message, setMessage] = useState('');
 
-    const joinRoom = async (roomId) => {
+  const joinRoom = async (roomId) => {
+    try {
+      sendMessage('/app/join-room-request', {
+        roomId: roomId,
+        roomPassword,
+        username: userCurrentStatus.userInfo.username,
+        message,
+        userId: userCurrentStatus.userInfo.userId,
+      });
 
-
-        try {
-            // await subscribe("/user/queue/join-response", (message) => {
-            //     console.log('Chat message:', message);
-            //
-            //     if (message.confirmed === true) {
-            //         showNotification(message.message, "success");
-            //         setUserInfo((prev) => ({...prev, currentRoom: message.currentRoom}))
-            //
-            //         return
-            //     } else if (message.confirmed === false) {
-            //         showNotification(message.message, "error");
-            //     }
-            //
-            //     showNotification(message.message, message.success ? "success" : "error");
-            //
-            // })
-
-            sendMessage("/app/join-room-request", {
-                roomId: roomId,
-                roomPassword,
-                username: userCurrentStatus.userInfo.username,
-                message,
-                userId: userCurrentStatus.userInfo.userId
-            })
-        } catch (e) {
-            console.error("Something went wrong", e)
-        }
-
-
+      setOpenModal(false);
+      setRoomPassword('');
+      setMessage('');
+    } catch (e) {
+      console.error('Something went wrong', e);
     }
-    return (
-        <Modal
-            open={openModal}
-            aria-labelledby="join-modal-title"
-            aria-describedby="join-modal-description"
-        >
-            <Box>
-                <button onClick={() => setOpenModal(false)}>close</button>
-                <span>capacity: {roomAttributes.capacity}</span>
-                <h1>To join {roomAttributes.roomName}, you have to type the password</h1>
-                <label htmlFor={"room-password"}>Room password</label>
-                <input type={"password"} name={"room-password"} onChange={(e) => setRoomPassword(e.target.value)}/>
-                <label htmlFor={"message"}>Message to the Admin</label>
-                <input type={"text"} name={"message"} onChange={(e) => setMessage(e.target.value)}/>
-                <button onClick={() => joinRoom(roomAttributes.roomId)}>join</button>
-            </Box>
-        </Modal>
-    )
+  };
+
+  return (
+    <Modal
+      open={openModal}
+      onClose={() => setOpenModal(false)}
+      aria-labelledby="join-modal-title"
+      aria-describedby="join-modal-description"
+    >
+      <div className={styles.modalBox}>
+        <div className={styles.header}>
+          <div className={styles.titleSection}>
+                        <span className={styles.capacity}>
+                            Capacity: {roomAttributes.capacity}
+                        </span>
+            <h1 className={styles.title}>
+              Join <span
+              className={styles.roomName}>{roomAttributes.roomName}</span>
+            </h1>
+          </div>
+          <button
+            className={styles.closeButton}
+            onClick={() => setOpenModal(false)}
+          >
+            ×
+          </button>
+        </div>
+
+        <div className={styles.form}>
+          <div className={styles.formGroup}>
+            <label
+              className={`${styles.inputWrapper} `}>
+              <label htmlFor="room-password" className={styles.inputLabel}>
+                Room Password
+              </label>
+              <input
+                type="password"
+                id="room-password"
+                name="room-password"
+                className={styles.input}
+                placeholder=""
+                value={roomPassword}
+                onChange={(e) => setRoomPassword(e.target.value)}
+              />
+
+            </label>
+            <span className={styles.helperText}>
+                            Required to join this room
+                        </span>
+          </div>
+
+          <div className={styles.formGroup}>
+            <label
+              className={`${styles.inputWrapper} `}>
+              <label htmlFor="message" className={styles.inputLabel}>
+                Message to Admin (Optional)
+              </label>
+              <input
+                id="message"
+                name="message"
+                className={styles.input}
+                placeholder=""
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+              />
+
+            </label>
+            <span className={styles.helperText}>
+                            Introduce yourself or explain why you want to join
+                        </span>
+          </div>
+
+          <button
+            className={styles.joinButton}
+            onClick={() => joinRoom(roomAttributes.roomId)}
+          >
+            Request to Join
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
 }
 
-export default JoinRoomModal
+export default JoinRoomModal;

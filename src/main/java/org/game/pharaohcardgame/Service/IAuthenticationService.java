@@ -13,14 +13,18 @@ import org.springframework.http.ResponseEntity;
 
 public interface IAuthenticationService {
 
-    ResponseEntity<RefreshResponse> refreshToken(
+    RefreshResponse refreshToken(
             HttpServletRequest request,
             HttpServletResponse response
     );
 
     ResponseEntity<String> setRefreshTokenCookie(HttpServletResponse response, SetRefreshTokenCookieRequest setRefreshTokenCookieRequest);
+
     ResponseEntity<RegisterResponse> register(RegisterRequest request);
-     ResponseEntity<LoginResponse> login(LoginRequest request, HttpServletResponse response) ;
+
+    ResponseEntity<LoginResponse> login(LoginRequest request, HttpServletResponse response);
+
     ResponseEntity<String> logout(HttpServletRequest request, HttpServletResponse response);
+
     User getAuthenticatedUser();
 }

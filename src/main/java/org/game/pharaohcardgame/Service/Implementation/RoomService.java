@@ -2,13 +2,16 @@ package org.game.pharaohcardgame.Service.Implementation;
 
 import org.game.pharaohcardgame.Authentication.JwtService;
 import org.game.pharaohcardgame.Authentication.UserPrincipal;
+import org.game.pharaohcardgame.Enum.GameStatus;
 import org.game.pharaohcardgame.Exception.RoomNotFoundException;
 import org.game.pharaohcardgame.Exception.UserNotInRoomException;
 import org.game.pharaohcardgame.Model.DTO.Request.*;
 import org.game.pharaohcardgame.Model.DTO.Response.*;
 import org.game.pharaohcardgame.Model.DTO.ResponseMapper;
+import org.game.pharaohcardgame.Model.GameSession;
 import org.game.pharaohcardgame.Model.Room;
 import org.game.pharaohcardgame.Model.User;
+import org.game.pharaohcardgame.Repository.GameSessionRepository;
 import org.game.pharaohcardgame.Repository.RoomRepository;
 import org.game.pharaohcardgame.Repository.TokensRepository;
 import org.game.pharaohcardgame.Repository.UserRepository;
@@ -57,6 +60,7 @@ public class RoomService implements IRoomService {
     private final IUserService userService;
     private final IAuthenticationService authenticationService;
     private final CacheManager cacheManager;
+    private final GameSessionRepository gameSessionRepository;
 
 
     @Override
@@ -72,28 +76,28 @@ public class RoomService implements IRoomService {
 
     @Override
     @Transactional
+
     public void joinRoomRequest(JoinRoomRequest joinRoomRequest, StompHeaderAccessor accessor) {
         UserPrincipal principal = (UserPrincipal) accessor.getUser();
         String userId = null;
 
         try {
-	        if (principal != null) {
-		        userId = principal.getUserId().toString();
-	        }
-            else{
-               throw new RuntimeException("User not authenticated");
+            if (principal != null) {
+                userId = principal.getUserId().toString();
+            } else {
+                throw new RuntimeException("User not authenticated");
             }
 
-	        Room room = roomRepository.findById(joinRoomRequest.getRoomId())
+            Room room = roomRepository.findById(joinRoomRequest.getRoomId())
                     .orElseThrow(() -> new RoomNotFoundException("Room is not found"));
 
+            User user = userRepository.findById(Long.valueOf(userId))
+                    .orElseThrow(() -> new RuntimeException("User not found"));
 
-           User user=userRepository.findById(Long.valueOf(userId))
-                   .orElseThrow(()-> new RuntimeException("User not found"));
+            boolean isAlreadyParticipant = user != null && user.getCurrentRoom() != null &&
+                    user.getCurrentRoom().getRoomId().equals(joinRoomRequest.getRoomId());
 
-            boolean isAlreadyParticipant = user != null && user.getCurrentRoom() != null && user.getCurrentRoom().getRoomId().equals(joinRoomRequest.getRoomId());
-
-	        if (isAlreadyParticipant) {
+            if (isAlreadyParticipant) {
                 SuccessMessageResponse response = responseMapper.createSuccessResponse(
                         false, "You are already a participant in this room");
                 simpMessagingTemplate.convertAndSendToUser(
@@ -104,7 +108,7 @@ public class RoomService implements IRoomService {
                 return;
             }
 
-            if(isRoomFull(room)){
+            if (isRoomFull(room)) {
                 SuccessMessageResponse response = responseMapper.createSuccessResponse(
                         false, "Room is full");
                 simpMessagingTemplate.convertAndSendToUser(
@@ -114,23 +118,40 @@ public class RoomService implements IRoomService {
                 );
                 return;
             }
-            if(!room.isActive()){
+
+            if (!room.isActive()) {
                 SuccessMessageResponse response = responseMapper.createSuccessResponse(
                         false, "Room is not active anymore");
                 simpMessagingTemplate.convertAndSendToUser(
                         userId,
                         "/queue/join-response",
                         response);
+                return;
+            }
+
+            // ÚJ ELLENŐRZÉS: Van-e már elindult játék a szobában?
+            boolean hasActiveOrWaitingGame = gameSessionRepository.existsByRoomAndGameStatus(room, GameStatus.IN_PROGRESS) ||
+                    gameSessionRepository.existsByRoomAndGameStatus(room, GameStatus.WAITING);
+
+            if (hasActiveOrWaitingGame) {
+                SuccessMessageResponse response = responseMapper.createSuccessResponse(
+                        false, "Cannot join - game has already started or is waiting to start");
+                simpMessagingTemplate.convertAndSendToUser(
+                        userId,
+                        "/queue/join-response",
+                        response
+                );
+                return;
             }
 
             if (!passwordEncoder.matches(joinRoomRequest.getRoomPassword(), room.getPassword())) {
                 throw new RuntimeException("Room password is not correct");
             }
+
             User gameMaster = room.getGamemaster();
             if (gameMaster == null) {
                 throw new EntityNotFoundException("Game master not found");
             }
-
 
             if (simpUserRegistry.getUser(gameMaster.getId().toString()) != null) {
                 JoinRequestResponse joinRequest = responseMapper.toJoinRequestResponse(
@@ -146,7 +167,7 @@ public class RoomService implements IRoomService {
                         joinRequest
                 );
 
-                log.info("Join request sent to game master id: {} ",gameMaster.getId());
+                log.info("Join request sent to game master id: {} ", gameMaster.getId());
             } else {
                 SuccessMessageResponse response = responseMapper.createSuccessResponse(
                         false, "Game master currently is not available");
@@ -191,15 +212,14 @@ public class RoomService implements IRoomService {
             }
     )
     @Transactional
-    public Map<String, Object> confirmOrDeclineJoin(ConfirmOrDeclineJoin confirmOrDeclineJoin,StompHeaderAccessor accessor) {
+    public Map<String, Object> confirmOrDeclineJoin(ConfirmOrDeclineJoin confirmOrDeclineJoin, StompHeaderAccessor accessor) {
 
-
-        if(accessor.getUser()==null){
+        if (accessor.getUser() == null) {
             throw new EntityNotFoundException("User not found");
         }
 
-        User gamemaster=userRepository.findById(Long.valueOf(accessor.getUser().getName()))
-                .orElseThrow(()->new EntityNotFoundException("User not found"));
+        User gamemaster = userRepository.findById(Long.valueOf(accessor.getUser().getName()))
+                .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
         Room room = roomRepository.findByIdWithParticipants(confirmOrDeclineJoin.getRoomId())
                 .orElseThrow(() -> new RoomNotFoundException("RoomPage is not found"));
@@ -207,10 +227,9 @@ public class RoomService implements IRoomService {
         User user = userRepository.findById(confirmOrDeclineJoin.getConnectingUserId())
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
-       if(room.getGamemaster() == null || !(room.getGamemaster().getId().equals(gamemaster.getId())))
-       {
-           throw new AccessDeniedException("User is not the gamemaster");
-       }
+        if (room.getGamemaster() == null || !(room.getGamemaster().getId().equals(gamemaster.getId()))) {
+            throw new AccessDeniedException("User is not the gamemaster");
+        }
 
         //cache evict
         Cache cache = cacheManager.getCache("userStatus");
@@ -218,36 +237,132 @@ public class RoomService implements IRoomService {
             cache.evict("userStatus_" + confirmOrDeclineJoin.getConnectingUserId());
         }
 
-        ConfirmOrDeclineJoinResponse response;
+
+        SuccessMessageResponse response;
+        ConfirmOrDeclineJoinResponse responseToPlayer;
         Map<String, Object> resultMessage = new HashMap<>();
 
         if (confirmOrDeclineJoin.getConfirm()) {
+            // ✅ ELLENŐRZÉS: A user már bent van-e másik szobában?
+            if (user.getCurrentRoom() != null) {
+                // Ha már bent van másik szobában
+                if (!user.getCurrentRoom().getRoomId().equals(room.getRoomId())) {
+                    // User már másik szobában van
+                    response = responseMapper.createSuccessResponse(
+                            false,
+                            "User has already joined another room"
+                    );
+
+                    simpMessagingTemplate.convertAndSendToUser(
+                            String.valueOf(confirmOrDeclineJoin.getConnectingUserId()),
+                            "/queue/join-response",
+                            response
+                    );
+
+                    // Gamemaster értesítése
+                    SuccessMessageResponse gamemasterNotification = responseMapper.createSuccessResponse(
+                            false,
+                            "Cannot confirm - user has already joined another room"
+                    );
+
+                    simpMessagingTemplate.convertAndSendToUser(
+                            gamemaster.getId().toString(),
+                            "/queue/confirm-error",
+                            gamemasterNotification
+                    );
+
+                    resultMessage.put("success", false);
+                    resultMessage.put("message", "User has already joined another room");
+
+                    log.warn("Join confirmation failed - user {} already in another room", user.getId());
+                    return resultMessage;
+                }
+                // Ha ugyanebben a szobában van már, akkor rendben van
+                else {
+                    response = responseMapper.createSuccessResponse(
+                            false,
+                            "You are already in this room"
+                    );
+
+                    simpMessagingTemplate.convertAndSendToUser(
+                            String.valueOf(confirmOrDeclineJoin.getConnectingUserId()),
+                            "/queue/join-response",
+                            response
+                    );
+
+                    resultMessage.put("success", false);
+                    resultMessage.put("message", "User is already in this room");
+
+                    log.info("User {} already in room {}", user.getId(), room.getRoomId());
+                    return resultMessage;
+                }
+            }
+
+            // ✅ ELLENŐRZÉS: Van-e még hely a szobában?
+            if (isRoomFull(room)) {
+                response = responseMapper.createSuccessResponse(
+                        false,
+                        "Room is now full - cannot join"
+                );
+
+                simpMessagingTemplate.convertAndSendToUser(
+                        String.valueOf(confirmOrDeclineJoin.getConnectingUserId()),
+                        "/queue/join-response",
+                        response
+                );
+
+                // Gamemaster értesítése
+                SuccessMessageResponse gamemasterNotification = responseMapper.createSuccessResponse(
+                        false,
+                        "Cannot confirm - room is now full"
+                );
+
+                simpMessagingTemplate.convertAndSendToUser(
+                        gamemaster.getId().toString(),
+                        "/queue/confirm-error",
+                        gamemasterNotification
+                );
+
+                resultMessage.put("success", false);
+                resultMessage.put("message", "Room is now full");
+
+                log.warn("Join confirmation failed - room {} is full", room.getRoomId());
+                return resultMessage;
+            }
+
+            // ✅ SIKERES CSATLAKOZÁS
             room.getParticipants().add(user);
             roomRepository.save(room);
             user.setCurrentRoom(room);
             userRepository.save(user);
 
-            response = responseMapper.toConfirmOrDeclineJoinResponse(
+            responseToPlayer = responseMapper.toConfirmOrDeclineJoinResponse(
                     true, "Gamemaster confirmed your join request", room);
+
             simpMessagingTemplate.convertAndSend(
                     "/topic/room/" + room.getRoomId() + "/participant-update",
                     responseMapper.toRoomResponse(room)
             );
+
+            resultMessage.put("success", true);
             resultMessage.put("message", "The user has been notified of the connection approval.");
+
         } else {
-            response = responseMapper.toConfirmOrDeclineJoinResponse(
+            // ELUTASÍTÁS
+            responseToPlayer = responseMapper.toConfirmOrDeclineJoinResponse(
                     false, "Gamemaster declined your join request", null);
 
+            resultMessage.put("success", true);
             resultMessage.put("message", "The user has been notified of the connection rejection.");
         }
 
         simpMessagingTemplate.convertAndSendToUser(
                 String.valueOf(confirmOrDeclineJoin.getConnectingUserId()),
                 "/queue/join-response",
-                response
+                responseToPlayer
         );
 
-        log.info("Join confirmation sent to {}",confirmOrDeclineJoin.getConnectingUserId());
+        log.info("Join confirmation sent to {}", confirmOrDeclineJoin.getConnectingUserId());
         return resultMessage;
     }
 
@@ -291,6 +406,8 @@ public class RoomService implements IRoomService {
                     .playerCount(1L)
                     .roomId(newRoom.getRoomId())
                     .roomName(newRoom.getName())
+                    .gameStatus(null)
+                    .hasActiveGame(false)
                     .build();
 
             RoomCreationResponse successResponse = responseMapper.toRoomCreationResponse(
@@ -320,7 +437,7 @@ public class RoomService implements IRoomService {
 
     @Override
     @Transactional
-    public UserCurrentStatus leaveRoom(LeaveRequest leaveRequest,User user) {
+    public UserCurrentStatus leaveRoom(LeaveRequest leaveRequest, User user) {
 
 
         //cache evict
@@ -420,14 +537,13 @@ public class RoomService implements IRoomService {
     }
 
 
-
-    public Boolean isRoomFull(Room room){
-        Long participantsAndBotCount=roomRepository.countPlayersTotal(room.getRoomId())
+    public Boolean isRoomFull(Room room) {
+        Long participantsAndBotCount = roomRepository.countPlayersTotal(room.getRoomId())
                 .orElseThrow(() -> new RoomNotFoundException("Room Not Found"));
-	    return participantsAndBotCount >= 4;
+        return participantsAndBotCount >= 4;
     }
 
-    public void checkPermission(Room room,User gamemaster){
+    public void checkPermission(Room room, User gamemaster) {
         if (room.getGamemaster() == null || !(room.getGamemaster().getId().equals(gamemaster.getId()))) {
             throw new AccessDeniedException("User is not the gamemaster");
         }

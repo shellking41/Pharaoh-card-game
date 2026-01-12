@@ -1,6 +1,6 @@
-.mainContainer{
-    height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-content: center;
+.mainContainer {
+  display: flex;
+  justify-content: center;
+  align-content: center;
+  flex-direction: column;
 }
