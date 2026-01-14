@@ -82,7 +82,8 @@ public class AuthenticationService implements IAuthenticationService {
             }
 
             var accessToken = jwtService.generateToken(user.getId(), user.getName());
-            // revokeAllUserTokensExcept(user, refreshToken);
+            //todo:Ezzel kell kezdeni valamit mert ezt ki kell kommentelni ha azt akarom hogy a masiktaba a usernek ne megyen elvéve a tokenja
+            revokeAllUserTokensExcept(user, refreshToken);
 
             Tokens tokens = Tokens.builder()
                     .user(user)

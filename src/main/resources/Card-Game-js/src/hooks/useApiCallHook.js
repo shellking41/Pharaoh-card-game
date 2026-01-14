@@ -18,7 +18,7 @@ export const useApiCallHook = () => {
     } else if (contentType.includes('text/')) {
       return await response.text();
     } else {
-      return await response.blob(); // pl. képek vagy fájlok esetén
+      return await response.blob();
     }
   };
 
@@ -124,7 +124,7 @@ export const useApiCallHook = () => {
           // Retry with new token
           return await post(url, data, newToken, retryCount + 1);
         } else {
-          // Redirect to login if refresh fails
+
           setErrorLog(prev => ({
             ...prev,
             error: true,
@@ -177,7 +177,7 @@ export const useApiCallHook = () => {
           // Retry with new token
           return await put(url, data, newToken, retryCount + 1);
         } else {
-          // Redirect to login if refresh fails
+
           setErrorLog(prev => ({
             ...prev,
             error: true,

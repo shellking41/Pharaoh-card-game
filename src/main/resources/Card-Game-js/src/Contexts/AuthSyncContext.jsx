@@ -6,103 +6,103 @@ import { StompContext } from './StompContext';
 export const AuthSyncContext = createContext(null);
 
 export const AuthSyncProvider = ({ children }) => {
-    const { setToken } = useContext(TokenContext);
-    const { setUserCurrentStatus } = useContext(UserContext);
-    const { disconnectFromSocket } = useContext(StompContext);
-    const channelRef = useRef(null);
-    const refreshTokenCallbackRef = useRef(null);
-    const tabIdRef = useRef(`tab-${Date.now()}-${Math.random()}`);
-    const isRefreshingRef = useRef(false);
+  const { setToken } = useContext(TokenContext);
+  const { setUserCurrentStatus } = useContext(UserContext);
+  const { disconnectFromSocket } = useContext(StompContext);
+  const channelRef = useRef(null);
+  const tabIdRef = useRef(`tab-${Date.now()}-${Math.random()}`);
 
-    useEffect(() => {
-        channelRef.current = new BroadcastChannel('auth-sync');
+  useEffect(() => {
+    channelRef.current = new BroadcastChannel('auth-sync');
 
-        channelRef.current.onmessage = async (event) => {
-            const { type, senderId } = event.data;
+    channelRef.current.onmessage = async (event) => {
+      const { type, senderId, accessToken } = event.data;
 
-            // ✅ Saját üzeneteinket ignoráljuk
-            if (senderId === tabIdRef.current) {
-                return;
-            }
+      if (senderId === tabIdRef.current) {
+        return;
+      }
 
-            switch (type) {
-                case 'LOGIN':
-                    console.log('[AuthSync] Login detected - refreshing token...',refreshTokenCallbackRef.current,!isRefreshingRef.current);
+      switch (type) {
+        case 'LOGIN':
+          console.log('[AuthSync] Login detected with new token - reloading...');
 
-                    window.location.reload()
-                    break;
+          if (accessToken) {
+            setToken(accessToken);
+          }
 
-                case 'LOGOUT':
-                    console.log('[AuthSync] Logout detected');
+          window.location.reload();
+          break;
 
-                    setToken(null);
-                    setUserCurrentStatus({
-                        userInfo: { userId: '', username: '', role: '' },
-                        currentRoom: null,
-                        managedRoom: null,
-                        authenticated: false,
-                    });
+        case 'LOGOUT':
+          console.log('[AuthSync] Logout detected');
 
-                    if (disconnectFromSocket) {
-                        disconnectFromSocket();
-                    }
+          setToken(null);
+          setUserCurrentStatus({
+            userInfo: { userId: '', username: '', role: '' },
+            currentRoom: null,
+            managedRoom: null,
+            authenticated: false,
+          });
 
+          if (disconnectFromSocket) {
+            disconnectFromSocket();
+          }
 
-                    break;
+          break;
 
-                case 'TOKEN_REFRESH':
-                    // ✅ KRITIKUS VÁLTOZÁS: NE hívjunk refresh-t!
-                    // Csak log-oljuk, hogy valaki más refresh-elt
-                    console.log('[AuthSync] Another tab refreshed token - we will auto-refresh when ours expires');
-                    // ❌ NE: await refreshTokenCallbackRef.current();
-                    break;
+        case 'TOKEN_REFRESH':
+          console.log('[AuthSync] Token refresh detected from another tab');
 
-                default:
-                    break;
-            }
-        };
+          // Frissítjük a tokent a másik tab-ból kapott értékkel
+          if (accessToken) {
+            setToken(accessToken);
+          }
 
-        return () => {
-            channelRef.current?.close();
-        };
-    }, [setToken, setUserCurrentStatus, disconnectFromSocket]);
+          break;
 
-    const registerRefreshCallback = (callback) => {
-        refreshTokenCallbackRef.current = callback;
+        default:
+          break;
+      }
     };
 
-    const broadcastLogin = () => {
-        console.log('[AuthSync] Broadcasting login');
-        channelRef.current?.postMessage({
-            type: 'LOGIN',
-            senderId: tabIdRef.current
-        });
+    return () => {
+      channelRef.current?.close();
     };
+  }, [setToken, setUserCurrentStatus, disconnectFromSocket]);
 
-    const broadcastLogout = () => {
-        console.log('[AuthSync] Broadcasting logout');
-        channelRef.current?.postMessage({
-            type: 'LOGOUT',
-            senderId: tabIdRef.current
-        });
-    };
+  const broadcastLogin = (accessToken) => {
+    console.log('[AuthSync] Broadcasting login with access token');
+    channelRef.current?.postMessage({
+      type: 'LOGIN',
+      senderId: tabIdRef.current,
+      accessToken: accessToken,
+    });
+  };
 
-    const broadcastTokenRefresh = () => {
-        console.log('[AuthSync] Broadcasting token refresh');
-        channelRef.current?.postMessage({
-            type: 'TOKEN_REFRESH',
-            senderId: tabIdRef.current
-        });
-    };
+  const broadcastLogout = () => {
+    console.log('[AuthSync] Broadcasting logout');
+    channelRef.current?.postMessage({
+      type: 'LOGOUT',
+      senderId: tabIdRef.current,
+    });
+  };
 
-    return (
-        <AuthSyncContext.Provider value={{
-            broadcastLogin,
-            broadcastLogout,
-            broadcastTokenRefresh,
-            registerRefreshCallback
-        }}>
-            {children}
-        </AuthSyncContext.Provider>
-    );
+  const broadcastTokenRefresh = (accessToken) => {
+    console.log('[AuthSync] Broadcasting token refresh with new token');
+    channelRef.current?.postMessage({
+      type: 'TOKEN_REFRESH',
+      senderId: tabIdRef.current,
+      accessToken: accessToken,
+    });
+  };
+
+  return (
+    <AuthSyncContext.Provider value={{
+      broadcastLogin,
+      broadcastLogout,
+      broadcastTokenRefresh,
+    }}>
+      {children}
+    </AuthSyncContext.Provider>
+  );
 };

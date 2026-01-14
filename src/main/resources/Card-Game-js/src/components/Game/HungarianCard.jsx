@@ -18,7 +18,7 @@ export function getPlayerPositionBySeat(playerSeat, selfSeat, totalPlayers) {
     return 'bottom';
   }
 
-  // Relatív seat különbség kiszámítása (óramutató járása szerinti irányban)
+  // Relatív seat különbség kiszámítása
   let relativeSeat = (playerSeat - selfSeat + totalPlayers) % totalPlayers;
 
   // Ha negatív lenne, korrigáljuk

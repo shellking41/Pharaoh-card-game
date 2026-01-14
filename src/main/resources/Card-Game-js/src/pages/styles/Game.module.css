@@ -25,7 +25,7 @@ main {
 
 }
 
-/* Mobile optimalizáció */
+
 @media (max-width: 768px) {
   .game {
     padding: 0.5rem;
@@ -39,7 +39,7 @@ main {
   }
 }
 
-/* Tablet optimalizáció */
+
 @media (max-height: 769px) {
   .playgroundBlock {
     max-width: 1200px;
@@ -76,7 +76,7 @@ main {
     flex-direction: column;
   }
 }
-/* Nagy képernyő optimalizáció */
+
 @media (min-width: 1920px) {
   .playgroundBlock {
     max-width: 1800px;
@@ -91,7 +91,7 @@ main {
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
 }
 
-/* Top side styling - matches the image structure */
+
 .topSide {
   display: flex;
   justify-content: space-between;
@@ -219,7 +219,7 @@ main {
   transform: translateY(0);
 }
 
-/* Game.module.css - csak a gombok rész frissítve */
+
 .right {
   display: flex;
   flex-direction: column-reverse;
@@ -257,7 +257,7 @@ main {
   gap: 8px;
 }
 
-/* Base button styles */
+
 .drawCard:not(:disabled),
 .playCard:not(:disabled),
 .skipTurn:not(:disabled),
@@ -284,7 +284,7 @@ main {
   display: none;
 }
 
-/* Play Card - Zöld */
+
 .playCard {
   background: linear-gradient(145deg,
   rgba(var(--main-bright-color), 0.9),
@@ -328,7 +328,7 @@ main {
   transition: transform 0.1s ease;
 }
 
-/* Draw Card - Kék/Indigo */
+
 .drawCard {
   background: linear-gradient(145deg,
   rgba(59, 130, 246, 0.9),
@@ -348,7 +348,6 @@ main {
 }
 
 
-/* Skip Turn - Narancs/Vörös */
 .skipTurn {
   background: linear-gradient(145deg,
   rgba(245, 158, 11, 0.9),
@@ -373,7 +372,7 @@ main {
   75% { transform: translateY(-3px) rotate(1deg); }
 }
 
-/* Draw Stack Button - Lila (ha van ilyen gombod) */
+
 .drawStack {
   background: linear-gradient(145deg,
   rgba(var(--red-color)),
@@ -392,7 +391,6 @@ main {
 }
 
 
-/* Leave Button - Piros */
 .leaveButtonContianer button {
   background: linear-gradient(145deg,
   rgba(var(--red-brigther-color), 0.9),
@@ -422,7 +420,7 @@ main {
   transform: translateY(0);
 }
 
-/* Icon animations for buttons with icons */
+
 .drawCard::after,
 .playCard::after,
 .skipTurn::after {
@@ -438,7 +436,7 @@ main {
   transform: rotate(15deg);
 }
 
-/* Mobile responsive adjustments */
+
 @media (max-width: 768px) {
   .drawCard, .playCard, .skipTurn {
     height: 45px;
@@ -451,7 +449,7 @@ main {
     font-size: 14px;
   }
 
-  /* Reduce hover effects on mobile for performance */
+
   .drawCard:not(:disabled):hover,
   .playCard:not(:disabled):hover,
   .skipTurn:not(:disabled):hover {
@@ -459,7 +457,7 @@ main {
   }
 }
 
-/* Tablet responsive adjustments */
+
 @media (max-height: 769px) {
   .drawCard, .playCard, .skipTurn {
     height: 40px;
@@ -469,7 +467,6 @@ main {
 }
 
 
-/* Focus styles for accessibility */
 .drawCard:focus-visible,
 .playCard:focus-visible,
 .skipTurn:focus-visible,
@@ -477,7 +474,7 @@ main {
   outline: 2px solid rgba(59, 130, 246, 0.8);
   outline-offset: 2px;
 }
-/* Responsive design */
+
 @media (max-width: 600px) {
   .topSide {
     flex-direction: column;
@@ -495,7 +492,6 @@ main {
   }
 }
 
-/* Game.module.css - hozzáadva a drawStackContainer stílusok */
 .drawStack {
   margin: 0;
 }
@@ -539,7 +535,6 @@ main {
 }
 
 
-/* Mobile responsive */
 @media (max-width: 768px) {
   .drawStackContainer {
     flex-direction: column;
@@ -570,7 +565,7 @@ main {
   }
 }
 
-/* Tablet responsive */
+
 @media (max-height: 769px) {
   .drawStackContainer {
     padding: 12px;
@@ -599,9 +594,7 @@ main {
   flex-wrap: wrap;
 }
 
-/* További animációk - opcionális */
 
-/* Entrance animation */
 @keyframes slideInFromRight {
   from {
     transform: translate(-50%, -50%) translateX(600px);
@@ -632,7 +625,6 @@ main {
   animation: slideOutToRight 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
-/* Individual button stagger animation */
 .suitButton:nth-child(1) { animation-delay: 0.1s; }
 .suitButton:nth-child(2) { animation-delay: 0.2s; }
 .suitButton:nth-child(3) { animation-delay: 0.3s; }
@@ -653,9 +645,7 @@ main {
   animation: buttonPopIn 0.3s ease backwards;
 }
 
-/* Game.module.css - hozzáadva */
 
-/* Suit Selector Container */
 .suitSelector {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -685,7 +675,7 @@ main {
   transform: translate(-50%, -50%) translateX(0);
 }
 
-/* Suit Buttons */
+
 .suitButton {
   background: linear-gradient(145deg, #144278, #0a2850);
   border: none;
@@ -746,7 +736,7 @@ main {
   }
 }
 
-/* Suit Images */
+
 .suitImage {
   z-index: 1;
   transition: transform 0.3s ease;
@@ -760,7 +750,6 @@ main {
   transform: scale(0.95);
 }
 
-/* Specific image sizes for each suit */
 .suitHearts {
   width: 80%;
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
@@ -783,7 +772,7 @@ main {
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
 }
 
-/* Mobile responsive */
+
 @media (max-width: 768px) {
   .suitSelector {
     width: 200px;
@@ -808,7 +797,7 @@ main {
   }
 }
 
-/* Tablet responsive */
+
 @media (max-height: 769px) {
   .suitSelector {
     width: 200px;
@@ -817,7 +806,7 @@ main {
   }
 }
 
-/* Overlay background */
+
 .suitSelectorOverlay {
   position: fixed;
   top: 0;

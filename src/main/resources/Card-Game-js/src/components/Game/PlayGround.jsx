@@ -43,7 +43,7 @@ function PlayGround({ children, onDimensionsChange }) {
           position: 'relative',
           width: '100%',
           height: '100%',
-          overflow: 'visible', // A gyerekek lehetnek láthatók
+          overflow: 'visible',
         }}>
         {children}
       </div>

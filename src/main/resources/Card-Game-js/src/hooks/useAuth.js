@@ -46,7 +46,7 @@ export const useAuth = () => {
       if (response?.accessToken) {
         setToken(response.accessToken);
 
-        // ✅ Broadcast más tabok felé
+        // Broadcast más tabok felé - MOST MÁR A TOKENNEL
         broadcastTokenRefresh(response.accessToken);
 
         return response.accessToken;
@@ -132,7 +132,7 @@ export const useAuth = () => {
     }
   };
 
-  // ✅ Bejelentkezés + Broadcast
+  // Bejelentkezés + Broadcast
   const login = useCallback(async (username, password) => {
     console.log('[AUTH] Logging in...');
 
@@ -165,8 +165,8 @@ export const useAuth = () => {
 
           setUserCurrentStatus(userStatusWRooms);
 
-          // ✅ Broadcast LOGIN más tabok felé
-          broadcastLogin(response.accessToken, userStatusWRooms);
+          // Broadcast LOGIN más tabok felé - MOST MÁR A TOKENNEL
+          broadcastLogin(response.accessToken);
 
           if (userStatusWRooms.currentRoom?.roomId) {
             await getGameSession(response.accessToken, userStatusWRooms);
@@ -186,7 +186,7 @@ export const useAuth = () => {
     }
   }, [post, setToken, setUserCurrentStatus, broadcastLogin]);
 
-  // ✅ Kijelentkezés + Broadcast
+  // Kijelentkezés + Broadcast
   const logout = useCallback(async () => {
     console.log('[LOGOUT] Starting logout process...');
 
@@ -209,7 +209,7 @@ export const useAuth = () => {
       setPlayerSelf({});
       setValidPlays([]);
 
-      // ✅ Broadcast LOGOUT más tabok felé
+      // Broadcast LOGOUT más tabok felé
       broadcastLogout();
 
       // WebSocket disconnect

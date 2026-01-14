@@ -34,7 +34,6 @@ function computeSkippedPlayersVisual(message, gameSession) {
   );
   console.log('visual only', activePlayers);
 
-  //  Hány ACE készült le?
   const aceCount = newPlayedCards.filter(card => {
     // card lehet, hogy csak egy string vagy objektum - ha objektum, nézzük a rank mezőt
     if (!card) {
@@ -67,7 +66,7 @@ function computeSkippedPlayersVisual(message, gameSession) {
     );
   }
 
-  return skippedVisual; // pl. [6,7,6,7]
+  return skippedVisual;
 }
 
 function handleReshuffle(
@@ -78,7 +77,7 @@ function handleReshuffle(
   setGameSession,
   newDeckSize, setDeckRotations,
 ) {
-  // 500ms várakozás, hogy látszódjon az üres deck
+
   setTimeout(() => {
     const playedCardElement = document.querySelector('[data-played-card]');
     const playedCardPosition = playedCardElement
@@ -108,7 +107,6 @@ function handleReshuffle(
 
     setDeckRotations(reshuffleAnimations.map((a) => (a.waypoints[a.waypoints.length - 1].rotate)));
 
-    // Ideiglenesen beállítjuk a newDeckSize-t
     setGameSession((prev) => ({
       ...prev,
       newDeckSize: newDeckSize,
@@ -126,14 +124,11 @@ const getPageSubscriptions = (getCtx) => {
           const { logout, showNotification } = getCtx();
           console.warn('[FORCE LOGOUT]', message);
 
-          // ✅ Notification megjelenítése
           showNotification(
             message.message || 'You have been logged in from another device',
             'warning',
           );
 
-          // ✅ Kijelentkeztetés (broadcast-tal együtt)
-          // Ez automatikusan szinkronizálja az összes tabot
           logout();
         },
       },
@@ -159,7 +154,6 @@ const getPageSubscriptions = (getCtx) => {
 
           console.log('[JOIN-RESPONSE]', message);
 
-          // ✅ SIKERES KONFIRMÁLÁS (gamemaster elfogadta)
           if (message.confirmed === true) {
             showNotification(message.message, 'success');
             setUserCurrentStatus((prev) => ({
@@ -169,13 +163,11 @@ const getPageSubscriptions = (getCtx) => {
             return;
           }
 
-          // ❌ ELUTASÍTOTT JOIN (gamemaster visszautasította)
           if (message.confirmed === false) {
             showNotification(message.message, 'warning');
             return;
           }
 
-          // ⚠️ EGYSZERŰ SIKERES/SIKERTELEN ÜZENET (pl. request elküldve vagy hiba)
           if (message.success !== undefined) {
             showNotification(
               message.message,
@@ -184,7 +176,7 @@ const getPageSubscriptions = (getCtx) => {
             return;
           }
 
-          // 🔴 FALLBACK - ha nincs egyértelmű flag
+          //  ha nincs egyértelmű flag
           showNotification(message.message || 'Unknown response', 'info');
         },
       },
@@ -224,7 +216,7 @@ const getPageSubscriptions = (getCtx) => {
           // Hozzáadjuk a join request-et a listához
           setJoinRequests((prev) => [...prev, message]);
 
-          // Opcionális: notification gamemaster-nek
+          // notification gamemaster-nek
           showNotification(
             `${message.username} wants to join the room`,
             'info',
@@ -232,7 +224,7 @@ const getPageSubscriptions = (getCtx) => {
         },
       },
       {
-        // ✅ ÚJ: Gamemaster confirm error kezelés room oldalon is
+
         condition: () => getCtx().userCurrentStatus.managedRoom?.roomId == getCtx().currentRoomId,
         destination: '/user/queue/confirm-error',
         callback: (message) => {
@@ -246,8 +238,6 @@ const getPageSubscriptions = (getCtx) => {
               'error',
             );
 
-            // Opcionálisan: eltávolíthatjuk a sikertelen request-et a listából
-            // De jobb lehet ha ott marad, hogy a gamemaster lássa mi történt
           }
         },
       },
@@ -315,7 +305,7 @@ const getPageSubscriptions = (getCtx) => {
 
           console.log('[JOIN-RESPONSE] Room page:', message);
 
-          // ✅ SIKERES KONFIRMÁLÁS
+          // SIKERES KONFIRMÁLÁS
           if (message.confirmed === true) {
             showNotification(message.message, 'success');
             setUserCurrentStatus((prev) => ({
@@ -325,13 +315,12 @@ const getPageSubscriptions = (getCtx) => {
             return;
           }
 
-          // ❌ ELUTASÍTOTT JOIN
+          //  ELUTASÍTOTT JOIN
           if (message.confirmed === false) {
             showNotification(message.message, 'warning');
             return;
           }
 
-          // ⚠️ EGYÉB ÜZENETEK
           if (message.success !== undefined) {
             showNotification(
               message.message,
@@ -356,7 +345,7 @@ const getPageSubscriptions = (getCtx) => {
 
           // Saját játékos beállítása
           const self = message.players.find(
-              (m) => m.userId === userCurrentStatus.userInfo.userId,
+            (m) => m.userId === userCurrentStatus.userInfo.userId,
           );
 
           if (self?.playerId) {
@@ -434,7 +423,7 @@ const getPageSubscriptions = (getCtx) => {
           }
 
           // SELF PLAYER DRAW
-          // SELF PLAYER DRAW
+
           if (message.playerId === playerSelf?.playerId && message.newCard != null) {
             const currentHandCount = (gameSession?.playerHand?.ownCards ?? []).length;
 
@@ -444,7 +433,7 @@ const getPageSubscriptions = (getCtx) => {
               newCards: message.newCard.length,
             });
 
-            // calculateDrawAnimation visszaadja az animációkat (delay, duration, stb.) minden kártyához
+            // calculateDrawAnimation visszaadja az animációkat minden kártyához
             const drawAnimations = calculateDrawAnimation(
               isTablet,
               message.newCard,
@@ -475,7 +464,7 @@ const getPageSubscriptions = (getCtx) => {
               el.style.left = style.left;
             });
 
-            // Megjelenítjük az animációkat (összeset egyszerre)
+            // Megjelenítjük az animációkat
             setAnimatingDrawCards((prev) => [...prev, ...drawAnimations]);
 
             const drawTotalDelay = drawAnimations.reduce((max, a) => {
@@ -510,7 +499,7 @@ const getPageSubscriptions = (getCtx) => {
               console.log('[DRAW ANIMATION] Self animation complete');
 
               if (willReshuffle) {
-                const cardsToReshuffle = message.deckSize; // Az új deck mérete
+                const cardsToReshuffle = message.deckSize;
                 handleReshuffle(
                   cardsToReshuffle - 1,
                   deckPosition,
@@ -530,7 +519,7 @@ const getPageSubscriptions = (getCtx) => {
           }
           // OPPONENT DRAW
           else {
-            // ... opponent draw logic (hasonlóan)
+            // ... opponent draw logic
             console.log('[DRAW] Other player drew, starting opponent animation', message);
 
             const drawingPlayer = gameSession?.players?.find(p => p.playerId === message.playerId);
@@ -669,14 +658,14 @@ const getPageSubscriptions = (getCtx) => {
 
           const { setGameSession, playerSelf } = getCtx();
 
-          // *** Most MÁR hozzáadjuk a saját kártyáinkat is, DE csak ha még nincs a queue-ban ***
+          // hozzáadjuk a saját kártyáinkat is, DE csak ha még nincs a queue-ban
           setGameSession((prev) => {
             const queue = Array.isArray(prev?.playedCardsQueue) ? prev.playedCardsQueue : [];
 
-            // Ellenőrizzük hogy már van-e ilyen queue item (ugyanaz a playerId + hasonló timestamp)
+            // Ellenőrizzük hogy már van-e ilyen queue item
             const alreadyExists = queue.some(item =>
               item.playerId === message.playerId &&
-              Math.abs(item.receivedAt - Date.now()) < 1000, // 1 másodpercen belül
+              Math.abs(item.receivedAt - Date.now()) < 1000,
             );
 
             if (alreadyExists) {
@@ -765,7 +754,7 @@ const getPageSubscriptions = (getCtx) => {
           } = getCtx();
           console.log('gameEND', message, animatingReshuffle, setAnimatingReshuffle);
 
-          setTimeout(()=>{ window.location.reload();},1000)
+          setTimeout(() => { window.location.reload();}, 1000);
 
           // setGameSession({
           //
@@ -884,7 +873,7 @@ function UseSubscribeToTopicByPage({ page, currentRoomId }) {
     setSkipTurn,
     skippedPlayers,
     setSkippedPlayers,
-    setCurrentRoundKey
+    setCurrentRoundKey,
   } = useContext(GameSessionContext);
   const { setRooms, joinRequests, setJoinRequests } = useContext(RoomsDataContext);
   const { showNotification } = useContext(NotificationContext);
@@ -897,7 +886,6 @@ function UseSubscribeToTopicByPage({ page, currentRoomId }) {
   const isMobile = useMediaQuery('(max-width: 768px)');
   const isTablet = useMediaQuery('(max-height: 768px) and (orientation: landscape)');
 
-  // keep a ref with the latest context used by callbacks at runtime
   const contextRef = useRef({
     userCurrentStatus,
     setUserCurrentStatus,
@@ -931,10 +919,9 @@ function UseSubscribeToTopicByPage({ page, currentRoomId }) {
     skippedPlayers,
     setSkippedPlayers,
     logout,
-    setCurrentRoundKey
+    setCurrentRoundKey,
   });
 
-  // keep ref.current up to date when important pieces change
   useEffect(() => {
     contextRef.current = {
       ...contextRef.current,
@@ -970,7 +957,7 @@ function UseSubscribeToTopicByPage({ page, currentRoomId }) {
       skippedPlayers,
       setSkippedPlayers,
       logout,
-      setCurrentRoundKey
+      setCurrentRoundKey,
     };
   }, [
     userCurrentStatus,
@@ -1005,7 +992,7 @@ function UseSubscribeToTopicByPage({ page, currentRoomId }) {
     skippedPlayers,
     setSkippedPlayers,
     logout,
-    setCurrentRoundKey
+    setCurrentRoundKey,
   ]);
 
   useEffect(() => {

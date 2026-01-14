@@ -16,8 +16,8 @@ const MobileSelfPlayerHand = forwardRef(({
   handleCardClick = () => {},
   selectedCardsOrder = [],
   isAnimating,
-  onOpenStateChange, // callback az állapotváltozáshoz
-                                             currentRoundKey = 0
+  onOpenStateChange,
+  currentRoundKey = 0,
 }, ref) => {
   const [cards, setCards] = useState(initialCards);
   const [isOpen, setIsOpen] = useState(false);
@@ -26,10 +26,9 @@ const MobileSelfPlayerHand = forwardRef(({
   const cardRefs = useRef({});
   const clicked = useRef(false);
 
-  // Expose getCardRefs method to parent component
   useImperativeHandle(ref, () => ({
     getCardRefs: () => cardRefs.current,
-    isOpen: () => isOpen, // Expose current open state
+    isOpen: () => isOpen,
   }));
 
   useEffect(() => {
@@ -112,15 +111,15 @@ const MobileSelfPlayerHand = forwardRef(({
         }}
       >
         {cards.map((card, index) => {
-            const uniqueKey = `mobile-round-${currentRoundKey}-${card.cardId}-${index}`;
+          const uniqueKey = `mobile-round-${currentRoundKey}-${card.cardId}-${index}`;
 
-            // Keressük meg a kártya sorszámát a selectedCardsOrder tömbben
+          // Keressük meg a kártya sorszámát a selectedCardsOrder tömbben
           const orderIndex = selectedCardsOrder.findIndex(c => c.cardId === card.cardId);
           const orderNumber = orderIndex >= 0 ? orderIndex + 1 : null;
 
           return (
             <div
-                key={uniqueKey}
+              key={uniqueKey}
               className="mobile-card-container"
               ref={(el) => {
                 if (el) {

@@ -4,16 +4,16 @@ import { ErrorContext } from '../Contexts/ErrorContext.jsx';
 import { useNavigate } from 'react-router-dom';
 
 export default function FormModal({
-                                    inputs = [],
-                                    header = { text: 'Header', tag: 'h1' },
-                                    onSubmit = () => {},
-                                    buttonText,
-                                    children,
-                                  }) {
+  inputs = [],
+  header = { text: 'Header', tag: 'h1' },
+  onSubmit = () => {},
+  buttonText,
+  children,
+}) {
   const navigate = useNavigate();
   const { errorLog, setErrorLog } = useContext(ErrorContext);
   const [formData, setFormData] = useState(
-      Object.fromEntries(inputs.map(input => [input.name, ''])),
+    Object.fromEntries(inputs.map(input => [input.name, ''])),
   );
   const [submitted, setSubmitted] = useState(false);
   const [inputError, setInputError] = useState(Array(inputs.length).fill(false));
@@ -21,7 +21,6 @@ export default function FormModal({
   const [focusedInputs, setFocusedInputs] = useState(Array(inputs.length).fill(false));
   const inputRefs = useRef([]);
 
-  // ✅ Normalize errorLog on mount and when it changes
   useEffect(() => {
     if (!errorLog || errorLog.message === null || errorLog.message === undefined) {
       setErrorLog({ error: false, message: '' });
@@ -68,9 +67,11 @@ export default function FormModal({
     };
   }, [inputs]);
 
-  // Update input errors when errorLog changes
+  // firissitse az inputerrorokat ha van error
   useEffect(() => {
-    if (!errorLog || !errorLog.message) return;
+    if (!errorLog || !errorLog.message) {
+      return;
+    }
 
     setInputError(prev => {
       const newErrors = [...prev];
@@ -83,10 +84,9 @@ export default function FormModal({
     });
   }, [errorLog, inputs]);
   useEffect(() => {
-    console.log(errorLog)
+    console.log(errorLog);
 
-
-      setErrorLog({ error: false, message: '' })
+    setErrorLog({ error: false, message: '' });
 
   }, []);
 
@@ -134,7 +134,7 @@ export default function FormModal({
 
     setErrorLog({
       error: invalidFields.length > 0,
-      message: errorMessage
+      message: errorMessage,
     });
   };
 
@@ -149,82 +149,81 @@ export default function FormModal({
     onSubmit(formData);
   };
 
-  // ✅ Safe message display
   const displayMessage = errorLog?.message || '';
 
   return (
-      <div className={styles.modal}>
-        <div className={styles.formWrapper}>
-          <form onSubmit={handleSubmit}>
-            <div className={styles.inputSection}>
-              <div className={styles.headerWrapper}>
-                <h1 className={styles.header}>
-                  {header.text}
-                </h1>
-              </div>
-
-              {inputs.map((input, index) => (
-                  <label
-                      key={input.name}
-                      className={`${styles.inputWrapper} ${
-                          inputError[index] &&
-                          !focusedInputs[index] &&
-                          (touchedInputs[index] || submitted)
-                              ? styles.inputError
-                              : ''
-                      }`}
-                      htmlFor={input.name}
-                  >
-                    <label className={styles.inputLabel} htmlFor={input.name}>
-                      {input.name}
-                    </label>
-                    <input
-                        ref={el => inputRefs.current[index] = el}
-                        className={styles.input}
-                        type={input.type}
-                        id={input.name}
-                        name={input.name}
-                        placeholder=""
-                        value={formData[input.name] || ''}
-                        onChange={(e) =>
-                            handleChange(input.minLength, index, e, input.name)
-                        }
-                        onFocus={() => {
-                          setFocusedInputs(prev => {
-                            const newFocus = [...prev];
-                            newFocus[index] = true;
-                            return newFocus;
-                          });
-                        }}
-                        onBlur={() => {
-                          setFocusedInputs(prev => {
-                            const newFocus = [...prev];
-                            newFocus[index] = false;
-                            return newFocus;
-                          });
-                        }}
-                        autoComplete="off"
-                        maxLength="50"
-                    />
-                  </label>
-              ))}
+    <div className={styles.modal}>
+      <div className={styles.formWrapper}>
+        <form onSubmit={handleSubmit}>
+          <div className={styles.inputSection}>
+            <div className={styles.headerWrapper}>
+              <h1 className={styles.header}>
+                {header.text}
+              </h1>
             </div>
 
-            <div className={styles.submitButtonWrapper}>
-              <button
-                  disabled={ (inputError.includes(true) || touchedInputs.includes(false))}
-                  className={styles.submitButton}
-                  type="submit"
+            {inputs.map((input, index) => (
+              <label
+                key={input.name}
+                className={`${styles.inputWrapper} ${
+                  inputError[index] &&
+                  !focusedInputs[index] &&
+                  (touchedInputs[index] || submitted)
+                    ? styles.inputError
+                    : ''
+                }`}
+                htmlFor={input.name}
               >
-                {buttonText}
-              </button>
-              {errorLog?.error && displayMessage && (
-                  <div style={{ color: 'red' }}>{displayMessage}</div>
-              )}
-            </div>
-          </form>
-          {children}
-        </div>
+                <label className={styles.inputLabel} htmlFor={input.name}>
+                  {input.name}
+                </label>
+                <input
+                  ref={el => inputRefs.current[index] = el}
+                  className={styles.input}
+                  type={input.type}
+                  id={input.name}
+                  name={input.name}
+                  placeholder=""
+                  value={formData[input.name] || ''}
+                  onChange={(e) =>
+                    handleChange(input.minLength, index, e, input.name)
+                  }
+                  onFocus={() => {
+                    setFocusedInputs(prev => {
+                      const newFocus = [...prev];
+                      newFocus[index] = true;
+                      return newFocus;
+                    });
+                  }}
+                  onBlur={() => {
+                    setFocusedInputs(prev => {
+                      const newFocus = [...prev];
+                      newFocus[index] = false;
+                      return newFocus;
+                    });
+                  }}
+                  autoComplete="off"
+                  maxLength="50"
+                />
+              </label>
+            ))}
+          </div>
+
+          <div className={styles.submitButtonWrapper}>
+            <button
+              disabled={(inputError.includes(true) || touchedInputs.includes(false))}
+              className={styles.submitButton}
+              type="submit"
+            >
+              {buttonText}
+            </button>
+            {errorLog?.error && displayMessage && (
+              <div style={{ color: 'red' }}>{displayMessage}</div>
+            )}
+          </div>
+        </form>
+        {children}
       </div>
+    </div>
   );
 }

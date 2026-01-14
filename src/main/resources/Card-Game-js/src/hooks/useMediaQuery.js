@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 export const useMediaQuery = (query) => {
   // Azonnal ellenőrizzük a query-t az inicializáláskor
   const [matches, setMatches] = useState(() => {
-    // SSR esetén return false, egyébként ellenőrizzük
+
     if (typeof window === 'undefined') {
       return false;
     }
@@ -24,7 +24,7 @@ export const useMediaQuery = (query) => {
     media.addEventListener('change', listener);
 
     return () => media.removeEventListener('change', listener);
-  }, [query]); // matches-t ne tegyük ide, mert felesleges re-render
+  }, [query]);
 
   return matches;
 };

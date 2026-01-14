@@ -64,6 +64,10 @@ import useBroadcastPlayAction
 // todo: most jelenleg ug ymukodik a masik devicen kirugas hogy a token ervénytelenitve van a régi sessionnök nek de nem csinalj ameg rogton a error jelentes csak akkor amikor kuldeni akarunk uzenetet, nem dobje le a a websocketrol rogton ha nincs tokenje, valahogy kikell dobni azt a clienst a websocketbol ami nek mar nincs ervenyes tokenje
 //todo: amikor a mar kidobott masik cliens ha ramegy a leavgamerte akkor rogton a loginba tobja, ha mondjuk huzni akar kartyat akkor ferlajanje hogy refreshelje azh oldalt
 //egyet villan a kép amikor leteszunk tobb mint egy kartyat-kesz
+
+//todo:Ezzel kell kezdeni valamit mert ezt ki kell kommentelni ha azt akarom hogy a masiktaba a usernek ne megyen elvéve a tokenja
+//revokeAllUserTokensExcept(user, refreshToken);
+
 //amikor tobb kartyat huz fel az ellenfel akkor ugranak egyet az animacio utan a kartyai-kesz
 //kell egy szamlalot kitenni hogy most milyen sorrendben fognak kimenni a kivvalasztott kartyak-kesz
 //a refresh notification, csak afooldal, room es a game oldalon jelenjen meg-kezs
@@ -105,7 +109,7 @@ function Game() {
   const {
     gameSession, playerSelf, turn, setTurn, setPlayerSelf, setGameSession, selectedCards, setSelectedCards, validPlays, animatingDrawCards, setAnimatingDrawCards, animatingReshuffle,
     setAnimatingReshuffle, setDeckRotations, deckRotations,
-      currentRoundKey
+    currentRoundKey,
   } = useContext(GameSessionContext);
   const { gameSessionId } = useParams();
   const { sendMessage } = useWebsocket();
@@ -237,31 +241,28 @@ function Game() {
     });
   };
 
-  // Add this useEffect to listen for broadcasts from other tabs
+  //  figyeli a broadcastot
   useEffect(() => {
     const cleanup = onPlayAction((data) => {
-      // Only process if it's from the same player but different tab
+      // akkor fut le ha ugyan arról a playerrol lenne szó
       if (data.playerId === playerSelf?.playerId) {
-        // Get card refs based on current view (mobile or desktop)
+
         let cardRefs = draggableHandRef.current?.getCardRefs();
         if (!cardRefs) {
           cardRefs = mobileRef.current?.getCardRefs();
         }
 
         if (!cardRefs) {
-          console.warn('[BROADCAST] No card refs available');
           return;
         }
 
         const playedCardElement = playedCardRef.current;
         if (!playedCardElement) {
-          console.warn('[BROADCAST] No played card element');
+
           return;
         }
 
-        console.log('[BROADCAST] Starting animation from other tab:', data.cards);
-
-        // Calculate animations for the cards
+        // animacio kiszamitasa
         const animations = calculateAnimation(
           gameSession.playerHand.ownCards.length,
           data.cards,
@@ -272,10 +273,10 @@ function Game() {
           playerSelf.seat,
           gameSession.playerHand.ownCards,
           isMobile || isTablet,
-          cardRefs, // Pass card refs to get actual positions
+          cardRefs,
         );
 
-        // Hide the cards
+        // eltuntetni a kartyakat
         data.cards.forEach(card => {
           const cardElement = cardRefs[card.cardId];
           if (cardElement) {
@@ -283,7 +284,7 @@ function Game() {
           }
         });
 
-        // Start animations
+        // enimacio elkezdése
         setAnimatingOwnCards(prev => [...prev, ...animations]);
         setSelectedCards([]);
         setChangeSuitTo(null);
@@ -310,13 +311,12 @@ function Game() {
 
     console.log('[PLAY CARDS] Starting animation for cards:', selectedCards.map(c => c.cardId));
 
-    // Broadcast to other tabs FIRST
+    // elősszor kuldje el a broadcastot
     broadcastPlayAction({
       playerId: playerSelf.playerId,
       cards: selectedCards,
     });
 
-    // Calculate animations with mobile card positions
     const animations = calculateAnimation(
       gameSession.playerHand.ownCards.length,
       selectedCards,
@@ -327,12 +327,11 @@ function Game() {
       playerSelf.seat,
       gameSession.playerHand.ownCards,
       isMobile || isTablet,
-      cardRefs, // Pass card refs to get actual positions
+      cardRefs,
     );
 
     console.log('[PLAY CARDS] Generated animations:', animations.length);
 
-    // Hide the cards
     selectedCards.forEach(card => {
       const cardElement = cardRefs[card.cardId];
       if (cardElement) {
@@ -340,10 +339,8 @@ function Game() {
       }
     });
 
-    // Start animations
     setAnimatingOwnCards(prev => [...prev, ...animations]);
 
-    // Send to backend
     const playCardsData = selectedCards.map(({ cardId, suit, rank, ownerId, position }) => ({
       cardId,
       suit,
@@ -547,49 +544,49 @@ function Game() {
                 const count = gameSession.playerHand?.otherPlayersCardCount?.[String(p.playerId)] ?? 0;
 
                 return (
-                    <div key={`player-${p.playerId}`}>
-                      <div className={styles.playerNameContainer}>
-                        <PlayerNameBox
-                            playerName={p.playerName}
-                            pos={pos}
-                            isYourTurn={p.seat === turn?.currentSeat}
-                            playerId={p.playerId}
-                            seat={p.seat}
-                            isMobile={isMobile || isTablet}
-                            cardPositions={getCardStyleForPosition(pos, 0, count)}
-                        />
-                      </div>
-                      {Array.from({ length: count }).map((_, cardIndex) => {
-                        const style = getCardStyleForPosition(pos, cardIndex, count);
-                        const refKey = `${p.playerId}-${cardIndex}`;
-
-                        //  Egyedi kulcs round-dal
-                        const stableKey = `opponent-round-${currentRoundKey}-${p.playerId}-card-${cardIndex}`;
-
-                        return (
-                            <HungarianCard
-                                ref={(el) => {
-                                  if (el) {
-                                    opponentsCardRefs.current[refKey] = el;
-                                  }
-                                }}
-                                key={stableKey}
-                                zIndex={cardIndex * 10}
-                                player={{ playerId: p.playerId, pos: pos }}
-                                cardData={null}
-                                left={style.left}
-                                right={style.right}
-                                top={style.top}
-                                bottom={style.bottom}
-                                rotate={style.rotate}
-                                styleOverride={{
-                                  transform: style.transform,
-                                  transition: 'all 0.3s ease-in-out',
-                                }}
-                            />
-                        );
-                      })}
+                  <div key={`player-${p.playerId}`}>
+                    <div className={styles.playerNameContainer}>
+                      <PlayerNameBox
+                        playerName={p.playerName}
+                        pos={pos}
+                        isYourTurn={p.seat === turn?.currentSeat}
+                        playerId={p.playerId}
+                        seat={p.seat}
+                        isMobile={isMobile || isTablet}
+                        cardPositions={getCardStyleForPosition(pos, 0, count)}
+                      />
                     </div>
+                    {Array.from({ length: count }).map((_, cardIndex) => {
+                      const style = getCardStyleForPosition(pos, cardIndex, count);
+                      const refKey = `${p.playerId}-${cardIndex}`;
+
+                      //  Egyedi kulcs round-dal
+                      const stableKey = `opponent-round-${currentRoundKey}-${p.playerId}-card-${cardIndex}`;
+
+                      return (
+                        <HungarianCard
+                          ref={(el) => {
+                            if (el) {
+                              opponentsCardRefs.current[refKey] = el;
+                            }
+                          }}
+                          key={stableKey}
+                          zIndex={cardIndex * 10}
+                          player={{ playerId: p.playerId, pos: pos }}
+                          cardData={null}
+                          left={style.left}
+                          right={style.right}
+                          top={style.top}
+                          bottom={style.bottom}
+                          rotate={style.rotate}
+                          styleOverride={{
+                            transform: style.transform,
+                            transition: 'all 0.3s ease-in-out',
+                          }}
+                        />
+                      );
+                    })}
+                  </div>
                 );
               });
             })()}
@@ -657,7 +654,7 @@ function Game() {
                 const noMoreCardsNextDraw = gameSession?.gameData?.noMoreCardsNextDraw;
                 const currentRound = gameSession?.gameData?.currentRound || 0;
 
-                // Ha van normÃ¡l deck
+                // Ha van normal deck
                 if (deckSize > 0) {
 
                   console.log(deckRotations);
