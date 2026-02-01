@@ -55,12 +55,6 @@ export const StompContextProvider = ({ children }) => {
 
         lastTokenRef.current = token;
 
-        clientRef.current.subscribe('/topic/rooms', (message) => {
-          const parsed = JSON.parse(message.body);
-          setRooms((prev) => ([...prev, parsed]));
-        }, {
-          Authorization: 'Bearer ' + token,
-        });
       },
 
       onDisconnect: () => {

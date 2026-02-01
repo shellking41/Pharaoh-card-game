@@ -2,8 +2,10 @@ import React, { useContext } from 'react';
 import useWebsocket from '../hooks/useWebsocket.js';
 import { RoomsDataContext } from '../Contexts/RoomsDataContext.jsx';
 import styles from './styles/JoinRequestCardStyle.module.css';
+import UserReactions from './userReactions.jsx';
+import { UserContext } from '../Contexts/UserContext.jsx';
 
-function JoinRequestCard({ userId, roomId, username, message }) {
+function JoinRequestCard({ userId, roomId, username, message, dislikeCount, likeCount }) {
   const { sendMessage } = useWebsocket();
   const { joinRequests, setJoinRequests } = useContext(RoomsDataContext);
 
@@ -26,6 +28,8 @@ function JoinRequestCard({ userId, roomId, username, message }) {
           {avatarLetter}
         </div>
         <h1 className={styles.username}>{username}</h1>
+        <UserReactions userId={userId} dislike={dislikeCount}
+                       like={likeCount}/>
       </div>
 
       {message && (

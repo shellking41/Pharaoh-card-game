@@ -4,16 +4,16 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.game.pharaohcardgame.Enum.Role;
+import org.game.pharaohcardgame.Enum.Reaction;
 
+@Data
+@Builder
 @AllArgsConstructor
 @NoArgsConstructor
-@Builder
-@Data
-public class UserInfoResponse {
-    private Long userId;          // ha user
-    private String username;      // ha user
-    private Role role;
+public class ReactToUserResponse {
+    Long userId;
     long dislikeCount;
     long likeCount;
+    private Reaction currentReaction;
+    private String action;
 }

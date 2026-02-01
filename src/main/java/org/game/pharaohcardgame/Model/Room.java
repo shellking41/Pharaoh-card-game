@@ -26,14 +26,15 @@ public class Room {
 
     private String password;
 
+    private boolean isPublic;
 
     @ManyToOne
     @JoinColumn(name = "gamemaster_id")
     private User gamemaster;
 
-    @OneToMany(mappedBy = "room",cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "room", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
-    private List<GameSession> gameSessions= new ArrayList<>();
+    private List<GameSession> gameSessions = new ArrayList<>();
 
 
     @Column(nullable = false)
@@ -44,9 +45,9 @@ public class Room {
     @Builder.Default  // Ez fontos a Lombok Builder-hez!
     private List<User> participants = new ArrayList<>();
 
-    @OneToMany(mappedBy = "room",cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "room", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
-    private List<Bot> bots =new ArrayList<>();
+    private List<Bot> bots = new ArrayList<>();
 
     @OneToMany(mappedBy = "room", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default  // Ez fontos a Lombok Builder-hez!

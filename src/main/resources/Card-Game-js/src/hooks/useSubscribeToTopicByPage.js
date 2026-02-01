@@ -132,8 +132,41 @@ const getPageSubscriptions = (getCtx) => {
           logout();
         },
       },
+      {
+        destination: '/topic/room/' + getCtx().currentRoomId + '/reaction-update',
+        callback: (message) => {
+          const { userCurrentStatus, setUserCurrentStatus } = getCtx();
+
+          setUserCurrentStatus(prev => ({
+            ...prev,
+            currentRoom: {
+              ...prev.currentRoom,
+              participants: prev.currentRoom.participants.map(p =>
+                p.userId === message.userId
+                  ? {
+                    ...p,
+                    likeCount: message.likeCount,
+                    dislikeCount: message.dislikeCount,
+                  }
+                  : p,
+              ),
+            },
+          }));
+        },
+      },
+
     ],
     home: [
+      {
+        destination: '/topic/rooms',
+        callback: (message) => {
+          const { setRooms } = getCtx();
+          console.log(message);
+
+          setRooms((prev) => ([...prev, message]));
+        },
+
+      },
       {
         destination: '/user/queue/room-creation-response',
         callback: (message) => {

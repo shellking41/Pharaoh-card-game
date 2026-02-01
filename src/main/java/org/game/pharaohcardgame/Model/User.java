@@ -16,7 +16,7 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
-@Table(name="user_entity")
+@Table(name = "user_entity")
 @Builder
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 
@@ -26,7 +26,7 @@ public class User implements UserDetails {
     @EqualsAndHashCode.Include
     private Long id;
 
-    @Column(nullable = false,unique = true)
+    @Column(nullable = false, unique = true)
     private String name;
 
     @Column(nullable = false)
@@ -36,14 +36,14 @@ public class User implements UserDetails {
     private Role role;
 
     @ManyToOne
-    @JoinColumn(name="room_id")
+    @JoinColumn(name = "room_id")
     private Room currentRoom;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     @ToString.Exclude
     @JsonIgnore
-    private List<Player> userPlayers=new ArrayList<>();
+    private List<Player> userPlayers = new ArrayList<>();
 
     // Egy user több szobának is lehet a gamemastere
     @OneToMany(mappedBy = "gamemaster")
@@ -58,10 +58,18 @@ public class User implements UserDetails {
     @JsonIgnore
     private List<Message> messages = new ArrayList<>();
 
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL,orphanRemoval = true)
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     @ToString.Exclude
     @JsonIgnore
     private List<Tokens> tokens;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private long likeCount = 0;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private long dislikeCount = 0;
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

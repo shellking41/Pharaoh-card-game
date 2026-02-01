@@ -155,6 +155,7 @@ public class RoomService implements IRoomService {
 
             if (simpUserRegistry.getUser(gameMaster.getId().toString()) != null) {
                 JoinRequestResponse joinRequest = responseMapper.toJoinRequestResponse(
+                        user,
                         room.getRoomId(),
                         joinRoomRequest.getMessage(),
                         joinRoomRequest.getUserId(),
@@ -243,7 +244,6 @@ public class RoomService implements IRoomService {
         Map<String, Object> resultMessage = new HashMap<>();
 
         if (confirmOrDeclineJoin.getConfirm()) {
-            // ✅ ELLENŐRZÉS: A user már bent van-e másik szobában?
             if (user.getCurrentRoom() != null) {
                 // Ha már bent van másik szobában
                 if (!user.getCurrentRoom().getRoomId().equals(room.getRoomId())) {
@@ -393,6 +393,7 @@ public class RoomService implements IRoomService {
             Room newRoom = Room.builder()
                     .name(createRoomRequest.getRoomName())
                     .password(passwordEncoder.encode(createRoomRequest.getRoomPassword()))
+                    .isPublic(createRoomRequest.getRoomPassword().isEmpty())
                     .build();
 
             gameMaster.setCurrentRoom(newRoom);
@@ -408,6 +409,7 @@ public class RoomService implements IRoomService {
                     .roomName(newRoom.getName())
                     .gameStatus(null)
                     .hasActiveGame(false)
+                    .isPublic(newRoom.isPublic())
                     .build();
 
             RoomCreationResponse successResponse = responseMapper.toRoomCreationResponse(

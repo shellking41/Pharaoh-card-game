@@ -23,14 +23,15 @@ public interface RoomRepository extends JpaRepository<Room, Long> {
                     r.roomId,
                     CAST(COUNT(DISTINCT p.id) + COUNT(DISTINCT b.id) AS long),
                     gs.gameStatus,
-                    CASE WHEN gs.gameStatus IS NOT NULL AND gs.gameStatus != 'FINISHED' THEN true ELSE false END
+                    CASE WHEN gs.gameStatus IS NOT NULL AND gs.gameStatus != 'FINISHED' THEN true ELSE false END,
+                    r.isPublic
                 )
                 FROM Room r
                 LEFT JOIN r.participants p
                 LEFT JOIN r.bots b
                 LEFT JOIN r.gameSessions gs ON gs.gameStatus != 'FINISHED'
                 WHERE r.active = true
-                GROUP BY r.roomId, r.name, gs.gameStatus
+                GROUP BY r.roomId, r.name, r.password, gs.gameStatus
                 ORDER BY r.roomId DESC
             """)
     Page<MinimalRoomResponse> findActiveRoomsMinimal(Pageable pageable);

@@ -16,4 +16,5 @@ public class MinimalRoomResponse {
     private Long playerCount;
     private GameStatus gameStatus; // null ha nincs játék, egyébként WAITING/IN_PROGRESS/FINISHED
     private Boolean hasActiveGame; // true ha van futó vagy várakozó játék
+    private Boolean isPublic;
 }

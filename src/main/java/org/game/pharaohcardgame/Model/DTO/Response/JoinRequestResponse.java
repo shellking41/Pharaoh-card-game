@@ -11,8 +11,10 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Builder
 public class JoinRequestResponse {
-	Long userId;
-	Long roomId;
-	String username;
-	String message;
+    Long userId;
+    Long roomId;
+    String username;
+    String message;
+    long dislikeCount;
+    long likeCount;
 }

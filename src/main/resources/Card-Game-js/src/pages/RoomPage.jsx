@@ -12,6 +12,7 @@ import BotView from '../components/Room/BotView.jsx';
 import { GameSessionContext } from '../Contexts/GameSessionContext.jsx';
 import SomethingWentWrong from '../service/somethingWentWrong.jsx';
 import styles from './styles/RoomPage.module.css';
+import UserReactions from '../components/userReactions.jsx';
 
 function RoomPage() {
   const { roomId } = useParams();
@@ -86,7 +87,10 @@ function RoomPage() {
       console.error(e);
     }
   };
+  useEffect(() => {
+    console.log(userCurrentStatus);
 
+  }, [userCurrentStatus]);
   const totalPlayers = (userCurrentStatus.currentRoom?.participants?.length || 0) +
     (userCurrentStatus.currentRoom?.bots?.length || 0);
   const isRoomFull = totalPlayers >= 4;
@@ -127,12 +131,13 @@ function RoomPage() {
                 <div key={p.userId} className={styles.playerCard}>
                   <div className={styles.playerAvatar}>
                     {p.username.charAt(0).toUpperCase()}
+
                   </div>
                   <div className={styles.playerInfo}>
                     <span className={styles.playerName}>{p.username}</span>
-                    {p.userId === userCurrentStatus.currentRoom?.gamemaster?.userId && (
-                      <span className={styles.gamemasterBadge}>GM</span>
-                    )}
+
+                    <UserReactions dislike={p.dislikeCount} like={p.likeCount}
+                                   userId={p.userId}/>
                   </div>
                 </div>
               ))}

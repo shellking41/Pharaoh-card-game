@@ -1,5 +1,6 @@
 package org.game.pharaohcardgame.Model.DTO;
 
+import org.game.pharaohcardgame.Enum.Reaction;
 import org.game.pharaohcardgame.Model.*;
 import org.game.pharaohcardgame.Model.DTO.Request.CardRequest;
 import org.game.pharaohcardgame.Model.DTO.Response.*;
@@ -14,12 +15,24 @@ import java.util.stream.Collectors;
 @Component
 public class ResponseMapper {
 
+    public ReactToUserResponse reactToUserResponse(User user, Reaction currentReaction, String action) {
+        return ReactToUserResponse.builder()
+                .userId(user.getId())
+                .dislikeCount(user.getDislikeCount())
+                .likeCount(user.getLikeCount())
+                .currentReaction(currentReaction)
+                .action(action)
+                .build();
+    }
+
     // User mappings
     public UserInfoResponse toUserInfoResponse(User user) {
         return UserInfoResponse.builder()
                 .userId(user.getId())
                 .username(user.getName())
                 .role(user.getRole())
+                .dislikeCount(user.getDislikeCount())
+                .likeCount(user.getLikeCount())
                 .build();
     }
 
@@ -42,6 +55,7 @@ public class ResponseMapper {
         return RoomResponse.builder()
                 .roomId(room.getRoomId())
                 .roomName(room.getName())
+                .isPublic(room.isPublic())
                 .participants(participants)
                 .bots(bots)
                 .build();
@@ -113,12 +127,14 @@ public class ResponseMapper {
     }
 
     // Room operation response mappings
-    public JoinRequestResponse toJoinRequestResponse(Long roomId, String message, Long userId, String username) {
+    public JoinRequestResponse toJoinRequestResponse(User user, Long roomId, String message, Long userId, String username) {
         return JoinRequestResponse.builder()
                 .roomId(roomId)
                 .message(message)
                 .userId(userId)
                 .username(username)
+                .dislikeCount(user.getDislikeCount())
+                .likeCount(user.getLikeCount())
                 .build();
     }
 

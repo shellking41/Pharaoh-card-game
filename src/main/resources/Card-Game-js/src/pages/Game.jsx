@@ -105,6 +105,14 @@ import useBroadcastPlayAction
 // legyen a paklinak helye ahonnan felhuzzak a kartyakat-kesz
 //ha leavelunk akkor a playernek refreshelnie kell ahhoz hogy lÃƒÂ¡ssa hogy tenyleg kilÃƒÂ©pett, gondolom nincs reshetelve a state-kesz
 //todo:ha a vÃƒÂ©ge a jateknak akkor az animacio elosszor menjen vÃƒÂ©gbe,
+//todo: kell jelzés a szoba listába hogy nincs egy adott szobának kódja hogy szabadon csatlakozható
+//todo: a szoba paginaciot meg kell csinalni
+//todo: ha vége a kornek akkor ne spawnoljon a jatekosoknak a kezebe akartya hanem legyen kiosztas animacio
+//todo: lehetne globalis chat
+//todo: lehetne szoba chat
+//todo: lehetne barát rendszer
+//todo: lehetne statisztika
+//todo: lehetne like rendszer hogy ha valaki likeol valaki mast vagy dislikol akkor látható lesz  az annak a profilján es feltuntessuk a csatlakozas keresekor, a szobában, is hogy tudjuk elore hogy most toxik vagy rendes jatekos ellen fogunk jatszani
 function Game() {
   const {
     gameSession, playerSelf, turn, setTurn, setPlayerSelf, setGameSession, selectedCards, setSelectedCards, validPlays, animatingDrawCards, setAnimatingDrawCards, animatingReshuffle,

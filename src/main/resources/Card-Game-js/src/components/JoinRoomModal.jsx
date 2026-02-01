@@ -60,25 +60,29 @@ function JoinRoomModal({ setOpenModal, roomAttributes, openModal }) {
 
         <div className={styles.form}>
           <div className={styles.formGroup}>
-            <label
-              className={`${styles.inputWrapper} `}>
-              <label htmlFor="room-password" className={styles.inputLabel}>
-                Room Password
-              </label>
-              <input
-                type="password"
-                id="room-password"
-                name="room-password"
-                className={styles.input}
-                placeholder=""
-                value={roomPassword}
-                onChange={(e) => setRoomPassword(e.target.value)}
-              />
+            {!roomAttributes.isPublic &&
+              <><label
+                className={`${styles.inputWrapper} `}>
+                <label htmlFor="room-password" className={styles.inputLabel}>
+                  Room Password
+                </label>
+                <input
+                  type="password"
+                  id="room-password"
+                  name="room-password"
+                  className={styles.input}
+                  placeholder=""
+                  value={roomPassword}
+                  onChange={(e) => setRoomPassword(e.target.value)}
+                />
 
-            </label>
-            <span className={styles.helperText}>
+              </label>
+
+                <span className={styles.helperText}>
                             Required to join this room
                         </span>
+              </>
+            }
           </div>
 
           <div className={styles.formGroup}>

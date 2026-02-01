@@ -1,19 +1,25 @@
 import { useState } from 'react';
 import JoinRoomModal from './JoinRoomModal.jsx';
 import styles from './styles/RoomCardStyle.module.css';
-import { FaDoorOpen, FaUsers } from 'react-icons/fa';
+import { FaDoorOpen, FaUsers, FaLock, FaLockOpen } from 'react-icons/fa';
 
-export const RoomCard = ({ roomId, roomName, playerCount, gameStatus, hasActiveGame }) => {
+export const RoomCard = ({ roomId, roomName, playerCount, gameStatus, hasActiveGame, isPublic }) => {
   const [openModal, setOpenModal] = useState(false);
   const isAvailable = playerCount < 4;
 
   return (
     <>
-      <div className={styles.card}>
+      <div
+        className={`${styles.card} ${isPublic ? styles.publicRoom : styles.privateRoom}`}>
         <div className={styles.header}>
           <h2 className={styles.roomName}>
             <FaDoorOpen className={styles.roomIcon}/>
             {roomName}
+            {isPublic ? (
+              <FaLockOpen className={styles.lockIcon} title="Public Room"/>
+            ) : (
+              <FaLock className={styles.lockIcon} title="Private Room"/>
+            )}
           </h2>
         </div>
 
@@ -21,14 +27,20 @@ export const RoomCard = ({ roomId, roomName, playerCount, gameStatus, hasActiveG
           <div className={styles.infoItem}>
             <FaUsers/>
             <span className={styles.capacity}>
-                            {playerCount || 0}/4 Players
-                        </span>
+              {playerCount || 0}/4 Players
+            </span>
           </div>
 
           <span
             className={`${styles.statusBadge} ${hasActiveGame ? styles.occupied : isAvailable ? styles.available : styles.occupied}`}>
-                        {hasActiveGame ? 'In Progress' : isAvailable ? '● Available' : '● Full'}
-                    </span>
+            {hasActiveGame ? 'In Progress' : isAvailable ? '● Available' : '● Full'}
+          </span>
+
+          {isPublic && (
+            <span className={styles.publicBadge}>
+              <FaLockOpen/> Public
+            </span>
+          )}
         </div>
 
         <button
@@ -36,7 +48,6 @@ export const RoomCard = ({ roomId, roomName, playerCount, gameStatus, hasActiveG
           onClick={() => setOpenModal(true)}
           disabled={!isAvailable || hasActiveGame}
         >
-
           {hasActiveGame ? 'Game Started' : isAvailable ? 'Join Room' : 'Room Full'}
         </button>
       </div>
@@ -48,6 +59,7 @@ export const RoomCard = ({ roomId, roomName, playerCount, gameStatus, hasActiveG
           roomId,
           roomName,
           capacity: `${playerCount || 0}/4`,
+          isPublic,
         }}
       />
     </>
