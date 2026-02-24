@@ -419,11 +419,9 @@ public class GameEngine implements IGameEngine {
 
 
     @Override
-    //ha ures a keze akkor már nem kell lépnie és az adot kort nyerte,de még a jatek folytatódik
     public void handlePlayerEmptyhand(GameState gameState, Player player, GameSession gameSession) {
         // Játékos kiszáll az adott körből - már nem játszik tovább ebben a körben
         Set<Long> finishedPlayers = gameSessionUtils.getSpecificGameDataTypeSet("finishedPlayers", gameState);
-
 
         finishedPlayers.add(player.getPlayerId());
 
@@ -436,8 +434,8 @@ public class GameEngine implements IGameEngine {
             // Csak egy játékos maradt - ő a vesztes
             Player lastPlayer = activePlayers.get(0);
             handleRoundEnd(gameState, lastPlayer);
-            if (!isGameEnded(gameState, gameSession)) {
 
+            if (!isGameEnded(gameState, gameSession)) {
                 Map<String, Object> gameData = gameState.getGameData();
 
                 int currentRound = (int) gameData.getOrDefault("currentRound", 0);
@@ -455,9 +453,35 @@ public class GameEngine implements IGameEngine {
                 // Új kör indítása
                 startNewRound(gameState, gameSession);
             } else {
+               // Rögzítjük a helyezéseket
+                recordFinalPositions(gameState, gameSession);
                 gameFinished(gameState);
             }
         }
+    }
+
+    private void recordFinalPositions(GameState gameState, GameSession gameSession) {
+        Map<Long, Integer> lossCountMap = gameSessionUtils.getSpecificGameDataTypeMap("lossCount", gameState);
+        Set<Long> finishedPlayers = gameSessionUtils.getSpecificGameDataTypeSet("finishedPlayers", gameState);
+
+        // Pozíciók meghatározása lossCount alapján
+        // Minél kevesebb lossCount, annál jobb a helyezés
+        Map<Long, Integer> positions = new HashMap<>();
+
+        List<Map.Entry<Long, Integer>> sortedByLossCount = lossCountMap.entrySet().stream()
+                .sorted(Map.Entry.comparingByValue())
+                .toList();
+
+        int position = 1;
+        for (Map.Entry<Long, Integer> entry : sortedByLossCount) {
+            positions.put(entry.getKey(), position++);
+        }
+
+        // Elmentjük a pozíciókat a gameData-ba (később a StatisticsService használja)
+        gameState.getGameData().put("finalPositions", positions);
+
+        log.info("Recorded final positions for game session {}: {}",
+                gameSession.getGameSessionId(), positions);
     }
 
     public boolean isGameEnded(GameState gameState, GameSession gameSession) {

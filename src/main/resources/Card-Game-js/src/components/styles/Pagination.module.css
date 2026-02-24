@@ -1,0 +1,54 @@
+/* components/styles/Pagination.module.css */
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    margin: 24px 0;
+    flex-wrap: wrap;
+}
+
+.pageButton {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+    min-width: 40px;
+}
+
+.pageButton:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+}
+
+.pageButton.active {
+    background: rgb(var(--orange-color));
+    border-color: rgb(var(--orange-color));
+    font-weight: 600;
+}
+
+.pageButton:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.ellipsis {
+    color: rgba(255, 255, 255, 0.5);
+    padding: 0 4px;
+}
+
+@media (max-width: 768px) {
+    .pagination {
+        gap: 4px;
+    }
+
+    .pageButton {
+        padding: 6px 12px;
+        font-size: 0.8rem;
+        min-width: 32px;
+    }
+}

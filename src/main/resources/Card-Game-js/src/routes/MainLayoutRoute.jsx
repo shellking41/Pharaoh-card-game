@@ -8,12 +8,14 @@ import Register from "../pages/Register.jsx";
 import RoomPage from "../pages/RoomPage.jsx";
 import {GameSessionContext, GameSessionContextProvider} from "../Contexts/GameSessionContext.jsx";
 import Game from "../pages/Game.jsx";
+import Statistic from "../pages/Statistic.jsx";
 
 const MainLayoutRoute = (
     <Route path={"/"} element={<MainLayout/>}>
         <Route index element={<ProtectedRoute><Home/></ProtectedRoute>}/>
         <Route path={"about"} element={<ProtectedRoute><About/></ProtectedRoute>}/>
         <Route path={"register"} element={<Register/>}/>
+        <Route path={"statistics"} element={<ProtectedRoute><Statistic/></ProtectedRoute>}/>
         <Route path="/room/:roomId" element={<ProtectedRoute><RoomPage/></ProtectedRoute>}/>
             <Route path="/game/:gameSessionId" element={<ProtectedRoute><Game/></ProtectedRoute>}/>
     </Route>

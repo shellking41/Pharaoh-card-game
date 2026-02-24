@@ -64,6 +64,7 @@ public class GameSessionService implements IGameSessionService {
     private final BotLogic botLogic;
     private final NotificationHelpers notificationHelpers;
     private final UserRepository userRepository;
+    private final StatisticsService statisticsService;
 
 
     @Override
@@ -474,10 +475,10 @@ public class GameSessionService implements IGameSessionService {
 
             gameEngine.playCards(playCardsRequest.getPlayCards(), currentPlayer, current, gameSession);
             //ha finished akkor ne menjen tovább a logika
-            if (handleIfGameFinished(current, gameSession, playedCardResponses.get(),playCardsRequest.getPlayCards(),playCardsRequest.getPlayerId())) {
+            if (handleIfGameFinished(current, gameSession, playedCardResponses.get(),
+                    playCardsRequest.getPlayCards(), playCardsRequest.getPlayerId())) {
                 return current;
             }
-
             //todo: van olyan baj a aroudendedel hogy akkor is true marad amikor már a kovetkezo kor megy
             if (current.getGameData().getOrDefault("roundEnded", false).equals(false)) {
                 CardRequest lastCard = playCardsRequest.getPlayCards().getLast();
@@ -752,14 +753,23 @@ public class GameSessionService implements IGameSessionService {
                     .build();
         }
     }
-    private boolean handleIfGameFinished(GameState current, GameSession gameSession, List<PlayedCardResponse> playedCardResponses,List<CardRequest> newPlayedCards,Long playerId) {
+    private boolean handleIfGameFinished(GameState current, GameSession gameSession,
+                                         List<PlayedCardResponse> playedCardResponses,
+                                         List<CardRequest> newPlayedCards, Long playerId) {
         if (current.getStatus().equals(GameStatus.FINISHED)) {
-            // End the game session
+            // Játék befejezése
             gameSession.setGameStatus(GameStatus.FINISHED);
             gameSessionRepository.save(gameSession);
-            notificationHelpers.sendPlayedCardsNotification(gameSession.getGameSessionId(), current, playedCardResponses,newPlayedCards,playerId);
+
+            // STATISZTIKÁK RÖGZÍTÉSE
+            gameSessionUtils.recordGameStatistics(current, gameSession, false); // false = normál vég, nem gamemaster kilépés
+
+            // Értesítések
+            notificationHelpers.sendPlayedCardsNotification(gameSession.getGameSessionId(),
+                    current, playedCardResponses, newPlayedCards, playerId);
             notificationHelpers.sendPlayCardsNotification(gameSession, current);
-            // End game state in cache
+
+            // Cache törlés
             gameSessionUtils.deleteGameState(gameSession.getGameSessionId());
 
             return true;
@@ -794,14 +804,21 @@ public class GameSessionService implements IGameSessionService {
     }
 
     public void handleGamemasterLeaving(GameSession gameSession) {
-
         notificationHelpers.sendGameEnded(gameSession, "Gamemaster left the game");
 
-        // End the game session
+        // Lekérjük a gameState-et MIELŐTT törlnénk
+        GameState gameState = gameSessionUtils.getGameState(gameSession.getGameSessionId());
+
+        // Játék befejezése
         gameSession.setGameStatus(GameStatus.FINISHED);
         gameSessionRepository.save(gameSession);
 
-        // End game state in cache
+        // STATISZTIKÁK ELDOBÁSA (gamemaster kilépés)
+        if (gameState != null) {
+            gameSessionUtils.recordGameStatistics(gameState, gameSession, true); // true = gamemaster kilépés
+        }
+
+        // Cache törlés
         gameSessionUtils.deleteGameState(gameSession.getGameSessionId());
 
         log.info("Game session {} ended - gamemaster left", gameSession.getGameSessionId());

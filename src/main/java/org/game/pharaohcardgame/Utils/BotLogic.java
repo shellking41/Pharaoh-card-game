@@ -17,6 +17,7 @@ import org.game.pharaohcardgame.Model.RedisModel.Card;
 import org.game.pharaohcardgame.Model.RedisModel.GameState;
 import org.game.pharaohcardgame.Model.Results.NextTurnResult;
 import org.game.pharaohcardgame.Repository.GameSessionRepository;
+import org.game.pharaohcardgame.Service.Implementation.GameSessionService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
@@ -45,6 +46,8 @@ public class BotLogic implements IBotLogic {
     private final NotificationHelpers notificationHelpers;
     private final ThreadPoolTaskScheduler taskScheduler;
     private final GameSessionRepository gameSessionRepository;
+
+
 
     @Value("${application.game.BOT.THINK_TIME_Ms}")
     private int BOT_THINK_TIME_Ms;
@@ -604,6 +607,9 @@ public class BotLogic implements IBotLogic {
                 if (gameState.getStatus().equals(GameStatus.FINISHED)) {
                     gameSession.setGameStatus(GameStatus.FINISHED);
                     gameSessionRepository.save(gameSession);
+
+                    gameSessionUtils.recordGameStatistics(gameState, gameSession, false);
+
                     gameSessionUtils.deleteGameState(gameSession.getGameSessionId());
                     notificationHelpers.sendGameEnded(gameSession, "Game is finished");
                     return;

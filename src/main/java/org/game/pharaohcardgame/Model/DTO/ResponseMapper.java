@@ -8,6 +8,7 @@ import org.game.pharaohcardgame.Model.RedisModel.Card;
 import org.game.pharaohcardgame.Model.RedisModel.GameState;
 import org.springframework.stereotype.Component;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -59,6 +60,75 @@ public class ResponseMapper {
                 .participants(participants)
                 .bots(bots)
                 .build();
+    }
+
+    public UserStatisticsResponse toUserStatisticsDTO(UserStatistics userStats) {
+        if (userStats == null) {
+            return null;
+        }
+
+        return UserStatisticsResponse.builder()
+                .userId(userStats.getUser() != null ? userStats.getUser().getId() : null)
+                .username(userStats.getUser() != null ? userStats.getUser().getName() : null)
+                .totalGamesPlayed(userStats.getTotalGamesPlayed())
+                .totalWins(userStats.getTotalWins())
+                .totalLosses(userStats.getTotalLosses())
+                .winRate(userStats.getWinRate())
+                .build();
+    }
+
+    public RoomStatisticsResponse toRoomStatisticsDTO(RoomStatistics roomStats) {
+        if (roomStats == null) {
+            return null;
+        }
+
+        return RoomStatisticsResponse.builder()
+                .userId(roomStats.getUser() != null ? roomStats.getUser().getId() : null)
+                .username(roomStats.getUser() != null ? roomStats.getUser().getName() : null)
+                .roomId(roomStats.getRoom() != null ? roomStats.getRoom().getRoomId() : null)
+                .roomName(roomStats.getRoom() != null ? roomStats.getRoom().getName() : null)
+                .gamesPlayedInRoom(roomStats.getGamesPlayedInRoom())
+                .winsInRoom(roomStats.getWinsInRoom())
+                .lossesInRoom(roomStats.getLossesInRoom())
+                .winRateInRoom(roomStats.getWinRateInRoom())
+                .build();
+    }
+
+    public List<RoomStatisticsResponse> toRoomStatisticsDTOList(List<RoomStatistics> roomStatsList) {
+        if (roomStatsList == null) {
+            return Collections.emptyList();
+        }
+
+        return roomStatsList.stream()
+                .map(this::toRoomStatisticsDTO)
+                .collect(Collectors.toList());
+    }
+
+    public GameStatisticsResponse toGameStatisticsDTO(GameStatistics gameStats) {
+        if (gameStats == null) {
+            return null;
+        }
+
+        return GameStatisticsResponse.builder()
+                .gameId(gameStats.getId())
+                .userId(gameStats.getUser() != null ? gameStats.getUser().getId() : null)
+                .username(gameStats.getUser() != null ? gameStats.getUser().getName() : null)
+                .roomId(gameStats.getRoom() != null ? gameStats.getRoom().getRoomId() : null)
+                .roomName(gameStats.getRoom() != null ? gameStats.getRoom().getName() : null)
+                .isWinner(gameStats.getIsWinner())
+                .finalPosition(gameStats.getFinalPosition())
+                .playedAt(gameStats.getPlayedAt())
+                .build();
+    }
+
+    public List<GameStatisticsResponse> toGameStatisticsDTOList(List<GameStatistics> gameStatsList) {
+        if (gameStatsList == null) {
+            return Collections.emptyList();
+        }
+
+        return gameStatsList.stream()
+                .map(this::toGameStatisticsDTO)
+                .collect(Collectors.toList());
     }
 
     public List<BotInfoResponse> toBotResponseList(List<Bot> bots) {

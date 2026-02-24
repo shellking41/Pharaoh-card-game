@@ -1,0 +1,110 @@
+.containerBase {
+    background: var(--page-main-bright-color);
+    display: flex;
+    flex-direction: column;
+    padding: 2rem;
+    border-radius: 16px;
+    box-shadow: 0px -9px 8px 0px rgba(0, 0, 0, 0.2);
+}
+
+.container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2rem;
+    justify-content: center;
+    padding: 2rem;
+}
+
+/* Statisztika táblázat stílusok - sötét háttérhez */
+.userStatisticsContainer {
+    min-width: 400px;
+    overflow-x: auto;
+}
+
+.userStatisticsContainer table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: inherit;
+    background-color: rgba(255, 255, 255, 0.05);
+
+    color: #ffffff;  /* fehér szöveg */
+}
+.playerStatHeader{
+    color: white;
+    text-align: center;
+    margin-bottom: 12px;
+}
+.userStatisticsContainer th {
+
+    padding: 1rem 0.5rem;
+    font-size: 1.2rem;
+
+    color: rgba(255, 255, 255, 0.9);  /* áttetsző fehér */
+    border-bottom: 2px solid rgba(255, 255, 255, 0.2);  /* világos border */
+}
+.userStatisticsContainer th:first-child{
+    text-align: left;
+}
+.userStatisticsContainer td {
+    padding: 0.8rem 0.5rem;
+
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);  /* halvány border */
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.userStatisticsContainer tr:last-child td {
+    border-bottom: none;
+}
+
+.userStatisticsContainer td:first-child {
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.7);  /* halványabb fehér a címkéknek */
+    text-transform: capitalize;
+}
+
+.userStatisticsContainer td:nth-child(2) {
+    font-weight: 700;
+    color: white;
+    text-align: center;
+
+}
+
+.userStatisticsContainer td:nth-child(3) {
+    font-weight: 700;
+    color: rgb(var(--main-bright-color));
+    text-align: center;
+}
+
+/* Hover effekt a sorokra - sötét háttéren */
+.userStatisticsContainer tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.05);  /* halvány fehér áttetsző */
+    transition: background-color 0.2s ease;
+}
+
+/* Fejléc hover kivétele */
+.userStatisticsContainer tbody tr:hover td{
+    background-color: transparent;
+}
+
+
+/* Reszponzív design */
+@media (max-width: 768px) {
+    .userStatisticsContainer {
+        min-width: 100%;
+    }
+
+    .container {
+        padding: 1rem;
+        gap: 1rem;
+    }
+
+    .containerBase {
+        padding: 1.5rem;
+    }
+
+    .userStatisticsContainer td,
+    .userStatisticsContainer th {
+        padding: 0.6rem 0.3rem;
+        font-size: 0.9rem;
+    }
+}

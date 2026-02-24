@@ -9,92 +9,117 @@ import { StompContext } from '../Contexts/StompContext.jsx';
 import ProgressBar from '../service/ProgressBar.jsx';
 import useAllRoom from '../components/Home/Hooks/useAllRoom.js';
 import SomethingWentWrong from '../service/somethingWentWrong.jsx';
+import Pagination from '../components/Pagination.jsx';
 import styles from './styles/HomeStyle.module.css';
-import {useNavigate} from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import { TokenContext } from "../Contexts/TokenContext.jsx";
+import { useApiCallHook } from "../hooks/useApiCallHook.js";
 
 function Home() {
-  const { rooms } = useContext(RoomsDataContext);
-  const { userCurrentStatus } = useContext(UserContext);
-  const { connected, clientRef } = useContext(StompContext);
-  const { getAllRoom, loading } = useAllRoom();
-  const [openModal, setOpenModal] = useState(false);
+    const { rooms, totalPages, currentPage } = useContext(RoomsDataContext);
+    const { userCurrentStatus } = useContext(UserContext);
+    const { connected, clientRef } = useContext(StompContext);
+    const { getAllRoom, loading, goToPage } = useAllRoom();
+    const { token } = useContext(TokenContext);
+    const { get } = useApiCallHook();
 
-  useSubscribeToTopicByPage({ page: 'home' });
- const navigate=useNavigate()
-  useEffect(() => {
-    console.log(rooms);
-  }, [rooms]);
+    const [openModal, setOpenModal] = useState(false);
 
-  useEffect(() => {
-    console.log(userCurrentStatus);
-  }, [userCurrentStatus]);
+    useSubscribeToTopicByPage({ page: 'home' });
+    const navigate = useNavigate();
 
-  if (!userCurrentStatus.authenticated) {
-    return null;
-  }
+    const handlePageChange = (newPage) => {
+        goToPage(newPage);
+        // Scroll to top when changing page
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
 
-  if (!clientRef.current && !connected) {
-    return <ProgressBar/>;
-  }
+    const handleRefresh = () => {
+        getAllRoom(currentPage);
+    };
 
-  return (
-    <>
-      <div className={styles.container}>
-        <SomethingWentWrong/>
+    if (!userCurrentStatus.authenticated) {
+        return null;
+    }
 
-        <div className={styles.containerTop}>
-          <button className={styles.tutorialButton} onClick={()=>navigate("/about")}>Tutorial</button>
-          <div className={styles.header}>
-            <h1 className={styles.title}>Game Rooms</h1>
-            <p className={styles.subtitle}>Join a room or create your own</p>
-            <button
-              className={styles.refreshButton}
-              onClick={() => getAllRoom()}
-              disabled={loading}
-            >
-              {loading ? 'Refreshing...' : 'Refresh Rooms'}
-            </button>
-          </div>
-          <div className={styles.createSection}>
-            <button
-              className={styles.createButton}
-              onClick={() => setOpenModal(true)}
-            >
-              Create New Room
-            </button>
-            <CreateRoomModal openModal={openModal} setOpenModal={setOpenModal}/>
-          </div>
-        </div>
+    if (!clientRef.current && !connected) {
+        return <ProgressBar />;
+    }
 
+    return (
+        <>
+            <div className={styles.container}>
+                <SomethingWentWrong />
 
-      </div>
-      <div className={styles.containerBottom}>
-        <div className={styles.roomsSection}>
-          {loading ? (
-            <div className={styles.loadingContainer}>
-              <CircularProgress style={{ color: 'white' }} size={60}/>
+                <div className={styles.containerTop}>
+                    <div className={styles.navigationButtonContainer}>
+                        <button className={styles.tutorialButton} onClick={() => navigate("/about")}>
+                            Tutorial
+                        </button>
+                        <button className={styles.statisticsButton} onClick={() => navigate("/statistics")}>
+                            Statistics
+                        </button>
+                    </div>
+
+                    <div className={styles.header}>
+                        <h1 className={styles.title}>Game Rooms</h1>
+                        <p className={styles.subtitle}>Join a room or create your own</p>
+                        <button
+                            className={styles.refreshButton}
+                            onClick={handleRefresh}
+                            disabled={loading}
+                        >
+                            {loading ? 'Refreshing...' : 'Refresh Rooms'}
+                        </button>
+                    </div>
+                    <div className={styles.createSection}>
+                        <button
+                            className={styles.createButton}
+                            onClick={() => setOpenModal(true)}
+                        >
+                            Create New Room
+                        </button>
+                        <CreateRoomModal openModal={openModal} setOpenModal={setOpenModal} />
+                    </div>
+                </div>
             </div>
-          ) : rooms.length > 0 ? (
-            <div className={styles.roomsGrid}>
-              {rooms.map(room => (<>
-                  <RoomCard key={room.roomId} {...room} />
-             
 
-                </>
+            <div className={styles.containerBottom}>
+                <div className={styles.roomsSection}>
+                    {loading ? (
+                        <div className={styles.loadingContainer}>
+                            <CircularProgress style={{ color: 'white' }} size={60} />
+                        </div>
+                    ) : rooms.length > 0 ? (
+                        <>
+                            <div className={styles.roomsGrid}>
+                                {rooms.map(room => (
+                                    <RoomCard key={room.roomId} {...room} />
+                                ))}
+                            </div>
 
-              ))}
+                            {/* Pagination komponens */}
+                            <Pagination
+                                currentPage={currentPage}
+                                totalPages={totalPages}
+                                onPageChange={handlePageChange}
+                            />
+
+                            {/* Oldalszám információ */}
+                            <div className={styles.pageInfo}>
+                                Page {currentPage + 1} of {totalPages}
+                            </div>
+                        </>
+                    ) : (
+                        <div className={styles.emptyState}>
+                            <h3>No rooms available</h3>
+                            <p>Be the first to create a room!</p>
+                        </div>
+                    )}
+                </div>
             </div>
-          ) : (
-            <div className={styles.emptyState}>
-              <h3>No rooms available</h3>
-              <p>Be the first to create a room!</p>
-            </div>
-          )}
-
-        </div>
-      </div>
-    </>
-  );
+        </>
+    );
 }
 
 export default Home;

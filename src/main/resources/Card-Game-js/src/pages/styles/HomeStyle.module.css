@@ -2,6 +2,7 @@
   background: var(--page-main-bright-color);
   display: flex;
   flex-direction: column;
+
   padding: 2rem;
   width: 50%;
   margin: 20px auto auto;
@@ -10,8 +11,37 @@
   box-shadow: 0px -9px 8px 0px rgba(0, 0, 0, 0.2);
 
 }
+.navigationButtonContainer{
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.statisticsButton{
+  background: rgb(var(--orange-color));
+  border: none;
+  color: white;
+  padding: 0.2rem 1rem;
+
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(var(--orange-color), 0.4);
+}
+.statisticsButton:hover:not(:disabled) {
+  background: rgb(var(--orange-color));
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(var(--orange-color), 0.6);
+}
+.statisticsButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 .container {
   position: relative;
+  margin-top: 32px;
 }
 .containerBottom {
   width: 80%;
@@ -68,7 +98,7 @@
   border: none;
   color: white;
   padding: 0.2rem 1rem;
-  margin-left: auto;
+
   border-radius: 12px;
   font-size: 0.9rem;
   font-weight: 600;
@@ -181,4 +211,55 @@
     grid-template-columns: 1fr;
     gap: 1rem;
   }
+}
+
+.pageInfo {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.9rem;
+  margin-top: 8px;
+  margin-bottom: 16px;
+}
+
+/* Optional: Add animation for page transitions */
+.roomsGrid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0.5;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Improve empty state styling */
+.emptyState {
+  text-align: center;
+  padding: 4rem 2rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  backdrop-filter: blur(10px);
+  color: white;
+  margin: 2rem 0;
+}
+
+.emptyState h3 {
+  font-size: 1.8rem;
+  margin-bottom: 1rem;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.emptyState p {
+  font-size: 1.1rem;
+  opacity: 0.7;
 }

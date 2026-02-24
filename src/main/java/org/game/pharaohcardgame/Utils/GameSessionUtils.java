@@ -2,6 +2,7 @@ package org.game.pharaohcardgame.Utils;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityNotFoundException;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.game.pharaohcardgame.Enum.CardRank;
@@ -21,6 +22,7 @@ import org.game.pharaohcardgame.Model.RedisModel.GameState;
 import org.game.pharaohcardgame.Model.Results.NextTurnResult;
 import org.game.pharaohcardgame.Service.Implementation.CacheService;
 
+import org.game.pharaohcardgame.Service.Implementation.StatisticsService;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Component;
@@ -40,7 +42,7 @@ public class GameSessionUtils {
     private final ConcurrentMap<String, ReentrantLock> locks = new ConcurrentHashMap<>();
 
     private static final String GAME_STATE_KEY = "gameState_";
-    private static final int GAME_STATE_TTL = 24; // 24 óra TTL
+    private static final int GAME_STATE_TTL = 24;
 
     private final ObjectMapper objectMapper;
     private final CacheService cacheService;
@@ -48,6 +50,7 @@ public class GameSessionUtils {
 
     private final ResponseMapper responseMapper;
     private final RequestMapper requestMapper;
+    private final StatisticsService statisticsService;
 
 
     public GameState getGameState(Long gameSessionId) {
@@ -66,7 +69,52 @@ public class GameSessionUtils {
             throw new RuntimeException("Failed to deserialize game state", e);
         }
     }
+    @Transactional
+    public void recordGameStatistics(GameState gameState, GameSession gameSession, boolean isGamemasterLeft) {
+        @SuppressWarnings("unchecked")
+        Map<Long, Integer> finalPositions = (Map<Long, Integer>) gameState.getGameData()
+                .getOrDefault("finalPositions", new HashMap<>());
 
+        if (finalPositions.isEmpty()) {
+            log.warn("No final positions found for game session {}", gameSession.getGameSessionId());
+            return;
+        }
+
+        // Csak USER játékosokat dolgozzuk fel (NEM botokat)
+        for (Player player : gameSession.getPlayers()) {
+            if (player.getIsBot() || player.getUser() == null) {
+                continue; // Skip bots
+            }
+
+            Integer position = finalPositions.get(player.getPlayerId());
+            if (position == null) {
+                log.warn("No position found for player {}", player.getPlayerId());
+                continue;
+            }
+
+            boolean isWinner = position == 1;
+
+            // Rögzítjük a játék eredményét (de még NEM számolunk)
+            statisticsService.recordGameResult(
+                    player.getUser(),
+                    gameSession.getRoom(),
+                    gameSession,
+                    isWinner,
+                    position
+            );
+        }
+
+        //Ha NEM gamemaster kilépés miatt ért véget, AKKOR számoljuk be a statisztikákba
+        if (!isGamemasterLeft) {
+            statisticsService.updateStatisticsAfterGameEnd(gameSession.getGameSessionId());
+            log.info("Game statistics updated for game session {}", gameSession.getGameSessionId());
+        } else {
+            // Gamemaster kilépés esetén eldobjuk a nem számolt statisztikákat
+            statisticsService.discardUncountedStatistics(gameSession.getGameSessionId());
+            log.info("Game statistics discarded for game session {} (gamemaster left)",
+                    gameSession.getGameSessionId());
+        }
+    }
     public void deleteGameState(Long gameSessionId) {
         String key = GAME_STATE_KEY + gameSessionId;
         Cache cache = cacheManager.getCache("gameState");
