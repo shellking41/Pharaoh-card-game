@@ -7,6 +7,8 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { GiCardPlay, GiCardDraw } from 'react-icons/gi';
+import { MdSkipNext } from 'react-icons/md';
 import { GameSessionContext } from '../Contexts/GameSessionContext.jsx';
 import { useParams } from 'react-router-dom';
 import useWebsocket from '../hooks/useWebsocket.js';
@@ -49,6 +51,7 @@ import SomethingWentWrong from '../service/somethingWentWrong.jsx';
 import SuitChange from '../components/Game/SuitChange.jsx';
 import useBroadcastPlayAction
   from '../components/Game/Hooks/useBroadcastPlayAction.js';
+import { FaPlay, FaStepForward } from 'react-icons/fa';
 
 // van egy hiba a selectcardsd nak hogy ha kivalasztok egy kartyat, de nem teszem lÃƒÂ´e hanem huzok egy kartyat helyette akkor nem engedne maskartyatr letenni csak azt amit kivalasztottam az elozo korbe- kÃƒâ€°sz
 // valamiert a viewportol fugg hogy hova teszik le a kartyat a opponensek-kesz
