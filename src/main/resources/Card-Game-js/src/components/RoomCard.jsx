@@ -14,7 +14,7 @@ export const RoomCard = ({ roomId, roomName, playerCount, gameStatus, hasActiveG
         <div className={styles.header}>
           <h2 className={styles.roomName}>
             <FaDoorOpen className={styles.roomIcon}/>
-            {roomName}
+            <span>{roomName}</span>
             {isPublic ? (
               <FaLockOpen className={styles.lockIcon} title="Public Room"/>
             ) : (

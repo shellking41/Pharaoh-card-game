@@ -34,12 +34,6 @@ public class AuthenticationController {
     }
 
 
-    @PostMapping("/set-refresh-cookie")
-    public ResponseEntity<String> setRefreshTokenCookie(HttpServletResponse response, @RequestBody SetRefreshTokenCookieRequest request) {
-        return authenticationService.setRefreshTokenCookie(response, request);
-    }
-
-
     @PostMapping("/register")
     public ResponseEntity<RegisterResponse> register(@Valid @RequestBody RegisterRequest request) {
 

@@ -770,11 +770,16 @@ function Game() {
         <div className={styles.right}>
           <button
             className={styles.playCard}
-            disabled={selectedCards.length === 0 ||
+            disabled={
+              selectedCards.length === 0 ||
               !turn?.yourTurn ||
               queueRef.current.length > 0 ||
-              ((isMobile || isTablet) && !isHandOpen)}
-            onClick={playCards}><span>🎴 Play Cards</span>
+              ((isMobile || isTablet) && !isHandOpen)
+            }
+            onClick={playCards}
+          >
+            <FaPlay style={{ marginRight: '6px' }}/>
+            Play Cards
           </button>
 
           {gameSession?.gameData?.drawStack?.[playerSelf.playerId] ? (
@@ -785,13 +790,19 @@ function Game() {
 
               <button
                 className={styles.drawStack}
-                disabled={queueRef.current.length > 0 || ((isMobile || isTablet) && !isHandOpen)}
+                disabled={
+                  queueRef.current.length > 0 ||
+                  ((isMobile || isTablet) && !isHandOpen)
+                }
                 onClick={() => {
-                  sendMessage('/app/game/draw-stack-of-cards', { playerId: playerSelf.playerId });
+                  sendMessage('/app/game/draw-stack-of-cards', {
+                    playerId: playerSelf.playerId,
+                  });
                   setPlayerSelf(prev => ({ ...prev, drawStackNumber: null }));
                   setDrawn(true);
                 }}
               >
+                <GiCardDraw style={{ marginRight: '6px' }}/>
                 Draw Now
               </button>
             </div>
@@ -806,23 +817,28 @@ function Game() {
               }
               onClick={drawCard}
             >
-              <span>🃏 Draw Card</span>
+              <GiCardDraw style={{ marginRight: '6px' }}/>
+              Draw Card
             </button>
           )}
 
-
-          {(gameSession?.gameData?.noMoreCards || gameSession?.gameData?.noMoreCardsNextDraw) &&
+          {(gameSession?.gameData?.noMoreCards ||
+              gameSession?.gameData?.noMoreCardsNextDraw) &&
             turn?.yourTurn &&
             validPlays.length === 0 && (
               <button
                 className={styles.skipTurn}
                 disabled={queueRef.current.length > 0}
                 onClick={() => {
-                  sendMessage('/app/game/skip', { playerId: playerSelf.playerId });
+                  sendMessage('/app/game/skip', {
+                    playerId: playerSelf.playerId,
+                  });
                 }}
               >
-                <span>⏭️ Skip Turn</span>
+                <FaStepForward style={{ marginRight: '6px' }}/>
+                Skip Turn
               </button>
+
             )}
 
 

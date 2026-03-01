@@ -14,15 +14,12 @@ import org.game.pharaohcardgame.Enum.CardSuit;
 @JsonIgnoreProperties(ignoreUnknown = true)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class Card {
-	@EqualsAndHashCode.Include
-	private String cardId; // UUID - ez az egyedi azonosító
-
-	@Enumerated(EnumType.STRING)
-	private CardSuit suit;
-
-	@Enumerated(EnumType.STRING)
-	private CardRank rank;
-
-	private Long ownerId;
-	private int position;
+    @EqualsAndHashCode.Include
+    private String cardId; // egyedi azonosító
+    @Enumerated(EnumType.STRING)
+    private CardSuit suit;
+    @Enumerated(EnumType.STRING)
+    private CardRank rank;
+    private Long ownerId;
+    private int position;
 }

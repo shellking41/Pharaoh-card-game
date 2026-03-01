@@ -18,7 +18,6 @@ public interface IAuthenticationService {
             HttpServletResponse response
     );
 
-    ResponseEntity<String> setRefreshTokenCookie(HttpServletResponse response, SetRefreshTokenCookieRequest setRefreshTokenCookieRequest);
 
     ResponseEntity<RegisterResponse> register(RegisterRequest request);
 

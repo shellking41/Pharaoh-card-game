@@ -153,18 +153,13 @@ public class UserService implements IUserService {
         if (reactor.getId().equals(target.getId())) {
             throw new IllegalArgumentException("You cannot react to yourself");
         }
-
-
         Optional<UserReaction> existingReaction = userReactionRepository.findByReactorAndTarget(reactor, target);
-
         String action;
         Reaction currentReaction;
-
         if (existingReaction.isPresent()) {
             UserReaction reaction = existingReaction.get();
-
             if (reaction.getReaction() == request.getReaction()) {
-                // TOGGLE - Remove the reaction
+                // TOGGLE
                 if (request.getReaction() == Reaction.LIKE) {
                     target.setLikeCount(Math.max(0, target.getLikeCount() - 1));
                 } else {
@@ -175,19 +170,17 @@ public class UserService implements IUserService {
                 currentReaction = null;
                 log.info("User {} removed their {} from user {}", reactor.getId(), request.getReaction(), target.getId());
             } else {
-                // SWITCH - Change the reaction
+                // SWITCH
                 if (reaction.getReaction() == Reaction.LIKE) {
                     target.setLikeCount(Math.max(0, target.getLikeCount() - 1));
                 } else {
                     target.setDislikeCount(Math.max(0, target.getDislikeCount() - 1));
                 }
-
                 if (request.getReaction() == Reaction.LIKE) {
                     target.setLikeCount(target.getLikeCount() + 1);
                 } else {
                     target.setDislikeCount(target.getDislikeCount() + 1);
                 }
-
                 reaction.setReaction(request.getReaction());
                 userReactionRepository.save(reaction);
                 action = "SWITCHED";
@@ -195,13 +188,8 @@ public class UserService implements IUserService {
                 log.info("User {} switched reaction on user {} to {}", reactor.getId(), target.getId(), request.getReaction());
             }
         } else {
-            // Create new reaction
-            UserReaction newReaction = UserReaction.builder()
-                    .reactor(reactor)
-                    .target(target)
-                    .reaction(request.getReaction())
-                    .build();
-
+            //NEW
+            UserReaction newReaction = UserReaction.builder().reactor(reactor).target(target).reaction(request.getReaction()).build();
             if (request.getReaction() == Reaction.LIKE) {
                 target.setLikeCount(target.getLikeCount() + 1);
             } else {

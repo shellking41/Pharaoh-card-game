@@ -351,6 +351,7 @@ public class GameSessionService implements IGameSessionService {
                 currentPlayer.getPlayerId(),
                 reorderedCards.stream().map(Card::getCardId).collect(Collectors.toList()));
     }
+
     @Override
     //TODO:KELL IDE EGY TRYCATCH
     //todo: lehet ide kell majd a transacitonal, de aza problema hogy a nextturn nem kerul bele a transactionba ezért nem a legfrissebb gamestatet hasznalja.Kivettem innen a transactionalt, igy megy
@@ -411,7 +412,7 @@ public class GameSessionService implements IGameSessionService {
         });
 
         //itt ha huzunk egy kartyat akkor a kartyahuzo user lassa a kartyat mások nem kapjak meg a tartalmát
-        notificationHelpers.sendDrawCardNotification(players, currentPlayer, Collections.singletonList(drawnCardRef.get()), newGameState.getDeck().size(), newGameState.getPlayedCards().size(), newGameState,Collections.singletonList(drawnCardRef.get()).size());
+        notificationHelpers.sendDrawCardNotification(players, currentPlayer, Collections.singletonList(drawnCardRef.get()), newGameState.getDeck().size(), newGameState.getPlayedCards().size(), newGameState, Collections.singletonList(drawnCardRef.get()).size());
 
         //kikuldjuk a kovetkezo kor notifkációit
         NextTurnResult next = nextTurnRef.get();
@@ -475,8 +476,7 @@ public class GameSessionService implements IGameSessionService {
 
             gameEngine.playCards(playCardsRequest.getPlayCards(), currentPlayer, current, gameSession);
             //ha finished akkor ne menjen tovább a logika
-            if (handleIfGameFinished(current, gameSession, playedCardResponses.get(),
-                    playCardsRequest.getPlayCards(), playCardsRequest.getPlayerId())) {
+            if (handleIfGameFinished(current, gameSession, playedCardResponses.get(), playCardsRequest.getPlayCards(), playCardsRequest.getPlayerId())) {
                 return current;
             }
             //todo: van olyan baj a aroudendedel hogy akkor is true marad amikor már a kovetkezo kor megy
@@ -492,10 +492,10 @@ public class GameSessionService implements IGameSessionService {
                 NextTurnResult nextTurnResult;
 
                 if (streakPlayerId != currentPlayer.getPlayerId()) {
-                    if(!skippedPlayers.isEmpty()){
-                        nextTurnResult=gameEngine.nextTurn(currentPlayer, gameSession, current,playCardsRequest.getPlayCards().size());
-                    }else{
-                        nextTurnResult = gameEngine.nextTurn(currentPlayer, gameSession, current,0);
+                    if (!skippedPlayers.isEmpty()) {
+                        nextTurnResult = gameEngine.nextTurn(currentPlayer, gameSession, current, playCardsRequest.getPlayCards().size());
+                    } else {
+                        nextTurnResult = gameEngine.nextTurn(currentPlayer, gameSession, current, 0);
                     }
                 } else {
                     //ha egetett a player akkor o kovetkezzen ujra
@@ -553,7 +553,7 @@ public class GameSessionService implements IGameSessionService {
 
 
         //ez azt kuldi el hogy milyen kartyak vannak már letéve
-        notificationHelpers.sendPlayedCardsNotification(gameSession.getGameSessionId(), gameState, playedCardResponses.get(),playCardsRequest.getPlayCards(),playCardsRequest.getPlayerId());
+        notificationHelpers.sendPlayedCardsNotification(gameSession.getGameSessionId(), gameState, playedCardResponses.get(), playCardsRequest.getPlayCards(), playCardsRequest.getPlayerId());
 
         //ez elkuldi a frissitett player handet hogy a játszo usernek a kezebol eltunnjon a kartya es mas playerek is lassak ezt
         notificationHelpers.sendPlayCardsNotification(gameSession, gameState);
@@ -679,7 +679,7 @@ public class GameSessionService implements IGameSessionService {
         NextTurnResult nextTurnResult = nextTurnRef.get();
 
         //itt ha huzunk egy kartyat akkor a kartyahuzo user lassa a kartyat mások nem kapjak meg a tartalmát
-        notificationHelpers.sendDrawCardNotification(players, currentPlayer, drawnCardsRef.get(), deckSizeRef.get(), newGameState.getPlayedCards().size(), newGameState,drawnCardsRef.get().size());
+        notificationHelpers.sendDrawCardNotification(players, currentPlayer, drawnCardsRef.get(), deckSizeRef.get(), newGameState.getPlayedCards().size(), newGameState, drawnCardsRef.get().size());
 
         notificationHelpers.sendNextTurnNotification(nextTurnResult.nextPlayer(), gameSession.getPlayers(), nextTurnResult.nextSeatIndex(), gameSessionUtils.calculateValidPlays(newGameState, nextTurnResult.nextPlayer()));
         botLogic.handleIfNextPlayerIsBot(nextTurnResult, gameSession);
@@ -753,20 +753,13 @@ public class GameSessionService implements IGameSessionService {
                     .build();
         }
     }
-    private boolean handleIfGameFinished(GameState current, GameSession gameSession,
-                                         List<PlayedCardResponse> playedCardResponses,
-                                         List<CardRequest> newPlayedCards, Long playerId) {
+
+    private boolean handleIfGameFinished(GameState current, GameSession gameSession, List<PlayedCardResponse> playedCardResponses, List<CardRequest> newPlayedCards, Long playerId) {
         if (current.getStatus().equals(GameStatus.FINISHED)) {
             // Játék befejezése
             gameSession.setGameStatus(GameStatus.FINISHED);
             gameSessionRepository.save(gameSession);
-
-            // STATISZTIKÁK RÖGZÍTÉSE
-            gameSessionUtils.recordGameStatistics(current, gameSession, false); // false = normál vég, nem gamemaster kilépés
-
-            // Értesítések
-            notificationHelpers.sendPlayedCardsNotification(gameSession.getGameSessionId(),
-                    current, playedCardResponses, newPlayedCards, playerId);
+            notificationHelpers.sendPlayedCardsNotification(gameSession.getGameSessionId(), current, playedCardResponses, newPlayedCards, playerId);
             notificationHelpers.sendPlayCardsNotification(gameSession, current);
 
             // Cache törlés

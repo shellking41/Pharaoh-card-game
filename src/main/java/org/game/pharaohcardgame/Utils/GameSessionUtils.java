@@ -69,6 +69,7 @@ public class GameSessionUtils {
             throw new RuntimeException("Failed to deserialize game state", e);
         }
     }
+
     @Transactional
     public void recordGameStatistics(GameState gameState, GameSession gameSession, boolean isGamemasterLeft) {
         @SuppressWarnings("unchecked")
@@ -115,6 +116,7 @@ public class GameSessionUtils {
                     gameSession.getGameSessionId());
         }
     }
+
     public void deleteGameState(Long gameSessionId) {
         String key = GAME_STATE_KEY + gameSessionId;
         Cache cache = cacheManager.getCache("gameState");
@@ -242,13 +244,12 @@ public class GameSessionUtils {
                 throw new LockAcquisitionException("Failed to acquire lock");
             }
             GameState currentGameState = getGameState(gameSessionId);
-
-
+            //frissitjük a gameState-t
             GameState updatedGameState = updater.apply(currentGameState);
             if (updatedGameState == null) {
                 throw new EntityNotFoundException("Game state not found for session: " + gameSessionId);
             }
-
+            // elmentjük cachebe
             cacheService.saveInCache(cache, cacheKey, updatedGameState, "gameState");
 
 
@@ -260,7 +261,6 @@ public class GameSessionUtils {
             if (locked) {
                 lock.unlock();
             }
-            // cleanup: ha senki sem vár és nincs locked, távolítsuk el a lock objektumot (race oké, remove csak akkor töröl ha ugyanaz az instance)
             if (!lock.isLocked()) {
                 locks.remove(cacheKey, lock);
             }

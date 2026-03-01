@@ -372,23 +372,16 @@ public class RoomService implements IRoomService {
         UserPrincipal principal = (UserPrincipal) accessor.getUser();
         assert principal != null;
         Long userId = principal.getUserId();
-
-        //cache evict
         Cache cache = cacheManager.getCache("userStatus");
         if (cache != null) {
             cache.evict("userStatus_" + userId);
         }
-
         User gameMaster = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("User not Found"));
-
-
-        // Ellenőrzés: van-e aktív szoba, amit ez a user kezel
         boolean hasActiveRoom = roomRepository.existsByGamemasterAndActiveTrue(gameMaster);
         if (hasActiveRoom) {
             throw new IllegalStateException("You already have an active room. Close it before creating a new one.");
         }
-
         try {
             Room newRoom = Room.builder()
                     .name(createRoomRequest.getRoomName())
@@ -399,7 +392,6 @@ public class RoomService implements IRoomService {
             gameMaster.setCurrentRoom(newRoom);
             newRoom.getParticipants().add(gameMaster);
             newRoom.setGamemaster(gameMaster);
-
             newRoom = roomRepository.save(newRoom);
             userRepository.save(gameMaster);
 
@@ -414,23 +406,16 @@ public class RoomService implements IRoomService {
 
             RoomCreationResponse successResponse = responseMapper.toRoomCreationResponse(
                     newRoom, gameMaster, true, "");
-
             simpMessagingTemplate.convertAndSendToUser(
                     gameMaster.getId().toString(),
                     "/queue/room-creation-response",
                     successResponse
             );
-
             return minimalRoomResponse;
-
         } catch (Exception e) {
             RoomCreationResponse errorResponse = responseMapper.toRoomCreationResponse(
                     null, gameMaster, false, "");
-
-            simpMessagingTemplate.convertAndSendToUser(
-                    gameMaster.getId().toString(),
-                    "/queue/room-creation-response",
-                    errorResponse
+            simpMessagingTemplate.convertAndSendToUser(gameMaster.getId().toString(), "/queue/room-creation-response", errorResponse
             );
 
             return null;

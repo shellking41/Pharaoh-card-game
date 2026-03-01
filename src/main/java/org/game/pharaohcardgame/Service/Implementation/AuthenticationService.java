@@ -102,28 +102,6 @@ public class AuthenticationService implements IAuthenticationService {
     }
 
     @Override
-    public ResponseEntity<String> setRefreshTokenCookie(HttpServletResponse response, SetRefreshTokenCookieRequest setRefreshTokenCookieRequest) {
-        String refreshToken = setRefreshTokenCookieRequest.getRefreshToken();
-
-
-        if (refreshToken == null) {
-            return ResponseEntity.badRequest().body("Missing refresh token");
-        }
-
-        User user = userRepository.findById(jwtService.getUserIdFromToken(refreshToken)).orElseThrow(() -> new AuthenticationServiceException("user not found"));
-
-        var isTokenValid = tokensRepository.findByToken(refreshToken)
-                .map(t -> !t.isExpired() && !t.isRevoked())
-                .orElse(false);
-        if (!(jwtService.isTokenValid(refreshToken, user) && isTokenValid)) {
-            throw new IllegalArgumentException("Token is not valid");
-        }
-
-        jwtService.addTokenRefreshCookie(response, "refresh-token", refreshToken);
-        return ResponseEntity.ok("Refresh token cookie set successfully");
-    }
-
-    @Override
     public ResponseEntity<RegisterResponse> register(RegisterRequest request) {
         try {
             if (userRepository.findByName(request.getUsername()).isPresent()) {
@@ -151,6 +129,7 @@ public class AuthenticationService implements IAuthenticationService {
     @Override
     public ResponseEntity<LoginResponse> login(LoginRequest request, HttpServletResponse response) {
         try {
+            //megkeressük a usert
             User user = userRepository.findByName(request.getUsername())
                     .orElseThrow(() -> new EntityNotFoundException("User not Found"));
 
@@ -158,7 +137,7 @@ public class AuthenticationService implements IAuthenticationService {
             UserAuthenticationToken authToken = UserAuthenticationToken.unauthenticated(
                     principal, request.getPassword()
             );
-
+            // autentikáljuk
             Authentication authentication = authenticationProvider.authenticate(authToken);
 
             if (authentication.isAuthenticated()) {
@@ -167,14 +146,14 @@ public class AuthenticationService implements IAuthenticationService {
 
                 // Ez biztosítja, hogy csak egy aktív refresh token legyen
                 revokeAllUserTokensExcept(user, null);
-
+                // tokeneket elmentjük
                 List<Tokens> tokens = List.of(
                         Tokens.builder().user(user).token(accessToken).expired(false).revoked(false).type(tokenType.ACCESS).build(),
                         Tokens.builder().user(user).token(refreshToken).expired(false).revoked(false).type(tokenType.REFRESH).build()
                 );
                 tokensRepository.saveAll(tokens);
 
-                // ookie beállítás - ez minden tabban látható lesz
+                // cookie beállítás
                 jwtService.addTokenRefreshCookie(response, "refresh-token", refreshToken);
 
                 LoginResponse loginResponse = responseMapper.toLoginResponse(user, accessToken, true, "Login successful");

@@ -4,6 +4,7 @@ import { useContext } from 'react';
 import { TokenContext } from '../Contexts/TokenContext';
 import styles from './styles/UserReactions.module.css';
 import { UserContext } from '../Contexts/UserContext.jsx';
+import { FaThumbsUp, FaThumbsDown } from 'react-icons/fa';
 
 function UserReactions({ userId, like: initialLike, dislike: initialDislike }) {
   const { post } = useApiCallHook();
@@ -62,7 +63,8 @@ function UserReactions({ userId, like: initialLike, dislike: initialDislike }) {
         }`}
         title={currentReaction === 'LIKE' ? 'Remove like' : 'Like this user'}
       >
-        👍 <span className={styles.count}>{likeCount}</span>
+        <FaThumbsUp className={styles.icon}/>
+        <span className={styles.count}>{likeCount}</span>
       </button>
 
       <button
@@ -73,7 +75,8 @@ function UserReactions({ userId, like: initialLike, dislike: initialDislike }) {
         }`}
         title={currentReaction === 'DISLIKE' ? 'Remove dislike' : 'Dislike this user'}
       >
-        👎 <span className={styles.count}>{dislikeCount}</span>
+        <FaThumbsDown className={styles.icon}/>
+        <span className={styles.count}>{dislikeCount}</span>
       </button>
     </div>
   );
