@@ -236,8 +236,8 @@ const HungarianCardInner = ({
 
         setIsCardPlayable(isPlayable);
       }
-      isCardPlayable();
     };
+    isCardPlayable();
   }, [validPlays, selectedCards, cardData, ownCard]);
 
   const isAlreadySelected = useMemo(() => {
