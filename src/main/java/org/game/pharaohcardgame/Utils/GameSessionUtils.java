@@ -338,19 +338,20 @@ public class GameSessionUtils {
     }
 
     public List<List<Card>> calculateValidPlays(GameState gameState, Player currentPlayer) {
+        //megszerzi a játékos kártyáját
         List<Card> currentPlayerHand = gameState.getPlayerHands().get(currentPlayer.getPlayerId());
         if (currentPlayerHand == null || currentPlayerHand.isEmpty()) return Collections.emptyList();
-
+        //megszerzi az utolsó kártyát
         List<Card> playedCards = gameState.getPlayedCards();
         if (playedCards == null || playedCards.isEmpty()) return Collections.emptyList();
-
         Card lastPlayedCard = playedCards.getLast();
+        //ha volt szinváltás akkor azt megszerzi
         CardSuit suitChangedTo = getSpecificGameData("suitChangedTo", gameState, null);
 
         // letehető kártyák (single-k)
         List<Card> playableFirstCards = currentPlayerHand.stream()
                 .filter(c -> {
-                    //ha a kartya hetes akkor csak a heteset vagy a fareot lehessen letenni
+                    //ha a kartya hetes és kell kártyát húzni akkor csak a heteset vagy a fareot lehessen letenni
                     if ((lastPlayedCard.getRank().equals(CardRank.VII) && getSpecificGameDataTypeMap("drawStack", gameState).containsKey(currentPlayer.getPlayerId()))) {
                         if ((c.getRank().equals(CardRank.VII) || (c.getRank() == CardRank.JACK &&
                                 c.getSuit() == CardSuit.LEAVES))) {
@@ -386,30 +387,35 @@ public class GameSessionUtils {
                 })
                 .toList();
 
-        // Építjük a teljes jelöltek listáját (egykártyás + multi-kombók)
+        // Építjük a teljes jelöltek listáját
         List<List<Card>> validPlays = new ArrayList<>();
 
-        // adjuk hozzá az egykártyás (singleton) lépéseket
+        // hozzáadjuk az egykártyás lépéseket
         for (Card single : playableFirstCards) {
             validPlays.add(Collections.singletonList(single));
         }
 
-        // csoportosítunk rang szerint -- ez egy lokális változó, nem kell külső metódus
+        // csoportosítunk rang szerint
         Map<CardRank, List<Card>> groupsByRank = currentPlayerHand.stream()
                 .collect(Collectors.groupingBy(Card::getRank, LinkedHashMap::new, Collectors.toList()));
 
-        // Generáljuk a multi-card kombinációkat rank-onként (így nincs duplikáció)
+        // Generáljuk a multi-card kombinációkat rank-onként
         for (Map.Entry<CardRank, List<Card>> entry : groupsByRank.entrySet()) {
             List<Card> group = entry.getValue();
             int n = group.size();
             if (n < 2) continue; // csak 2+ lapból érdemes kombinációkat generálni
 
             int maxMask = 1 << n; // 2^n maszk
+            //pl : mask: 5=101
             for (int mask = 1; mask < maxMask; mask++) {
-                if (Integer.bitCount(mask) < 2) continue; // csak >=2 elemes részhalmazok
+                //ha a maskban ilyenek szerepelnek hogy 100,010,001,000 akkor az ilyenek elengeni
+                if (Integer.bitCount(mask) < 2) continue;
 
-                // build subset
+
                 List<Card> combo = new ArrayList<>();
+                //majd n szer iterálunk
+                // hogy megnézzük mely bitek vannak "bekapcsolva"
+                //ha bevan kapcsolva akkor az a kartya amely a i indexel rendelkezik belekerül a comboba
                 for (int i = 0; i < n; i++) {
                     if ((mask & (1 << i)) != 0) {
                         combo.add(group.get(i));
@@ -422,14 +428,13 @@ public class GameSessionUtils {
                                 .anyMatch(p -> p.getCardId().equals(card.getCardId())));
                 if (!hasPlayableStarter) continue;
 
-                // KERESSÜK meg a startert (az első playableFirstCard-ot a combo-ban)
+                // KERESSÜK meg a startert
                 Optional<Card> maybeStarter = combo.stream()
                         .filter(card -> playableFirstCards.stream()
                                 .anyMatch(p -> p.getCardId().equals(card.getCardId())))
                         .findFirst();
                 if (maybeStarter.isEmpty()) continue; // biztonsági ellenőrzés
 
-                // feltételezzük: 'combo' tartalmazza a kártyákat (starter is benne van)
                 Card starterCard = maybeStarter.get();
 
                 // készítünk egy másolatot, hogy ne változtassuk meg az eredeti combo-t
@@ -442,15 +447,6 @@ public class GameSessionUtils {
                 validPlays.add(ordered);
             }
         }
-
-        //  csak azok maradjanak, amelyek a GameEngine szerint is érvényesek
-		/*List<List<Card>> filteredValidPlays = validPlays.stream()
-				.filter(cList -> {
-
-					List<CardRequest> crList = requestMapper.toCardRequestList(cList);
-					return gameEngine.checkCardsPlayability(crList, gameState);
-				})
-				.toList();*/
 
         return validPlays;
     }

@@ -208,33 +208,36 @@ const HungarianCardInner = ({
   const isMobile = useMediaQuery('(max-width: 768px)');
 
   useEffect(() => {
-    if (ownCard && cardData) {
-      const isAlreadySelected = selectedCards.some(c => c.cardId === cardData.cardId);
+    const isCardPlayable = () => {
+      if (ownCard && cardData) {
+        const isAlreadySelected = selectedCards.some(c => c.cardId === cardData.cardId);
 
-      if (isAlreadySelected) {
-        setIsCardPlayable(true);
-        return;
-      }
-
-      const selectedCount = selectedCards.length;
-
-      let relevantPlays = validPlays.filter(vp => {
-        return selectedCards.every(selected =>
-          vp.some(card => card.cardId === selected.cardId),
-        );
-      });
-
-      relevantPlays.sort((a, b) => b.length - a.length);
-
-      const isPlayable = relevantPlays.some(vp => {
-        if (selectedCount === 0) {
-          return vp[0].cardId === cardData.cardId;
+        if (isAlreadySelected) {
+          setIsCardPlayable(true);
+          return;
         }
-        return vp.some(card => card.cardId === cardData.cardId);
-      });
 
-      setIsCardPlayable(isPlayable);
-    }
+        const selectedCount = selectedCards.length;
+
+        let relevantPlays = validPlays.filter(vp => {
+          return selectedCards.every(selected =>
+            vp.some(card => card.cardId === selected.cardId),
+          );
+        });
+
+        relevantPlays.sort((a, b) => b.length - a.length);
+
+        const isPlayable = relevantPlays.some(vp => {
+          if (selectedCount === 0) {
+            return vp[0].cardId === cardData.cardId;
+          }
+          return vp.some(card => card.cardId === cardData.cardId);
+        });
+
+        setIsCardPlayable(isPlayable);
+      }
+      isCardPlayable();
+    };
   }, [validPlays, selectedCards, cardData, ownCard]);
 
   const isAlreadySelected = useMemo(() => {
